@@ -1,0 +1,49 @@
+<add name="numCpf"  question="QNumeroCPF" />
+<!--
+  Detalhamento da chamada:
+
+  type="onblur;onclick;onstart": Informa em qual situação o web service será disparado, onde onblur é ao tirar o foco do campo que tem a chamada do web service, onclick ao clicar no campo, onstart. Definir em quais situações o web service será iniciado.
+  Além destes, também temos o onchange, que pode ser colocado na parte de parameters para informar que quando valor do parametro mudar o web service é executado, exemplo: <add name="CD_MATERIAL_SUBGROUP" onchange="true" question="CD_MATERIAL_SUBGROUP" />
+
+  send: Informa que a comunicação será com o protocolo SOAP.
+   url: Informa a URL que será utilizada. Recomendamos que seja criado uma variável para a URL, no Requestia, em Administração > Aplicação > Variáveis. No e-mail encaminho print de exemplo.
+   no-check-certificate: Informa que o certificado SSL não será validado ... o correto é que a URL da philips tenha um certificado SSL para prover maior segurança, porém caso não tenha deixar o no-check-certificate=true
+   timeout: Tempo de timeout da chamada em minutos
+   securityProtocolType: Procóloco de segurança na comunicação. Neste caso colocamos para a chamada funcione com os protocólos(SSL3, TLS, TLS 1.1, TLS 1.2)
+   soapversion: Versão 1.1 do Soap que é definido no web service da philips.
+   TAG <body>: Onde é inserida o envelope SOAP ao qual será utilizado para Requisição. Observe que temos parametros que deixei como fixo e outros que são buscados de acordo com a sessão parameters que por sua vez busca de questões de formulário.
+   TAG parameters: Informa os parametros que serão utilizados, neste caso buscando a informação de questões do formulário.
+   TAG returns: Busca no retorno do web service os valores e preenche em uma questão TIPO TABELA.
+-->
+
+<?xml version="1.0" encoding="utf-8"?>
+<control>
+  <services type="onclick">
+    <method send="Soap" url="{url:philipsstandardintegrator}" no-check-certificate="true" timeout="60" securityProtocolType="4080" soapversion="1.1">
+      <body>
+        <![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:phil="http://philipsstandardintegratorobject.philips.com/">
+   <soapenv:Header/>
+   <soapenv:Body>
+      <phil:integrationObject>
+         <STRUCTURE>
+            <ID_EVENT>332</ID_EVENT>
+            <ID_APPLICATION>2</ID_APPLICATION>
+            <ID_ORIGIN>0</ID_ORIGIN>
+            <FILTERS>
+               <CD_GROUP_MATERIAL><%=CD_GROUP_MATERIAL%></CD_GROUP_MATERIAL>
+               <IE_STATUS>A</IE_STATUS>
+            </FILTERS>
+         </STRUCTURE>
+      </phil:integrationObject>
+   </soapenv:Body>
+</soapenv:Envelope>]]>
+      </body>
+      <parameters>
+        <add name="CD_GROUP_MATERIAL"    question="CD_GROUP_MATERIAL" />
+      </parameters>
+      <returns path="//STRUCTURE" node="FILTERS">
+        <item1 list="true" question="CAD_MAT_SUBGRUPO_WS" column="CD_MATERIAL_SUBGROUP" columns="DS_MATERIAL_SUBGROUP,CD_MATERIAL_SUBGROUP" memory="true"/>
+      </returns>
+    </method>
+  </services>
+</control>
