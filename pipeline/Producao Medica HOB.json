@@ -1,0 +1,231 @@
+{
+	"name": "Producao Medica HOB",
+	"properties": {
+		"description": "Pipeline desenvolvido para extração de informações de produção medica das unidades com o sistema Tasy e Smart.",
+		"activities": [
+			{
+				"name": "Wait1",
+				"type": "Wait",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"waitTimeInSeconds": 1
+				}
+			},
+			{
+				"name": "Producao Procedimentos HOB",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select \n\n'Tasy HTML' as BASE,\ne.cd_cgc as CNPJ,\ne.nm_fantasia_estab as marca,\np.dt_atualizacao,\np.nr_atendimento,\nat.dt_entrada,\np.nr_interno_conta,\n--obter_nome_estab(c.cd_estabelecimento) as ds_estabelecimento,\npf.cd_pessoa_fisica,\npf.dt_nascimento,\npf.nr_cpf,\npf.ie_sexo,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CEP') as nr_cep,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CI') as ds_cidade,\nobter_nome_pf(at.cd_pessoa_fisica) as ds_pessoa_fisica,\np.cd_convenio as cd_convenio,\nobter_nome_convenio(c.cd_convenio_parametro) as ds_convenio,\np.cd_medico_executor,\nobter_nome_pf(p.cd_medico_executor) as ds_medico_executor,\np.cd_medico_req as cd_medico_requisitante,\nobter_nome_pf(p.cd_medico_req) as ds_medico_requisitante,\np.ie_origem_proced as ie_origem_procedimento,\np.cd_procedimento,\nobter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced) as ds_procedimento, \nobter_valor_dominio(19,pr.ie_classificacao) as ds_classificacao,\np.qt_procedimento,\n--c.vl_conta,\np.vl_procedimento,\nc.ie_status_acerto,\ndecode(c.ie_status_acerto, 1,'Provisorio' , 2 ,'Definitivo') as status_conta,\n'' as cd_tuss,\np.nr_seq_proc_interno\nfrom procedimento_paciente p,\natendimento_paciente at,\npessoa_fisica pf,\nprocedimento pr,\nconta_paciente c,\nestabelecimento e,\nempresa em\nwhere p.nr_atendimento = at.nr_atendimento\nand at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand p.cd_procedimento = pr.cd_procedimento\nand p.ie_origem_proced = pr.ie_origem_proced\nand p.nr_interno_conta = c.nr_interno_conta\nand at.cd_estabelecimento = e.cd_estabelecimento\nand e.cd_empresa = em.cd_empresa\nand p.cd_motivo_exc_conta is null\nand c.ie_cancelamento is null\nand at.dt_entrada between sysdate - 730 and sysdate",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Unidade_Producao_Medica",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Producao Materiais HOB",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select 'Tasy HTML' as BASE,\ne.cd_cgc as CNPJ,\ne.nm_fantasia_estab as marca,\nmp.dt_atualizacao,\nmp.nr_atendimento,\nat.dt_entrada,\nmp.nr_interno_conta,\npf.cd_pessoa_fisica,\npf.dt_nascimento,\npf.nr_cpf,\npf.ie_sexo,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CEP') as nr_cep,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CI') as ds_cidade,\nobter_nome_pf(at.cd_pessoa_fisica) as ds_pessoa_fisica,\nmp.cd_convenio as cd_convenio,\nobter_nome_convenio(c.cd_convenio_parametro) as ds_convenio,\nat.cd_medico_atendimento as cd_medico_executor,\nobter_nome_pf(at.cd_medico_atendimento) as ds_medico_executor,\nmp.cd_medico_prescritor as cd_medico_requisitante,\nobter_nome_pf(mp.cd_medico_prescritor) as ds_medico_requisitante,\n' ' ie_origem_procedimento,\nmp.cd_material as cd_procedimento,\nm.ds_material as ds_procedimento, \n'Material'  ds_classificacao,\nmp.qt_material as qt_procedimento,\nmp.vl_material as vl_procedimento,\nc.ie_status_acerto,\ndecode(c.ie_status_acerto, 1,'Provisorio' , 2 ,'Definitivo') as status_conta,\n'' as cd_tuss,\n0 as nr_seq_proc_interno\nfrom  conta_paciente c,\n      material_atend_paciente mp,\n      material m,\n      estabelecimento e,\n      atendimento_paciente at,\n      pessoa_fisica pf\nwhere c.nr_atendimento = mp.nr_atendimento\nand c.nr_interno_conta = mp.nr_interno_conta\nand mp.cd_material = m.cd_material\nand c.cd_estabelecimento = e.cd_estabelecimento\nand mp.nr_atendimento = at.nr_atendimento\nand at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand mp.dt_atualizacao between sysdate -730 and sysdate\nand mp.cd_motivo_exc_conta is null",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Unidade_Producao_Medica",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Convenios",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select cn.cd_convenio, cn.ds_convenio, e.cd_estabelecimento, e.cd_cgc as cnpj\nfrom convenio cn,\n     convenio_estabelecimento ce,\n     estabelecimento e\nwhere cn.cd_convenio = ce.cd_convenio\nand ce.cd_estabelecimento = e.cd_estabelecimento\norder by 2",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Convenio",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Setor",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select a.cd_setor_atendimento, a.ds_setor_atendimento, e.cd_cgc as cnpj\nfrom setor_atendimento a,\nestabelecimento e\nwhere a.cd_estabelecimento = e.cd_estabelecimento\nand e.ie_situacao = 'A'",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Setor",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Execute HOSL",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Producao Procedimentos HOB",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Producao Materiais HOB",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Convenios",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Setor",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "Producao Medica HOSL",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			}
+		],
+		"folder": {
+			"name": "Produção Médica CSI"
+		},
+		"annotations": []
+	}
+}

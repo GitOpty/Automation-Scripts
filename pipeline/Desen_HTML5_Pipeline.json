@@ -1,0 +1,653 @@
+{
+	"name": "Desen_HTML5_Pipeline",
+	"properties": {
+		"description": "Pipelines desenvolvidos em conjunto com a empresa Class para a extração das informações de produção. Atualmente desativado.",
+		"activities": [
+			{
+				"name": "Processa Itens",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Copy_Materials",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Copy_Procedures",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[ProcessTempItems]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Tabela Final",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Processa Itens",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select * from TEMPTASY\nWhere Processed = 'Sim'"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBatchSize": 10000
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "NR_REGISTRO_UNICO",
+									"type": "String"
+								},
+								"sink": {
+									"name": "NR_REGISTRO_UNICO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MARCA",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "CD_MARCA",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "MARCA",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_MARCA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_ATUALIZACAO",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "DT_ATUALIZACAO",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_ENTRADA",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "DT_ENTRADA",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_ATENDIMENTO",
+									"type": "String"
+								},
+								"sink": {
+									"name": "NR_ATENDIMENTO",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_PESSOA_FISICA",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "CD_PESSOA_FISICA",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_NASCIMENTO",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "DT_NASCIMENTO",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_CPF",
+									"type": "String"
+								},
+								"sink": {
+									"name": "NR_CPF",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "IE_SEXO",
+									"type": "String"
+								},
+								"sink": {
+									"name": "IE_SEXO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_CEP",
+									"type": "String"
+								},
+								"sink": {
+									"name": "NR_CEP",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CIDADE",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_CIDADE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_PESSOA_FISICA",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_PESSOA_FISICA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CONVENIO",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CD_CONVENIO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CONVENIO",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_CONVENIO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MEDICO_EXECUTOR",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CD_MEDICO_EXECUTOR",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MEDICO_EXECUTOR",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_MEDICO_EXECUTOR",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MEDICO_REQUISITANTE",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CD_MEDICO_REQUISITANTE",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MEDICO_REQUISITANTE",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_MEDICO_REQUISITANTE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "IE_ORIGEM_PROCED",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "IE_ORIGEM_PROCED",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_PROCEDIMENTO",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CD_PROCEDIMENTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_PROCEDIMENTO",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_PROCEDIMENTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_PROCED_PRINCIPAL",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CD_PROCEDIMENTO_PRINCIPAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_PROCED_PRINCIPAL",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_PROCEDIMENTO_PRINCIPAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_PROCEDIMENTO_PRINCIPAL_FINAL",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_PROCEDIMENTO_PRINCIPAL_FINAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CATEGORIA_AUXILIAR",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "CD_CATEGORIA_AUXILIAR",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CATEGORIA_AUXILIAR",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_CATEGORIA_AUXILIAR",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CATEGORIA",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "CD_CATEGORIA",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CATEGORIA",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_CATEGORIA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CLASSE",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "CD_CLASSE",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CLASSE",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_CLASSE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CLASSIF_LIO",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "CD_CLASSIF_LIO",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CLASSIF_LIO",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_CLASSIF_LIO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_PROCEDIMENTO",
+									"type": "Double"
+								},
+								"sink": {
+									"name": "QT_PROCEDIMENTO",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_AJUSTADA",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "QT_AJUSTADA",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_CONTA",
+									"type": "Double"
+								},
+								"sink": {
+									"name": "VL_CONTA",
+									"type": "Single"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_PROCEDIMENTO",
+									"type": "Double"
+								},
+								"sink": {
+									"name": "VL_PROCEDIMENTO",
+									"type": "Single"
+								}
+							},
+							{
+								"source": {
+									"name": "IE_STATUS_ACERTO",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "IE_STATUS_ACERTO",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_STATUS_CONTA",
+									"type": "String"
+								},
+								"sink": {
+									"name": "DS_STATUS_CONTA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_TUSS",
+									"type": "Int32"
+								},
+								"sink": {
+									"name": "CD_TUSS",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "TIPO_CONVENIO",
+									"type": "String"
+								},
+								"sink": {
+									"name": "TIPO_CONVENIO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CRM",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CRM_EXECUTOR",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "MPE",
+									"type": "String"
+								},
+								"sink": {
+									"name": "MPE_EXECUTOR",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "INTERCOMPANY",
+									"type": "String"
+								},
+								"sink": {
+									"name": "INTERCOMPANY_EXECUTOR",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "AzureSqlTEMPTable",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AzureSqlProcedimentosTable",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Truncate Temp Table",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Tabela Final",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[TRUNCATETEMPTABLE]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Copy_Procedures",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select \n\n'HTML5' as BASE,\n'' as cd_marca,\n'' as marca,\n'' as cd_estabelecimento,\np.nr_atendimento,\np.nr_atendimento as nr_registro_unico,\np.dt_atualizacao,\nat.dt_entrada,\np.nr_interno_conta,\nobter_nome_estab(c.cd_estabelecimento) as ds_estabelecimento,\npf.cd_pessoa_fisica,\npf.dt_nascimento,\npf.nr_cpf,\npf.ie_sexo,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CEP') as nr_cep,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CI') as ds_cidade,\nobter_nome_pf(at.cd_pessoa_fisica) as ds_pessoa_fisica,\np.cd_convenio as cd_convenio,\nobter_nome_convenio(c.cd_convenio_parametro) as ds_convenio,\np.cd_medico_executor,\nobter_nome_pf(p.cd_medico_executor) as ds_medico_executor,\np.cd_medico_req as cd_medico_requisitante,\nobter_nome_pf(p.cd_medico_req) as ds_medico_requisitante,\np.ie_origem_proced,\np.cd_procedimento,\nobter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced) as ds_procedimento, \nobter_valor_dominio(19,pr.ie_classificacao) as ds_classificacao,\n'' as ds_classif_procedimento,\n0 as cd_proced_principal,\n'' ds_proced_principal,\np.qt_procedimento,\nc.vl_conta,\np.vl_procedimento,\nc.ie_status_acerto,\ndecode(c.ie_status_acerto, 1,'Provisorio' , 2 ,'Definitivo') as status_conta,\n'' as cd_tuss,\n'' as ds_classif_lio\nfrom procedimento_paciente p,\natendimento_paciente at,\npessoa_fisica pf,\nprocedimento pr,\nconta_paciente c\nwhere p.nr_atendimento = at.nr_atendimento\nand at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand p.cd_procedimento = pr.cd_procedimento\nand p.ie_origem_proced = pr.ie_origem_proced\nand p.nr_interno_conta = c.nr_interno_conta\nand p.cd_motivo_exc_conta is null\nand c.ie_cancelamento is null\nand at.dt_entrada between sysdate - 1 and sysdate",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AzureSqlTEMPTable",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Copy_Materials",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select \n\n'HTML5' as BASE,\n'' as cd_marca,\n'' as marca,\n'' as cd_estabelecimento,\np.nr_atendimento,\n'' as nr_registro_unico,\np.dt_atualizacao,\nat.dt_entrada,\np.nr_interno_conta,\nobter_nome_estab(c.cd_estabelecimento) as ds_estabelecimento,\npf.cd_pessoa_fisica,\npf.dt_nascimento,\npf.nr_cpf,\npf.ie_sexo,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CEP') as nr_cep,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CI') as ds_cidade,\nobter_nome_pf(at.cd_pessoa_fisica) as ds_pessoa_fisica,\np.cd_convenio as cd_convenio,\nobter_nome_convenio(c.cd_convenio_parametro) as ds_convenio,\nci.cd_medico_cirurgiao as cd_medico_executor,\nobter_nome_pf(ci.cd_medico_cirurgiao) as ds_medico_executor,\nci.cd_medico_cirurgiao as cd_medico_requisitante,\nobter_nome_pf(ci.cd_medico_cirurgiao) as ds_medico_requisitante,\n'' as ie_origem_proced,\np.cd_material as cd_procedimento,\npr.ds_material as ds_procedimento, \n'Material' as ds_classificacao,\n'' as ds_classif_procedimento,\n0 as cd_proced_principal,\n'' ds_proced_principal,\np.qt_material as qt_procedimento,\nc.vl_conta,\np.vl_material as vl_procedimento,\nc.ie_status_acerto,\ndecode(c.ie_status_acerto, 1,'Provisorio' , 2 ,'Definitivo') as status_conta,\n0 as cd_tuss,\n'' as ds_classif_lio\nfrom material_atend_paciente p,\natendimento_paciente at,\npessoa_fisica pf,\nmaterial pr,\nconta_paciente c,\ncirurgia ci\nwhere p.nr_atendimento = at.nr_atendimento\nand at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand p.cd_material = pr.cd_material\nand p.nr_interno_conta = c.nr_interno_conta\nand p.nr_cirurgia = ci.nr_cirurgia\nand p.nr_atendimento = ci.nr_atendimento\nand p.cd_motivo_exc_conta is null\nand c.ie_cancelamento is null\nand at.dt_entrada between sysdate - 2 and sysdate - 1",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AzureSqlTEMPTable",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Producao Medica/Desenvolvimento"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

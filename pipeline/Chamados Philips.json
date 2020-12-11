@@ -1,0 +1,118 @@
+{
+	"name": "Chamados Philips",
+	"properties": {
+		"description": "Truncate all Philips' tables",
+		"activities": [
+			{
+				"name": "Copy OS",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Clear tables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT a.nr_sequencia,\n\t   a.ds_ordem,\n\t   a.nr_seq_localizacao,\n       a.ds_localizacao,\n\t   a.nr_seq_equipamento,\n       a.ds_equipamento,\n\t   a.cd_pessoa_solicitante,\n       a.nm_solicitante,\n\t   a.dt_ordem_servico,\n\t   a.ie_prioridade,\n\t   a.ds_dano_breve,\n\t   a.dt_atualizacao,\n\t   a.nm_usuario,\n\t   a.dt_inicio_desejado,\n\t   a.ds_dano,\n\t   a.dt_fim_previsto,\n\t   a.dt_inicio_real,\n\t   a.dt_fim_real,\n\t   substr(obter_desc_status_os(a.nr_sequencia),1,255) ie_status_ordem,\n\t   a.nr_grupo_planej,\n\t   a.nr_grupo_trabalho,\n\t   a.nr_seq_estagio,\n\t   a.dt_reabertura,\n\t   a.cd_funcao,\n\t   a.ie_classificacao,\n       a.ds_situacao,\n\t   a.ie_grau_satisfacao,\n\t   a.nr_seq_wheb,\n\t   a.ie_origem_os,\n\t   a.ie_tipo_ordem,\n\t   a.nr_seq_trab,\n\t   a.cd_setor,\n\t   a.ds_setor_localizacao,\n\t   a.nm_usuario_exec,\n\t   a.ds_estagio,\n\t   a.dt_inicio_semana,\n\t   a.dt_inicio_mes,\n\t   a.dt_ano,\n\t   a.cd_estabelecimento,\n\t   substr(Man_Obter_Se_Novo_Hist(a.nr_sequencia, 'Allan.C' ),1,3) ie_novo_hist,\n\t   substr(man_obter_dados_estagio(a.nr_seq_estagio,'C'),1,15) ds_cor_fonte_estagio,\n\t   substr(man_obter_dados_estagio(a.nr_seq_estagio,'F'),1,15) ds_cor_fundo_estagio,\n\t   substr(obter_valor_dominio(1197,a.ie_grau_satisfacao),1,255) ds_grau_satisfacao, \n       a.NM_USUARIO_EXEC_PREV,   \n        a.nr_seq_origem,   \n        a.ie_parado,   \n        a.dt_inicio_previsto,   \n        a.dt_conclusao_desejada,   \n        a.ds_setor_atendimento,   \n        a.ds_grupo_trabalho,   \n        SUBSTR(man_obter_complexidade(a.nr_seq_complex),1,100) ds_complexidade,     \n        a.ds_origem_os,   \n        SUBSTR(obter_descricao_padrao('SERVICO','DS_SERVICO', a.nr_seq_servico),1,255) ds_servico,   \n        ROUND(NVL(obter_hora_entre_datas(a.dt_ordem_servico, NVL(a.dt_aceite_os,SYSDATE)),0),0) qt_horas_aberta,   \n        ROUND(NVL(obter_hora_entre_datas(a.dt_aceite_os,NVL(a.dt_fim_real,SYSDATE)),0),0) qt_horas_processo,   \n        ROUND(NVL(obter_hora_entre_datas(a.dt_ordem_servico, NVL(a.dt_fim_real,SYSDATE)),0),0) qt_horas_total,   \n        man_obter_data_ult_hist(a.nr_sequencia) dt_ult_hist\n        FROM\tman_ordem_servico_v2 a\nwhere a.nr_seq_equipamento = 47\norder by 1 desc",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Ordens_Servico_Terceiro",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Copy OS History",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Clear tables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select x.nr_seq_ordem_serv, \n       x.nr_sequencia as nr_sequencia_hist,\n       x.ie_origem, \n       x.nr_seq_tipo, \n       x.nm_usuario_lib, \n       x.dt_atualizacao, \n       x.ds_relat_tecnico\nfrom man_ordem_serv_tecnico x",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Ordens_Servico_Hist",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Clear tables",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[sp_TRUNCATEOSPHILIPS]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"folder": {
+			"name": "Apoio"
+		},
+		"annotations": []
+	}
+}

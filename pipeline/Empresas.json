@@ -1,0 +1,122 @@
+{
+	"name": "Empresas",
+	"properties": {
+		"description": "Alimenta tabela:\n\nEmpresa_Unidade para o cadastro da tabela unica.",
+		"activities": [
+			{
+				"name": "Estabelecimento HOSL",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "select 43 + ROW_NUMBER() OVER (ORDER BY emp_cgc) AS CD_ESTABELECIMENTO,\nemp_cgc AS CNPJ,\n'Hospital de Olhos Santa Luzia' as MARCA,\ngcc.GCC_DESCR AS DS_ESTABELECIMENTO\nfrom\ngcc, \nstr, \nemp\nwhere GCC_STR_COD = STR_COD\nand STR_EMP_COD = emp_cod\nAND emp_cgc not in ('-', '12305371000160')",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Estabelecimento",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Estabelecimento Cloud",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT ROWNUM AS CD_ESTABELECIMENTO, EB.CD_CGC AS CNPJ,\nEM.DS_NOME_CURTO as MARCA,\nEB.NM_FANTASIA_ESTAB AS DS_ESTABELECIMENTO\nFROM\nEMPRESA EM,\nESTABELECIMENTO EB\nWHERE EM.CD_EMPRESA = EB.CD_EMPRESA\nAND EB.IE_SITUACAO = 'A'\norder by 3",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Estabelecimento",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Estabelecimento Sadalla",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT ROWNUM AS CD_ESTABELECIMENTO, EB.CD_CGC AS CNPJ,\nEM.DS_NOME_CURTO as MARCA,\nEB.NM_FANTASIA_ESTAB AS DS_ESTABELECIMENTO\nFROM\nEMPRESA EM,\nESTABELECIMENTO EB\nWHERE EM.CD_EMPRESA = EB.CD_EMPRESA\nAND EB.IE_SITUACAO = 'A'\norder by 3",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SadallaTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Estabelecimento",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Cadastros Gerais"
+		},
+		"annotations": []
+	}
+}

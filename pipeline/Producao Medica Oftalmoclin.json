@@ -1,0 +1,182 @@
+{
+	"name": "Producao Medica Oftalmoclin",
+	"properties": {
+		"description": "Pipeline desenvolvido para extração de informações de produção medica das unidades com o sistema Tasy e Smart.",
+		"activities": [
+			{
+				"name": "Wait1",
+				"type": "Wait",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"waitTimeInSeconds": 1
+				}
+			},
+			{
+				"name": "Producao Procedimentos Oftamoclin",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "select \n        'Oftalmoclin' as BASE\n        ,EMP_CGC as CNPJ\n        ,gcc.gcc_descr as MARCA\n        ,smm_dthr_alter as DT_ATUALIZACAO \n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_ATENDIMENTO --duvida\n        ,osm_dthr as DT_ENTRADA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_INTERNO_CONTA --duvida\n        ,osm_pac as CD_PESSOA_FISICA\n        ,pac_nasc as DT_NASCIMENTO\n        ,pac_numcpf as NR_CPF\n        ,pac_sexo as IE_SEXO\n        ,pac_cep as NR_CEP\n        ,case \n            when isnumeric(pac_cid) = 1 then (select cde_nome from cde where cde_cod = pac_cid)\n        else pac_cid end as DS_CIDADE\n        ,pac_nome as DS_PESSOA_FISICA\n        ,cnv_cod as CD_CONVENIO\n        ,cnv_nome as DS_CONVENIO\n        ,psv_exe.psv_cod as CD_MEDICO_EXECUTOR\n        ,psv_exe.psv_apel as DS_MEDICO_EXECUTOR\n        ,psv_req.psv_cod as CD_MEDICO_REQUISITANTE\n        ,psv_req.psv_apel as DS_MEDICO_REQUISITANTE\n        ,isnull(tab_padrao,0) as IE_ORIGEM_PROCEDIMENTO\n        ,smm_cod as CD_PROCEDIMENTO\n        ,smk_rot as DS_PROCEDIMENTO\n        ,case ctf_categ \n            when 'C' then 'Consulta'\n            when 'E' then 'Exames'\n            when 'R' then 'Cirurgia'\n            when 'T' then 'Taxas'\n            when 'A' then 'Terapia'\n            when 'O' then 'Outras'\n            when 'M' then 'Materiais'\n            when 'S' then 'Materiais Especiais'\n            when 'N' then 'Medicamentos'\n            when 'G' then 'Gases'\n            when 'O' then 'Outros'\n        end as DS_CLASSIFICACAO\n        ,smm_qt as QT_PROCEDIMENTO\n        ,smm_vlr + isnull(smm_ajuste_vlr,0) as VL_PROCEDIMENTO\n        ,case \n            when smm_fat_serie is not null then 2\n        else 1 end AS IE_STATUS_ACERTO\n        ,case \n            when smm_fat_serie is not null then 'Definitivo'\n        else 'Provisório' end as STATUS_CONTA\n        ,0 as CD_TUSS,\n        0 as NR_SEQ_PROC_INTERNO\n    from \n        osm\n        inner join smm on (smm_osm_serie = osm_serie and smm_osm = osm_num)\n        inner join str str_osm on (str_osm.str_cod = osm_str)\n        inner join str str_emp on (str_osm.str_str_cod = str_emp.str_cod)\n        inner join pac on (pac_reg = osm_pac)\n        inner join cnv on (cnv_cod = osm_cnv)\n        inner join psv psv_exe on (psv_exe.psv_cod = smm_med)\n        inner join psv psv_req on (psv_req.psv_cod = smm_med)\n        inner join smk on (smk_cod = smm_cod and smk_tipo = smm_tpcod)\n        inner join ctf on (ctf_cod = smk_ctf and ctf_tipo = smk_tipo)\n        \n        inner join emp ON (emp_cod = str_emp.str_emp_cod)\n        inner join gcc ON (gcc_str_cod = str_emp.str_cod)\n\n        left outer join tab on (tab_cod = smm_tab_cod)\n        \n    where \n        1 = 1\n        and convert(varchar(10), osm_dthr, 103) = convert(varchar(10), getdate(), 103)\nand osm_dthr between GETDATE() - 730 and GETDATE()",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Unidade_Producao_Medica",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Convenios",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "select cnv_cod AS CD_CONVENIO, cnv.cnv_nome AS DS_CONVENIO, gcc.gcc_cod AS CD_ESTABELECIMENTO, emp.emp_cgc AS CNPJ\nfrom cnv,\n     gcc,\n     str,\n     emp\nwhere gcc.gcc_str_cod = str_cod\nand str_emp_cod = emp_cod\nand emp_cgc <> '-'\nand cnv_cod <> '999'\nand cnv_stat = 'A'",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Convenio",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Setor",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT STR_COD AS CD_SETOR_ATENDIMENTO, \nSTR_NOME AS DS_SETOR_ATENDIMENTO, \nEMP_CGC AS CNPJ\nFROM STR, EMP\nWHERE STR_EMP_COD = EMP_COD\nAND EMP_CGC <> '-'\nAND STR_COD <> '999'",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Setor",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Execute Sadalla",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Producao Procedimentos Oftamoclin",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Convenios",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Setor",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "Producao Medica Sadalla",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			}
+		],
+		"folder": {
+			"name": "Produção Médica CSI"
+		},
+		"annotations": []
+	}
+}

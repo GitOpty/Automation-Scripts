@@ -1,0 +1,301 @@
+{
+	"name": "Orientacao e Conversao Cirurgicas",
+	"properties": {
+		"description": "Pipeline utilizado para alimentar tabelas do SMC:\n\n",
+		"activities": [
+			{
+				"name": "Wait1",
+				"type": "Wait",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"waitTimeInSeconds": 1
+				}
+			},
+			{
+				"name": "Orientacoes Cirurgicas Sadalla",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "-- ORIENTAÇÃO\n\nSELECT Z.DT_AGENDA, Z.CD_AGENDA, Z.CD_PESSOA_FISICA, Z.NM_PESSOA_FISICA,Z.IE_LADO,Z.AUTORIZACAO AS DS_AUTORIZACAO,Z.PROCEDIMENTO, Z.CNPJ, Z.DS_UNIDADE, Z.BASE, Z.NR_SEQ_PROC_INTERNO,\n\n(SELECT COUNT(*)\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AB.CD_AGENDA NOT IN (4442,4443,4444,4445,4513,4563,4553,5273,4464,4465,4466,4467,4552,3043,11)\nAND AB.CD_PESSOA_FISICA = Z.CD_PESSOA_FISICA\nAND AG_1.CD_TIPO_AGENDA = 1\nAND AB.DT_AGENDA > Z.DT_AGENDA) AS INDICADOR_CIRURGIA\n\nFROM\n\n(SELECT MAX(A.DT_AGENDA) AS DT_AGENDA, A.CD_AGENDA, A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO) AS AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\n\nA.IE_LADO,\nES.CD_CGC AS CNPJ,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\n'Tasy Delphi' as BASE,\nA.NR_SEQ_PROC_INTERNO\n\nFROM AGENDA_PACIENTE A,\n     PESSOA_FISICA PF,\n     AGENDA AG,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE A.CD_PESSOA_FISICA = PF.CD_PESSOA_FISICA\nAND A.CD_AGENDA = AG.CD_AGENDA\nAND AG.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND ES.CD_EMPRESA = ES.CD_EMPRESA\nAND A.CD_AGENDA IN (4442,4443,4444,4445,4513,4563,4553,5273,4464,4465,4466,4467,4552,3043,11)\nAND AG.CD_TIPO_AGENDA = 1\nGROUP BY A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA,A.IE_LADO, OBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO), OBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED),\nES.CD_CGC, ES.NM_FANTASIA_ESTAB, A.CD_AGENDA, A.NR_SEQ_PROC_INTERNO\nORDER BY 1 desc) Z \nWHERE Z.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "DT_AGENDA"
+								},
+								"sink": {
+									"name": "DT_AGENDA",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_AGENDA"
+								},
+								"sink": {
+									"name": "CD_AGENDA",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_PESSOA_FISICA"
+								},
+								"sink": {
+									"name": "CD_PESSOA_FISICA",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "NM_PESSOA_FISICA"
+								},
+								"sink": {
+									"name": "NM_PESSOA_FISICA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_AUTORIZACAO"
+								},
+								"sink": {
+									"name": "DS_AUTORIZACAO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "IE_LADO"
+								},
+								"sink": {
+									"name": "IE_LADO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "PROCEDIMENTO"
+								},
+								"sink": {
+									"name": "PROCEDIMENTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CNPJ"
+								},
+								"sink": {
+									"name": "CNPJ",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_UNIDADE"
+								},
+								"sink": {
+									"name": "DS_UNIDADE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "BASE"
+								},
+								"sink": {
+									"name": "BASE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "INDICADOR_CIRURGIA"
+								},
+								"sink": {
+									"name": "INDICADOR_CIRURGIA",
+									"type": "Int32"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SadallaTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Orientacao_Cirurgia_Unidade",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Agendamento Cirurgico Sadalla",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "-- AGENDA CIRURGICA\n\nSELECT\nAB.DT_AGENDA, AB.CD_AGENDA,\nAB.CD_PESSOA_FISICA, \nPF_1.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,AB.IE_AUTORIZACAO) AS DS_AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(AB.CD_PROCEDIMENTO, AB.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\nAB.NR_CIRURGIA,\nAB.IE_LADO,\nAB.CD_CONVENIO,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\nES.CD_CGC AS CNPJ,\n'Tasy Delphi' as BASE,\nAB.NR_SEQ_PROC_INTERNO\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AG_1.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND AB.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365\nAND ES.CD_EMPRESA = EM.CD_EMPRESA\nAND AB.CD_AGENDA NOT IN (4442,4443,4444,4445,4513,4563,4553,5273,4464,4465,4466,4467,4552,3043,11)\nAND AG_1.CD_TIPO_AGENDA = 1\nORDER BY 1",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SadallaTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Agendamento_Cirurgia_Unidade",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Orientacoes Cirurgicas HOB",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "-- ORIENTAÇÃO\n\nSELECT Z.DT_AGENDA, Z.CD_AGENDA, Z.CD_PESSOA_FISICA, Z.NM_PESSOA_FISICA,Z.IE_LADO,Z.AUTORIZACAO AS DS_AUTORIZACAO,Z.PROCEDIMENTO, Z.CNPJ, Z.DS_UNIDADE, Z.BASE, Z.NR_SEQ_PROC_INTERNO,\n\n(SELECT COUNT(*)\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AB.CD_AGENDA NOT IN (549,802,659,776,665,607,663,666,664,662,660,661,609)\nAND AB.CD_PESSOA_FISICA = Z.CD_PESSOA_FISICA\nAND AG_1.CD_TIPO_AGENDA = 1\nAND AB.DT_AGENDA > Z.DT_AGENDA) AS INDICADOR_CIRURGIA\n\nFROM\n\n(SELECT MAX(A.DT_AGENDAMENTO) AS DT_AGENDA, A.CD_AGENDA, A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO) AS AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\nA.IE_LADO,\nES.CD_CGC AS CNPJ,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\n'Tasy HTML' as BASE,\nA.NR_SEQ_PROC_INTERNO\n\nFROM AGENDA_PACIENTE A,\n     PESSOA_FISICA PF,\n     AGENDA AG,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE A.CD_PESSOA_FISICA = PF.CD_PESSOA_FISICA\nAND A.CD_AGENDA = AG.CD_AGENDA\nAND AG.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND ES.CD_EMPRESA = ES.CD_EMPRESA\nAND A.CD_AGENDA IN (549,802,659,776,665,607,663,666,664,662,660,661,609)\nAND AG.CD_TIPO_AGENDA = 1\nGROUP BY A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA,A.IE_LADO, OBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO), OBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED),\nES.CD_CGC, ES.NM_FANTASIA_ESTAB, A.CD_AGENDA, A.NR_SEQ_PROC_INTERNO\nORDER BY 1 desc) Z \nWHERE Z.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Orientacao_Cirurgia_Unidade",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Agendamento Cirurgico HOB",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "-- AGENDA CIRURGICA\n\nSELECT\nAB.DT_AGENDA, AB.CD_AGENDA,\nAB.CD_PESSOA_FISICA, \nPF_1.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,AB.IE_AUTORIZACAO) AS DS_AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(AB.CD_PROCEDIMENTO, AB.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\nAB.NR_CIRURGIA,\nAB.IE_LADO,\nAB.CD_CONVENIO,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\nES.CD_CGC AS CNPJ,\n'Tasy HTML' as BASE,\nAB.NR_SEQ_PROC_INTERNO\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AG_1.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND AB.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365\nAND ES.CD_EMPRESA = EM.CD_EMPRESA\nAND AB.CD_AGENDA NOT IN (549,802,659,776,665,607,663,666,664,662,660,661,609)\nAND AG_1.CD_TIPO_AGENDA = 1\nORDER BY 1",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Agendamento_Cirurgia_Unidade",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Cirurgias"
+		},
+		"annotations": []
+	}
+}

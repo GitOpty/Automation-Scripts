@@ -1,0 +1,78 @@
+{
+	"name": "Workflows Requestia",
+	"properties": {
+		"description": "Extrai informações específicas para serem processadas nos workflows do Office Flow",
+		"activities": [
+			{
+				"name": "Extract CAPEX",
+				"description": "Copy NFD tickets to REQUESTIA_CAPEXNFD table, solving timeout in Microsoft Flow that send weekly mail from sergio.queiroz@opty.com.br account",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Start",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[sp_EXTRACTCAPEXREQUESTS]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Extract TISS",
+				"description": "Copy TISS tickets to specific table, solving timeout in Microsoft Flow that send weekly mail from sergio.queiroz@opty.com.br account",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Start",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[sp_EXTRACTTISSREQUESTS]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Start",
+				"type": "Wait",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"waitTimeInSeconds": 1
+				}
+			}
+		],
+		"folder": {
+			"name": "Apoio"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

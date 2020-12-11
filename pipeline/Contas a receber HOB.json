@@ -1,0 +1,108 @@
+{
+	"name": "Contas a receber HOB",
+	"properties": {
+		"description": "Pipeline desenvolvido para alimentar as tableas:\n\nTitulos_receber e Baixa_Titulos_Receber\n\nIniciado conferencia pelo setor de Contas a Receber das informações alimentadas por Tasy e Smart.",
+		"activities": [
+			{
+				"name": "Titulos HOB",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT  \n        a.ie_tipo_titulo as NR_TIPO_TITULO,\n        '' as NR_SERIE_TITULO,\n        A.NR_TITULO,\n        A.DT_EMISSAO as DT_EMISSAO_TITULO,\n        A.DT_VENCIMENTO DT_VENCIMENTO_TITULO,\n        A.VL_TITULO VL_TITULO,\n        A.VL_MULTA_FIXO AS VL_MULTA,\n        C.DS_CONVENIO,\n        B.DS_RAZAO_SOCIAL as DS_EMPRESA_CONVENIO,\n        B.CD_CGC AS CONV_CNPJ,\n        0 AS VL_ISS,\n        0 AS VL_IR,\n        0 AS VL_FILME,\n        0 AS VL_PERC_ISS,\n        0 AS VL_PER_IR,\n        A.TX_MULTA AS VL_PERC_MULTA,\n        A.TX_JUROS AS VL_PERC_JURO,\n        A.VL_OUTRAS_DESPESAS AS VL_OUTROS_IMP,\n        0 AS NR_REMESSA,\n        EM.NM_RAZAO_SOCIAL MARCA,\n        E.NM_FANTASIA_ESTAB AS DS_UNIDADE,\n        E.CD_CGC AS CNPJ,\n        'TASY HTML' AS BASE,\n        SYSDATE AS DT_CARGA\nFROM    TITULO_RECEBER A, \n        PESSOA_JURIDICA B,\n        ESTABELECIMENTO E,\n        EMPRESA EM,\n        CONVENIO C\nwhere   b.cd_cgc = a.cd_cgc\nAND     a.CD_ESTABELECIMENTO = E.CD_ESTABELECIMENTO\nAND     E.CD_EMPRESA = EM.CD_EMPRESA\nAND     B.CD_CGC = C.CD_CGC\nAND     C.DT_CANCELAMENTO IS NULL",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Titulos_Receber",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Baixa Titulo HOB",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select '' nr_tipo_titulo,\nobter_cgc_estabelecimento(R.CD_ESTABELECIMENTO) AS CNPJ, \n'' AS NR_SERIE_TITULO,\nl.nr_titulo, \nl.dt_recebimento, \nl.vl_recebido, \nl.vl_descontos, \nl.vl_juros, \nl.vl_multa, \nl.dt_atualizacao, \nt.ds_tipo_recebimento,\nx.DS_TRANSACAO,\n'TASY HTML' AS BASE,\n SYSDATE AS DT_CARGA\nfrom titulo_receber r,\n     TITULO_RECEBER_LIQ L,\n     tipo_recebimento t,\n     TRANSACAO_FINANCEIRA X\nwhere r.nr_titulo = l.nr_titulo \nand l.cd_tipo_recebimento = t.cd_tipo_recebimento\nAND l.nr_seq_trans_fin = X.NR_SEQUENCIA",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Wait1",
+				"type": "Wait",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"waitTimeInSeconds": 1
+				}
+			}
+		],
+		"folder": {
+			"name": "Contas a receber"
+		},
+		"annotations": []
+	}
+}

@@ -1,0 +1,283 @@
+{
+	"name": "Geral Atendimentos HOSL",
+	"properties": {
+		"description": "Alimenta as informações das tabelas:\n\nAtendimento_ Unidade \nAgendamento_Unidade\nUsuarios_Unidade\nConsultas_Unidade\nAgendas Unidade\n\nPara extração de relatórios do call center.",
+		"activities": [
+			{
+				"name": "Wait1",
+				"type": "Wait",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"waitTimeInSeconds": 1
+				}
+			},
+			{
+				"name": "Atendimento HOSL",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT DISTINCT pac_reg AS CD_PESSOA_FISICA\n    , rtrim(ltrim(pac_nome)) AS NM_PESSOA_FISICA\n    , convert(CHAR(10), osm_dthr, 121) AS DT_ENTRADA\n    , LEFT(CONVERT(VARCHAR(12), osm_dthr, 114),8) AS HR_ENTRADA\n    , smm_med AS NM_MEDICO\n    , osm_cnv AS CD_CONVENIO\n    , cnv_nome AS DS_CONVENIO\n    , convert(VARCHAR, (convert(VARCHAR, osm_serie) + convert(VARCHAR, osm_num))) AS NR_ATENDIMENTO\n    , emp_cgc AS CNPJ\n    , emp_nome_fantasia AS DS_UNIDADE\n    , emp_nome_fantasia AS MARCA\n    , 0 AS CD_PROCEDENCIA\n    , 'NAO ENCONTRADO' AS DS_PROCEDENCIA\n    , 'NAO ENCONTRADO' AS ID\n    , CONVERT(INT, DAY(osm_dthr)) AS DIA\n    , CONVERT(INT, MONTH(osm_dthr)) AS MES\n    , CONVERT(INT, YEAR(osm_dthr)) AS ANO,\n'Smart HOSL' as BASE\nFROM osm\nINNER JOIN smm\n    ON smm_osm_serie = osm_serie\n        AND smm_osm = osm_num\nINNER JOIN pac\n    ON pac_reg = osm_pac\nINNER JOIN cnv\n    ON osm_cnv = cnv_cod\nINNER JOIN str\n    ON str_cod = osm_str\nINNER JOIN psv\n    ON psv_cod = osm_mreq\nLEFT OUTER JOIN str str_e\n    ON str.str_str_cod = str_e.str_cod\nLEFT OUTER JOIN emp\n    ON str_e.str_emp_cod = emp_cod\nWHERE 1 = 1\n    AND (\n        smm_pacote IS NULL\n        OR (smm_pacote = 'C')\n        )\n    AND smm_sfat NOT IN ('C')\n\nAND osm_dthr BETWEEN GETDATE() - 730 AND GETDATE()",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false,
+					"enableSkipIncompatibleRow": true
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Atendimento",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Agendamentos HOSL",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT DISTINCT AGM_PAC AS CD_PESSOA_FISICA\n    , agm.agm_cnv_cod AS CD_CONVENIO\n    , emp_cgc AS CNPJ\n    , CONVERT(DATE, AGM_HINI) AS DATA_AGENDA\n    , LEFT(CONVERT(VARCHAR(12), agm_hini, 114), 8) AS HORA_AGENDA\n    , CASE AGM_ATEND\n        WHEN 'CRG'\n            THEN 'Cirurgia'\n        WHEN 'ASS'\n            THEN 'Consulta'\n        when '' then 'Consulta'\n        ELSE 'Outros'\n        END AS TIPO_AGENDA\n    , pac.PAC_NOME AS NM_PACIENTE\n    , smk.smk_nome AS DS_PROCEDIMENTO_PRINC\n    , ' ' DS_PROCEDIMENTO_ADIC\n    , 1 AS IE_QUANTIDADE\n    , USR_NOME AS NM_USUARIO\n    , psv_nome AS NM_MEDICO\n    , EMP_NOME_FANTASIA AS DS_UNIDADE\n    , EMP_NOME_FANTASIA AS MARCA\n    , CASE \n        WHEN AGM_STAT = 'A'\n            THEN 'Aberta'\n        WHEN AGM_STAT = 'E'\n            THEN 'Executada'\n        WHEN AGM_STAT = 'C'\n            THEN 'Cancelada'\n        WHEN AGM_STAT = 'B'\n            THEN 'Bloqueada'\n        END STATUS_AGENDA\n    , CONVERT(VARCHAR, convert(VARCHAR, AGM_OSM_SERIE) + convert(VARCHAR, AGM_OSM_NUM)) AS NR_ATENDIMENTO\n    , AGM_num AS NR_SEQUENCIA\n    , '' ID\n    , '' AS CD_PROCEDENCIA\n    , agm_proc AS DS_PROCEDENCIA\n    , agm.AGM_DTMRC AS DT_AGENDAMENTO\n    , CONVERT(INT, DAY(AGM_HINI)) AS DIA\n    , CONVERT(INT, MONTH(AGM_HINI)) AS MES\n    , CONVERT(INT, YEAR(AGM_HINI)) AS ANO\n    , ' ' DS_CLASSIFICACAO\n    , ' ' DS_AGRUPAMENTO\n    , agm.AGM_CANC_MOT_COD AS CD_MOTIVO_CANCELAMENTO\n    , agm.AGM_CANC_MOT_TIPO AS DS_MOTIVO_CANCELAMENTO\n    , agm_med AS CD_AGENDA,\n    'Smart HOSL' as BASE\nFROM agm\nINNER JOIN usr\n    ON (agm.agm_usr_login = usr.usr_login)\nINNER JOIN psv\n    ON (psv.psv_cod = agm.agm_med)\nINNER JOIN smk\n    ON (\n            agm_smk = smk_cod\n            AND agm_tpsmk = smk_tipo\n            )\nINNER JOIN pac\n    ON (pac_reg = agm_pac)\nINNER JOIN loc\n    ON (AGM_LOC = LOC_COD)\nINNER JOIN str\n    ON (LOC_STR = STR.STR_COD)\nINNER JOIN str str_e\n    ON (STR.STR_STR_COD = STR_E.STR_COD)\nINNER JOIN cnv\n    ON (CNV_COD = AGM_CNV_COD)\nLEFT OUTER JOIN ctf ct1\n    ON (\n            ct1.ctf_cod = smk_ctf\n            AND ct1.ctf_tipo = smk_tipo\n            )\nLEFT OUTER JOIN emp\n    ON emp_cod = str_e.str_emp_cod\n\nWHERE AGM_DTMRC BETWEEN GETDATE() - 730 AND GETDATE()",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false,
+					"enableSkipIncompatibleRow": true
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Agendamento",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Usuarios HOSL",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "select\nusr_login as NM_USUARIO,\nusr_nome as DS_USUARIO,\nusr_status as IE_SITUACAO,\nusr_dt_alter_senha as DT_ATUALIZACAO,\n'HOSPITAL DE OLHOS SANTA LUZIA SS LTDA' AS DS_UNIDADE,\n'12305371000160' as CNPJ,\n'HOSL' as MARCA,\n'Smart HOSL' as BASE\nfrom usr",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Usuario",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Consulta HOSL",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT\nRCL_SMM AS NR_SEQUENCIA,\nCONVERT(DATE,RCL_DTHR_ATUAL) AS DT_ATUALIZACAO,\nCONVERT(VARCHAR,RCL_DTHR_ATUAL,108) as HR_ATUALIZACAO,\n\nCONVERT(VARCHAR,CONVERT(VARCHAR,RCL_OSM_SERIE) + CONVERT(VARCHAR,RCL_OSM)) AS NR_ATENDIMENTO, \n\nRCL_MED AS CD_MEDICO,\nPSV_APEL AS NM_MEDICO,\n'' AS DS_RETORNO,\nCONVERT(VARCHAR,RCL_LAUDO_RTF) AS DS_CONDUTA,\nRCL_PAC AS CD_PESSOA_FISICA,\nCONVERT(VARCHAR,RCL_TXT) AS DS_DIAGNOSTICO,\n'HOSPITAL DE OLHOS SANTA LUZIA SS LTDA' AS DS_UNIDADE,\n'12305371000160' as CNPJ,\n'HOSL' AS MARCA,\n'Smart HOSL' as BASE\nFROM RCL\nINNER JOIN PSV ON PSV_COD = RCL_MED\n\nWHERE RCL_DTHR_ATUAL BETWEEN GETDATE() - 730 AND GETDATE()",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false,
+					"enableSkipIncompatibleRow": true
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Consulta",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Agendas HOSL",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Wait1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT distinct agd_med AS CD_AGENDA \n    , 0 AS DS_AGENDA\n    , 0 CD_TIPO_AGENDA\n    , psv_cod AS CD_PESSOA_FISICA\n    , emp_cgc AS CNPJ\n    , '' AS DS_AREA_ATUACAO\n    , 'A' AS IE_SITUACAO,\n    -- , CASE \n    --     WHEN (agd_dt_reconstr IS not NULL and AGD_DT_GERA is not null)\n    --         THEN agd_dt_reconstr\n    --     WHEN (agd_dt_reconstr IS NULL and AGD_DT_GERA is not null)\n    --         THEN agd_dt_gera\n    --     ELSE AGD_DT_GERA\n    --     END AS DT_ATUALIZACAO,\n'Smart HOSL' as BASE\nFROM agd\nINNER JOIN PSV\n    ON agd_med = psv_cod\nINNER JOIN loc\n    ON loc_cod = agd_loc\nINNER JOIN str\n    ON str_cod = loc_str\nLEFT OUTER JOIN str str_e\n    ON str_e.str_cod = str.str_str_cod\nLEFT OUTER JOIN emp\n    ON emp_cod = str_e.str_emp_cod",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Agenda",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Execute Pipeline INOB",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "Atendimento HOSL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Agendamentos HOSL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Usuarios HOSL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Consulta HOSL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Agendas HOSL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "Geral Atendimentos INOB - Smart",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true
+				}
+			}
+		],
+		"folder": {
+			"name": "Atendimento"
+		},
+		"annotations": []
+	}
+}

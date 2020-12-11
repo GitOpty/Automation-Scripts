@@ -1,0 +1,227 @@
+{
+	"name": "Agendas Projesi V2",
+	"properties": {
+		"activities": [
+			{
+				"name": "Data_ZFaltas_HTML5",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Truncate Table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "1.0:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select\nc.nr_sequencia as id_compromisso,\nc.nr_atendimento as nr_atendimento,\nc.cd_pessoa_fisica as id_cliente,\nobter_nome_pf(c.cd_pessoa_fisica) as NomePaciente,\npf.dt_nascimento as DtNascimento,\n'55' || substr(pf.nr_ddd_celular, -2) || substr(replace(replace(replace(replace(pf.nr_telefone_celular, '(', ''), ')', ''), ' ', ''), '-', ''), -9) AS CELULAR,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'M') as email,\nc.cd_convenio idconvenio,\nobter_nome_convenio(c.cd_convenio) as convenio,\nc.cd_plano,\nobter_desc_plano(c.cd_convenio, c.cd_plano) ds_plano,\nc.dt_agenda as datacompromisso,\nto_char(c.hr_inicio, 'hh24:mi:ss') as horacompromisso,\nc.ie_status_agenda as id_status,\nobter_status_agenda_paciente(c.nr_sequencia) as ds_status,\na.cd_agenda,\na.ds_agenda as agenda,\nc.cd_procedimento,\nobter_desc_procedimento(c.cd_procedimento, c.ie_origem_proced) as procedimento,\nobter_empresa_estab(a.cd_estabelecimento) as id_empresa,\nobter_nome_empresa(obter_empresa_estab(a.cd_estabelecimento)) as empresa,\na.cd_estabelecimento as id_unidade,\nobter_nome_estab(a.cd_estabelecimento)as unidade,\nc.ie_autorizacao,\nobter_valor_dominio(1227, c.ie_autorizacao) as autorizacao,\nobter_nome_pf(c.cd_medico_exec) as nm_medico,\nc.dt_agendamento,\na.cd_tipo_agenda  as tipo_agenda,\n'' as tipo_agenda_desc,\na.cd_pessoa_fisica as ds_medico_agenda,\n'' status_paciente\nfrom agenda_paciente c,\nagenda a,\npessoa_fisica pf\nwhere c.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand c.cd_agenda = a.cd_agenda\nand c.cd_pessoa_fisica is not null\nand trunc(c.dt_agenda) between inicio_dia(sysdate - 30) and fim_dia(sysdate + 30)\nand a.cd_agenda not in (283,404) \nand length('55' || substr(pf.nr_ddd_celular, -2) || substr(replace(replace(replace(replace(pf.nr_telefone_celular, '(', ''), ')', ''), ' ', ''), '-', ''), -9)) = 13\norder by 1 desc",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZSQL_TB_Zero_Faltas",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Truncate Table",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[sp_TRUNCATEZEROFALTAS]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Altera_tipo_agenda",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Data_ZFaltas_Sadalla",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Data_ZFaltas_HTML5",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Data_ZFaltas_SP",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[sp_ALTERTIPOAGENDASPROJESI]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Data_ZFaltas_Sadalla",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Truncate Table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "1.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select\nc.nr_sequencia as id_compromisso,\nc.nr_atendimento as nr_atendimento,\nc.cd_pessoa_fisica as id_cliente,\nobter_nome_pf(c.cd_pessoa_fisica) as NomePaciente,\npf.dt_nascimento as DtNascimento,\n'55' || substr(pf.nr_ddd_celular, -2) || substr(replace(replace(replace(replace(pf.nr_telefone_celular, '(', ''), ')', ''), ' ', ''), '-', ''), -9) AS CELULAR,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'M') as email,\nc.cd_convenio idconvenio,\nobter_nome_convenio(c.cd_convenio) as convenio,\nc.cd_plano,\nobter_desc_plano(c.cd_convenio, c.cd_plano) ds_plano,\nc.dt_agenda as datacompromisso,\nto_char(c.dt_agenda, 'hh24:mi:ss') as horacompromisso,\nc.ie_status_agenda as id_status,\nobter_status_agenda_paciente(c.nr_sequencia) as ds_status,\na.cd_agenda,\na.ds_agenda as agenda,\nc.cd_procedimento,\nobter_desc_procedimento(c.cd_procedimento, c.ie_origem_proced) as procedimento,\nobter_empresa_estab(a.cd_estabelecimento) as id_empresa,\nobter_nome_empresa(obter_empresa_estab(a.cd_estabelecimento)) as empresa,\na.cd_estabelecimento as id_unidade,\nobter_nome_estab(a.cd_estabelecimento)as unidade,\nc.ie_autorizacao,\nobter_valor_dominio(1227, c.ie_autorizacao) as autorizacao,\nobter_nome_pf(a.cd_pessoa_fisica) as nm_medico,\nc.dt_agendamento,\na.cd_tipo_agenda  as tipo_agenda,\n'' as tipo_agenda_desc,\na.cd_pessoa_fisica as ds_medico_agenda,\n'' status_paciente\nfrom agenda_consulta c,\nagenda a,\npessoa_fisica pf\nwhere c.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand c.cd_agenda = a.cd_agenda\nand c.cd_pessoa_fisica is not null\nand trunc(c.dt_agenda) between inicio_dia(sysdate - 30) and fim_dia(sysdate + 30)\nand a.cd_agenda not in (283,404) \nand length('55' || substr(pf.nr_ddd_celular, -2) || substr(replace(replace(replace(replace(pf.nr_telefone_celular, '(', ''), ')', ''), ' ', ''), '-', ''), -9)) = 13\norder by 1 desc",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SadallaTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZSQL_TB_Zero_Faltas",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Altera Status Paciente",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Altera_tipo_agenda",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[sp_ALTERSTATUSPACIENTE]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Data_ZFaltas_SP",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Truncate Table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "1.0:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT distinct x.nr_sequencia as id_compromisso,\nx.nr_atendimento as nr_atendimento,\nx.cd_pessoa_fisica as id_cliente,\nobter_nome_pf(x.cd_pessoa_fisica) as NomePaciente,\npf.dt_nascimento as DtNascimento,\n'55' || substr(pf.nr_ddd_celular, -2) || substr(replace(replace(replace(replace(pf.nr_telefone_celular, '(', ''), ')', ''), ' ', ''), '-', ''), -9) AS CELULAR,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'M') as email,\nx.cd_convenio idconvenio,\nobter_nome_convenio(x.cd_convenio) as convenio,\nx.cd_plano,\nobter_desc_plano(x.cd_convenio, x.cd_plano) ds_plano,\nx.dt_agenda as datacompromisso,\nto_char(c.dt_agenda, 'hh24:mi:ss') as horacompromisso,\nx.ie_status_agenda as id_status,\nobter_status_agenda_paciente(x.nr_sequencia) as ds_status,\nX.cd_agenda,\nX.ds_agenda as agenda,\nx.cd_procedimento,\nobter_desc_procedimento(x.cd_procedimento, x.ie_origem_proced) as procedimento,\nobter_empresa_estab(X.cd_estabelecimento) as id_empresa,\nobter_nome_empresa(obter_empresa_estab(X.cd_estabelecimento)) as empresa,\nX.cd_estabelecimento as id_unidade,\nobter_nome_estab(X.cd_estabelecimento)as unidade,\nc.ie_autorizacao,\nobter_valor_dominio(1227, c.ie_autorizacao) as autorizacao,\nsubstr(obter_nome_pf(x.CD_MEDICO_AGENDA ),1,150) as nm_medico,\nx.dt_agendamento,\nX.cd_tipo_agenda  as tipo_agenda,\n'' as tipo_agenda_desc,\nX.cd_pessoa_fisica as ds_medico_agenda,\n'' status_paciente\nFROM CONSULTA_AGECONS_V X\n    LEFT JOIN pessoa_fisica pf ON X.cd_pessoa_fisica = PF.cd_pessoa_fisica\n    LEFT JOIN AGENDA_CONSULTA C ON X.NR_SEQUENCIA = C.NR_SEQUENCIA\nWHERE trunc(c.dt_agenda) between inicio_dia(sysdate - 30) and fim_dia(sysdate + 30) \nAND X.CD_ESTABELECIMENTO IN (55,63,64,66,71,73,74,75,76)\n\nUNION\n\nselect distinct\na.nr_sequencia as id_compromisso,\na.nr_atendimento as nr_atendimento,\na.cd_pessoa_fisica as id_cliente,\nobter_nome_pf(a.cd_pessoa_fisica) as NomePaciente,\npf.dt_nascimento as DtNascimento,\n'55' || substr(pf.nr_ddd_celular, -2) || substr(replace(replace(replace(replace(pf.nr_telefone_celular, '(', ''), ')', ''), ' ', ''), '-', ''), -9) AS CELULAR,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'M') as email,\na.cd_convenio idconvenio,\nobter_nome_convenio(a.cd_convenio) as convenio,\na.cd_plano,\nobter_desc_plano(a.cd_convenio, a.cd_plano) ds_plano,\na.dt_agenda as datacompromisso,\nto_char(b.hr_inicio, 'hh24:mi:ss') as horacompromisso,\na.ie_status_agenda as id_status,\nobter_status_agenda_paciente(a.nr_sequencia) as ds_status,\nA.cd_agenda,\nA.ds_agenda as agenda,\nA.cd_procedimento,\nobter_desc_procedimento(A.cd_procedimento, A.ie_origem_proced) as procedimento,\nobter_empresa_estab(A.cd_estabelecimento) as id_empresa,\nobter_nome_empresa(obter_empresa_estab(A.cd_estabelecimento)) as empresa,\nA.cd_estabelecimento as id_unidade,\nobter_nome_estab(A.cd_estabelecimento)as unidade,\nB.ie_autorizacao,\nobter_valor_dominio(1227, B.ie_autorizacao) as autorizacao,\nsubstr(obter_nome_pf(a.CD_MEDICO_AGENDA ),1,150) as nm_medico,\nA.dt_agendamento,\nA.cd_tipo_agenda  as tipo_agenda,\n'' as tipo_agenda_desc,\nA.cd_pessoa_fisica as ds_medico_agenda,\n'' status_paciente\nFROM CONSULTA_AGEEXAM_V a\n    LEFT JOIN pessoa_fisica pf ON A.cd_pessoa_fisica = pf.cd_pessoa_fisica\n    LEFT JOIN agenda_paciente B ON A.NR_SEQUENCIA = B.NR_SEQUENCIA\nwhere A.CD_ESTABELECIMENTO IN (55,63,64,66,71,73,74,75,76)\nand trunc(a.dt_agenda) between inicio_dia(sysdate - 30) and fim_dia(sysdate + 30)\norder by 1 desc",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZSQL_TB_Zero_Faltas",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Atendimento"
+		},
+		"annotations": []
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
