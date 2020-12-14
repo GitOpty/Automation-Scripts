@@ -1,0 +1,1703 @@
+{
+	"name": "Bilhete Ligacoes",
+	"properties": {
+		"activities": [
+			{
+				"name": "Start",
+				"description": "Step added to paralellize execution",
+				"type": "Wait",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"waitTimeInSeconds": 1
+				}
+			},
+			{
+				"name": "Check HOB file exists",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "Start",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "HOB_CSV_NC_BilheteLigacoes",
+						"type": "DatasetReference"
+					},
+					"fieldList": [
+						"exists"
+					],
+					"storeSettings": {
+						"type": "FileServerReadSettings",
+						"recursive": true
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "HOB file exists",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Check HOB file exists",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(\nactivity('Check HOB file exists').output.exists, \ntrue)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Send failure HOB",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "Send email",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"EmailTo": "sergio.queiroz@opty.com.br",
+									"Subject": "Arquivo Nexcore\\HOB não encontrado!",
+									"ErrorMessage": "O arquivo HOB\\BilhetesLigacoes não foi encontrado",
+									"MasterPipeline": {
+										"value": "@{pipeline().Pipeline}",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Copy HOB Bilhetes",
+							"description": "Envia os dados do CSV para o Azure SQL Server",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "07.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "FileServerReadSettings",
+										"recursive": true
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink"
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "Data",
+												"type": "DateTime",
+												"format": "dd/MM/yyyy",
+												"culture": ""
+											},
+											"sink": {
+												"name": "DATA",
+												"type": "DateTime"
+											}
+										},
+										{
+											"source": {
+												"name": "Hora",
+												"type": "String"
+											},
+											"sink": {
+												"name": "HORA",
+												"type": "TimeSpan"
+											}
+										},
+										{
+											"source": {
+												"name": "Usu�rio",
+												"type": "String"
+											},
+											"sink": {
+												"name": "USUARIO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tipo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TIPO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Origem",
+												"type": "String"
+											},
+											"sink": {
+												"name": "ORIGEM",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Destino",
+												"type": "String"
+											},
+											"sink": {
+												"name": "DESTINO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Status",
+												"type": "String"
+											},
+											"sink": {
+												"name": "STATUS",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Centro de Custo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CENTRO_DE_CUSTO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Tarifado",
+												"type": "Int32"
+											},
+											"sink": {
+												"name": "TEMPO_TARIFADO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Decorrido",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TEMPO_DECORRIDO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Campanha",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CAMPANHA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Fila",
+												"type": "String"
+											},
+											"sink": {
+												"name": "FILA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Unique ID",
+												"type": "Double"
+											},
+											"sink": {
+												"name": "UNIQUE_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Linked ID",
+												"type": "Double"
+											},
+											"sink": {
+												"name": "LINKED_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Marca",
+												"type": "String"
+											},
+											"sink": {
+												"name": "MARCA",
+												"type": "String"
+											}
+										}
+									]
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "HOB_CSV_NC_BilheteLigacoes",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AZSQL_TB_NC_BilheteLigacoes",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Check HOSAG file exists",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "Start",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "HOSAG_CSV_NC_BilheteLigacoes",
+						"type": "DatasetReference"
+					},
+					"fieldList": [
+						"exists"
+					],
+					"storeSettings": {
+						"type": "FileServerReadSettings",
+						"recursive": true
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "HOSAG file exists",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Check HOSAG file exists",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(\nactivity('Check HOSAG file exists').output.exists, \ntrue)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Send HOSAG failure",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "Send email",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"EmailTo": "sergio.queiroz@opty.com.br",
+									"Subject": "Arquivo Nexcore\\HOSAG não encontrado!",
+									"ErrorMessage": "O arquivo HOSAG\\BilhetesLigacoes não foi encontrado",
+									"MasterPipeline": {
+										"value": "@{pipeline().Pipeline}",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Copy HOSAG bilhetes",
+							"description": "Envia os dados do arquivo CSV para o Azure SQL Server",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "07.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "FileServerReadSettings",
+										"recursive": true
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink"
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "Data",
+												"type": "DateTime",
+												"format": "dd/MM/yyyy",
+												"culture": ""
+											},
+											"sink": {
+												"name": "DATA",
+												"type": "DateTime"
+											}
+										},
+										{
+											"source": {
+												"name": "Hora",
+												"type": "String"
+											},
+											"sink": {
+												"name": "HORA",
+												"type": "TimeSpan"
+											}
+										},
+										{
+											"source": {
+												"name": "Usu�rio",
+												"type": "String"
+											},
+											"sink": {
+												"name": "USUARIO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tipo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TIPO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Origem",
+												"type": "String"
+											},
+											"sink": {
+												"name": "ORIGEM",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Destino",
+												"type": "String"
+											},
+											"sink": {
+												"name": "DESTINO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Status",
+												"type": "String"
+											},
+											"sink": {
+												"name": "STATUS",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Centro de Custo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CENTRO_DE_CUSTO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Tarifado",
+												"type": "Int32"
+											},
+											"sink": {
+												"name": "TEMPO_TARIFADO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Decorrido",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TEMPO_DECORRIDO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Campanha",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CAMPANHA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Fila",
+												"type": "String"
+											},
+											"sink": {
+												"name": "FILA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Unique ID",
+												"type": "Double"
+											},
+											"sink": {
+												"name": "UNIQUE_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Linked ID",
+												"type": "Double"
+											},
+											"sink": {
+												"name": "LINKED_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Marca",
+												"type": "String"
+											},
+											"sink": {
+												"name": "MARCA",
+												"type": "String"
+											}
+										}
+									]
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "HOSAG_CSV_NC_BilheteLigacoes",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AZSQL_TB_NC_BilheteLigacoes",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Check DH file exists",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "Start",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "DH_CSV_NC_BilheteLigacoes",
+						"type": "DatasetReference"
+					},
+					"fieldList": [
+						"exists"
+					],
+					"storeSettings": {
+						"type": "FileServerReadSettings",
+						"recursive": true
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "DH file exists",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Check DH file exists",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(\nactivity('Check DH file exists').output.exists, \ntrue)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Send DH failure",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "Send email",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"EmailTo": "sergio.queiroz@opty.com.br",
+									"Subject": "Arquivo Nexcore\\DH não encontrado!",
+									"ErrorMessage": "O arquivo DH\\BilhetesLigacoes não foi encontrado",
+									"MasterPipeline": {
+										"value": "@{pipeline().Pipeline}",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Copy DH bilhetes",
+							"description": "Envia os dados do arquivo CSV para o Azure SQL Server",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "07.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "FileServerReadSettings",
+										"recursive": true
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink"
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "Data",
+												"type": "DateTime",
+												"format": "dd/MM/yyyy",
+												"culture": ""
+											},
+											"sink": {
+												"name": "DATA",
+												"type": "DateTime"
+											}
+										},
+										{
+											"source": {
+												"name": "Hora",
+												"type": "String"
+											},
+											"sink": {
+												"name": "HORA",
+												"type": "TimeSpan"
+											}
+										},
+										{
+											"source": {
+												"name": "Usu�rio",
+												"type": "String"
+											},
+											"sink": {
+												"name": "USUARIO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tipo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TIPO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Origem",
+												"type": "String"
+											},
+											"sink": {
+												"name": "ORIGEM",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Destino",
+												"type": "String"
+											},
+											"sink": {
+												"name": "DESTINO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Status",
+												"type": "String"
+											},
+											"sink": {
+												"name": "STATUS",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Centro de Custo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CENTRO_DE_CUSTO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Tarifado",
+												"type": "Int32"
+											},
+											"sink": {
+												"name": "TEMPO_TARIFADO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Decorrido",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TEMPO_DECORRIDO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Campanha",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CAMPANHA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Fila",
+												"type": "String"
+											},
+											"sink": {
+												"name": "FILA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Unique ID",
+												"type": "Double"
+											},
+											"sink": {
+												"name": "UNIQUE_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Linked ID",
+												"type": "Double"
+											},
+											"sink": {
+												"name": "LINKED_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Marca",
+												"type": "String"
+											},
+											"sink": {
+												"name": "MARCA",
+												"type": "String"
+											}
+										}
+									]
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DH_CSV_NC_BilheteLigacoes",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AZSQL_TB_NC_BilheteLigacoes",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Check HOSL file exists",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "Start",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "HOSL_CSV_NC_BilheteLigacoes",
+						"type": "DatasetReference"
+					},
+					"fieldList": [
+						"exists"
+					],
+					"storeSettings": {
+						"type": "FileServerReadSettings",
+						"recursive": true
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "HOSL file exists",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Check HOSL file exists",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(\nactivity('Check HOSL file exists').output.exists, \ntrue)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Send HOSL failure",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "Send email",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"EmailTo": "sergio.queiroz@opty.com.br",
+									"Subject": "Arquivo Nexcore\\HOSL não encontrado!",
+									"ErrorMessage": "O arquivo HOSL\\BilhetesLigacoes não foi encontrado",
+									"MasterPipeline": {
+										"value": "@{pipeline().Pipeline}",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Copy HOSL bilhetes",
+							"description": "Envia os dados do arquivo CSV para o Azure SQL Server",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "07.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "FileServerReadSettings",
+										"recursive": true
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink"
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "Data",
+												"type": "DateTime",
+												"format": "dd/MM/yyyy",
+												"culture": ""
+											},
+											"sink": {
+												"name": "DATA",
+												"type": "DateTime"
+											}
+										},
+										{
+											"source": {
+												"name": "Hora",
+												"type": "String"
+											},
+											"sink": {
+												"name": "HORA",
+												"type": "TimeSpan"
+											}
+										},
+										{
+											"source": {
+												"name": "Usu�rio",
+												"type": "String"
+											},
+											"sink": {
+												"name": "USUARIO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tipo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TIPO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Origem",
+												"type": "String"
+											},
+											"sink": {
+												"name": "ORIGEM",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Destino",
+												"type": "String"
+											},
+											"sink": {
+												"name": "DESTINO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Status",
+												"type": "String"
+											},
+											"sink": {
+												"name": "STATUS",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Centro de Custo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CENTRO_DE_CUSTO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Tarifado",
+												"type": "Int32"
+											},
+											"sink": {
+												"name": "TEMPO_TARIFADO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Decorrido",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TEMPO_DECORRIDO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Campanha",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CAMPANHA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Fila",
+												"type": "String"
+											},
+											"sink": {
+												"name": "FILA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Unique ID",
+												"type": "Double"
+											},
+											"sink": {
+												"name": "UNIQUE_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Linked ID",
+												"type": "Double"
+											},
+											"sink": {
+												"name": "LINKED_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Marca",
+												"type": "String"
+											},
+											"sink": {
+												"name": "MARCA",
+												"type": "String"
+											}
+										}
+									]
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "HOSL_CSV_NC_BilheteLigacoes",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AZSQL_TB_NC_BilheteLigacoes",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Check INOB file exists",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "Start",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "INOB_CSV_NC_BilheteLigacoes",
+						"type": "DatasetReference"
+					},
+					"fieldList": [
+						"exists"
+					],
+					"storeSettings": {
+						"type": "FileServerReadSettings",
+						"recursive": true
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "INOB file exists",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Check INOB file exists",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(\nactivity('Check INOB file exists').output.exists, \ntrue)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Send INOB failure",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "Send email",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"EmailTo": "sergio.queiroz@opty.com.br",
+									"Subject": "Arquivo Nexcore\\INOB não encontrado!",
+									"ErrorMessage": "O arquivo INOB\\BilheteLigacoes não foi encontrado",
+									"MasterPipeline": {
+										"value": "@{pipeline().Pipeline}",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Copy INOB bilhetes",
+							"description": "Envia os dados do arquivo CSV para o Azure SQL Server",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "07.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "FileServerReadSettings",
+										"recursive": true
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink"
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "Data",
+												"type": "DateTime",
+												"format": "dd/MM/yyyy",
+												"culture": ""
+											},
+											"sink": {
+												"name": "DATA",
+												"type": "DateTime"
+											}
+										},
+										{
+											"source": {
+												"name": "Hora",
+												"type": "String"
+											},
+											"sink": {
+												"name": "HORA",
+												"type": "TimeSpan"
+											}
+										},
+										{
+											"source": {
+												"name": "Usu�rio",
+												"type": "String"
+											},
+											"sink": {
+												"name": "USUARIO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tipo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TIPO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Origem",
+												"type": "String"
+											},
+											"sink": {
+												"name": "ORIGEM",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Destino",
+												"type": "String"
+											},
+											"sink": {
+												"name": "DESTINO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Status",
+												"type": "String"
+											},
+											"sink": {
+												"name": "STATUS",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Centro de Custo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CENTRO_DE_CUSTO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Tarifado",
+												"type": "Int32"
+											},
+											"sink": {
+												"name": "TEMPO_TARIFADO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Decorrido",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TEMPO_DECORRIDO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Campanha",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CAMPANHA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Fila",
+												"type": "String"
+											},
+											"sink": {
+												"name": "FILA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Unique ID",
+												"type": "Double"
+											},
+											"sink": {
+												"name": "UNIQUE_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Linked ID",
+												"type": "Double"
+											},
+											"sink": {
+												"name": "LINKED_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Marca",
+												"type": "String"
+											},
+											"sink": {
+												"name": "MARCA",
+												"type": "String"
+											}
+										}
+									]
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "INOB_CSV_NC_BilheteLigacoes",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AZSQL_TB_NC_BilheteLigacoes",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Check CSI file exists",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "Start",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "CSI_CSV_NC_BilhetesLigacoes",
+						"type": "DatasetReference"
+					},
+					"fieldList": [
+						"exists"
+					],
+					"storeSettings": {
+						"type": "FileServerReadSettings",
+						"recursive": true
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "CSI file exists",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Check CSI file exists",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(\nactivity('Check CSI file exists').output.exists, \ntrue)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Send failure CSI",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "Send email",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"EmailTo": "sergio.queiroz@opty.com.br",
+									"Subject": "Arquivo Nexcore\\INOB não encontrado!",
+									"ErrorMessage": "O arquivo INOB\\Agentes por Dia não foi encontrado",
+									"MasterPipeline": {
+										"value": "@{pipeline().Pipeline}",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Copy CSI BilheteLigacoes",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "FileServerReadSettings",
+										"recursive": true
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink"
+								},
+								"enableStaging": false,
+								"enableSkipIncompatibleRow": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "Data",
+												"type": "DateTime",
+												"format": "dd/MM/yyyy",
+												"culture": ""
+											},
+											"sink": {
+												"name": "DATA",
+												"type": "DateTime"
+											}
+										},
+										{
+											"source": {
+												"name": "Hora",
+												"type": "String"
+											},
+											"sink": {
+												"name": "HORA",
+												"type": "TimeSpan"
+											}
+										},
+										{
+											"source": {
+												"name": "Usu�rio",
+												"type": "String"
+											},
+											"sink": {
+												"name": "USUARIO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tipo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TIPO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Origem",
+												"type": "String"
+											},
+											"sink": {
+												"name": "ORIGEM",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Destino",
+												"type": "String"
+											},
+											"sink": {
+												"name": "DESTINO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Status",
+												"type": "String"
+											},
+											"sink": {
+												"name": "STATUS",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Centro de Custo",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CENTRO_DE_CUSTO",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Tarifado",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TEMPO_TARIFADO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Tempo Decorrido",
+												"type": "String"
+											},
+											"sink": {
+												"name": "TEMPO_DECORRIDO",
+												"type": "Int32"
+											}
+										},
+										{
+											"source": {
+												"name": "Campanha",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CAMPANHA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Fila",
+												"type": "String"
+											},
+											"sink": {
+												"name": "FILA",
+												"type": "String"
+											}
+										},
+										{
+											"source": {
+												"name": "Unique ID",
+												"type": "String"
+											},
+											"sink": {
+												"name": "UNIQUE_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Linked ID",
+												"type": "String"
+											},
+											"sink": {
+												"name": "LINKED_ID",
+												"type": "Double"
+											}
+										},
+										{
+											"source": {
+												"name": "Marca",
+												"type": "String"
+											},
+											"sink": {
+												"name": "MARCA",
+												"type": "String"
+											}
+										}
+									]
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "CSI_CSV_NC_BilhetesLigacoes",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AZSQL_TB_NC_BilheteLigacoes",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"folder": {
+			"name": "Atendimento/Nexcore"
+		},
+		"annotations": [],
+		"lastPublishTime": "2019-11-13T13:27:45Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

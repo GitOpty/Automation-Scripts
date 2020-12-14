@@ -1,0 +1,50 @@
+{
+	"name": "Baixa_Titulos_Pagar",
+	"properties": {
+		"description": "Pipeline em desenvolvimento com informações de baixa de titulos a pagar.",
+		"activities": [
+			{
+				"name": "Baixa_Titulos_Pagar",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select a.nr_titulo, \na.nr_sequencia, \na.dt_baixa, \na.vl_pago,\na.vl_descontos,\na.vl_juros,\na.vl_multa,\na.dt_atualizacao,\n(select c.ds_tipo_baixa from TIPO_BAIXA_CPA c where c.cd_tipo_baixa = a.cd_tipo_baixa) as ds_tipo_baixa,\nobter_ds_transacao(a.nr_seq_movto_trans_fin) as ds_transacao\nfrom titulo_pagar_baixa a",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_TB_Baixa_Titulos_Pagar",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Contas a Pagar"
+		},
+		"annotations": [],
+		"lastPublishTime": "2020-02-10T20:56:25Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
