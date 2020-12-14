@@ -13,217 +13,6 @@
 	},
 	"resources": [
 		{
-			"name": "[concat(parameters('factoryName'), '/SMART_IOF_PrdDataSet')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "SMART_IOF_NEW",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Power BI"
-				},
-				"annotations": [],
-				"type": "SqlServerTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/SMART_ITABUNA_PrdDataSet')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "SMART_ITABUNA_NEW",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Power BI"
-				},
-				"annotations": [],
-				"type": "SqlServerTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/SMART_ITAIGARA_PrdDataSet')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "SMART_ITAIGARA_NEW",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Power BI"
-				},
-				"annotations": [],
-				"type": "SqlServerTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/SMART_Oftalmoclin_Prd_DataSet')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "SMART_Oftalmoclin",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Power BI"
-				},
-				"annotations": [],
-				"type": "SqlServerTable",
-				"schema": [],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/SadallaTasyPrdDataSet')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "SadallaTasyProd",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Power BI"
-				},
-				"annotations": [],
-				"type": "OracleTable",
-				"structure": [
-					{
-						"name": "DT_AGENDA",
-						"type": "DateTime"
-					},
-					{
-						"name": "CD_AGENDA",
-						"type": "Decimal"
-					},
-					{
-						"name": "CD_PESSOA_FISICA",
-						"type": "String"
-					},
-					{
-						"name": "NM_PESSOA_FISICA",
-						"type": "String"
-					},
-					{
-						"name": "IE_LADO",
-						"type": "String"
-					},
-					{
-						"name": "DS_AUTORIZACAO",
-						"type": "String"
-					},
-					{
-						"name": "PROCEDIMENTO",
-						"type": "String"
-					},
-					{
-						"name": "CNPJ",
-						"type": "String"
-					},
-					{
-						"name": "DS_UNIDADE",
-						"type": "String"
-					},
-					{
-						"name": "BASE",
-						"type": "String"
-					},
-					{
-						"name": "INDICADOR_CIRURGIA",
-						"type": "Double"
-					}
-				],
-				"typeProperties": {}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Agendamentos Livres')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Wait1",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					},
-					{
-						"name": "Agendamentos Livres HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "-- Agendamentos Livres\n\nselect a.cd_pessoa_fisica, \na.cd_convenio, \nobter_cnpj_estabelecimento(ag.cd_estabelecimento) as cnpj,\nto_char((a.hr_inicio) , 'yyyy-mm-dd') as data_agenda,\nto_char((a.hr_inicio) , 'hh24:mi:ss') as hora_agenda,\n'Consulta' as tipo_agenda,\npf.nm_pessoa_fisica as nm_paciente,\nsubstr(obter_desc_procedimento(a.cd_procedimento, a.ie_origem_proced),1,1000) as ds_procedimento_princ,\nsubstr((select Listagg(Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced), ' ;') within GROUP (ORDER BY Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced))  from AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia),1,1000) as ds_procedimento_adic,\n1 + (select count(1)from AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia) as ie_quantidade,\nobter_nome_usuario(a.nm_usuario_orig) as nm_usuario,\n\nobter_nome_pf(a.cd_medico_exec) as nm_medico,\n\ne.nm_fantasia_estab DS_UNIDADE,\nem.nm_razao_social MARCA,\nobter_valor_dominio(83,a.ie_status_agenda) as status_agenda,\na.nr_atendimento,\na.nr_sequencia,\n'NAO ENCONTRADO' as ID,\na.cd_procedencia,\np.ds_procedencia,\nto_char(a.dt_agendamento, 'yyyy-mm-dd') dt_agendamento,\n\nto_char(a.dt_agenda,'dd') dia,\nto_char(a.dt_agenda,'mm') mes,\nto_char(a.dt_agenda,'yyyy') ano,\nac.ds_classificacao,\naa.ds_agrupamento ds_agrupamento,\na.cd_motivo_cancelamento,\nsubstr(obter_ds_motivo_status(a.nr_sequencia, a.cd_agenda),1,200) as ds_motivo_cancelamento,\na.cd_agenda,\nto_char(a.dt_atualizacao, 'yyyy-mm-dd') dt_atualizacao,\n'Tasy HTML' as BASE\n\nfrom agenda_paciente a,\n     agenda ag,\n     pessoa_fisica pf,\n     procedencia p,\n     agenda_paciente_classif ac,\n     agrupamento_agenda aa,\n     empresa em,\n     estabelecimento e\nwhere a.cd_agenda = ag.cd_agenda\nand a.cd_pessoa_fisica = pf.cd_pessoa_fisica (+)\nand a.cd_procedencia = p.cd_procedencia (+)\nand a.nr_seq_classif_agenda = ac.nr_sequencia (+)\nand ag.nr_seq_agrupamento = aa.nr_sequencia (+)\nand ag.cd_estabelecimento = e.cd_estabelecimento\nand e.cd_empresa = em.cd_empresa\nand a.cd_pessoa_fisica is null\nand a.cd_convenio is null\nand ag.cd_tipo_agenda = 2\nand ag.cd_pessoa_fisica is not null\nand a.dt_agenda between SYSDATE - 365 AND SYSDATE + 30",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink"
-							},
-							"enableStaging": false,
-							"enableSkipIncompatibleRow": true
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Agendamentos_Livres_Unidade",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"folder": {
-					"name": "Atendimento"
-				},
-				"annotations": [],
-				"lastPublishTime": "2020-03-13T19:36:08Z"
-			},
-			"dependsOn": []
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/Agendamentos')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -335,9 +124,7 @@
 				"annotations": [],
 				"lastPublishTime": "2020-02-10T13:01:24Z"
 			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
-			]
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Agendas Projesi V2')]",
@@ -573,9 +360,7 @@
 				"annotations": [],
 				"lastPublishTime": "2020-11-16T20:56:52Z"
 			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
-			]
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Agendas Projesi')]",
@@ -760,9 +545,7 @@
 				"annotations": [],
 				"lastPublishTime": "2019-11-20T19:02:14Z"
 			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
-			]
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Agentes por dia')]",
@@ -5593,9 +5376,7 @@
 				"annotations": [],
 				"lastPublishTime": "2020-09-04T14:47:07Z"
 			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
-			]
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Baixa_Titulos_Pagar')]",
@@ -5740,9 +5521,7 @@
 				"annotations": [],
 				"lastPublishTime": "2019-09-10T17:22:52Z"
 			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
-			]
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Bilhete Ligacoes')]",
@@ -9389,9 +9168,7 @@
 				"annotations": [],
 				"lastPublishTime": "2020-03-13T19:36:08Z"
 			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
-			]
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Contas a receber HOB')]",
@@ -9623,6 +9400,708 @@
 				},
 				"annotations": [],
 				"lastPublishTime": "2020-02-10T20:56:26Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Contas a receber INOB')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline desenvolvido para alimentar as tableas:\n\nTitulos_receber e Baixa_Titulos_Receber\n\nIniciado conferencia pelo setor de Contas a Receber das informações alimentadas por Tasy e Smart.",
+				"activities": [
+					{
+						"name": "Titulos INOB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART INOB' AS BASE,\n        GETDATE() AS DT_CARGA \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS \nLEFT JOIN (SELECT  \n       mns.mns_serie as serie, \n       mns.mns_num as numero, \n       mns.mns_nfs_serie as nfs_serie,\n       mns.mns_nfs_numero as nfs_numero,\n       mns.mns_nfs_tipo as nfs_tipo,    \n       (SELECT sum ( m2.mns_vlr ) \n        \tFROM mns m2, nfs \n\t\t\tWHERE  ( m2.mns_mns_serie = mns.mns_serie ) AND \n\t\t\t\t\t( m2.mns_mns_num = mns.mns_num ) AND \n               ( m2.mns_nfs_serie = nfs.nfs_serie ) AND\n               ( m2.mns_nfs_numero = nfs.nfs_numero ) AND\n               ( m2.mns_nfs_tipo = nfs.nfs_tipo )) AS imposto\n\t\t\tFROM   cnv, \n\t\t\t\t\t emp, \n\t\t\t\t\t nfs, \n\t\t\t\t\t cfg, \n\t\t\t\t\t mns \n\t\t\t WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n\t\t\t\t( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n\t\t\t\t( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100) AND  \n\t\t\t\t( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t\t( 8=8 ) AND \n\t\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\n\t\t\tGROUP  BY   mns.mns_serie , \n\t\t\t\t\t mns.mns_num , \n\t\t\t\t\t mns.mns_nfs_serie ,\n\t\t\t\t\t mns.mns_nfs_numero ,\n\t\t\t\t\t mns.mns_nfs_tipo  \n\n) m ON m.serie = mns.mns_serie and m.numero = mns.mns_num and m.nfs_serie = mns.mns_nfs_serie and m.nfs_numero = mns.mns_nfs_numero and m.nfs_tipo = mns.mns_nfs_tipo\n\n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) \nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,    \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         MNS.MNS_DT,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t cfg.cfg_vlrfilme, \n\t\t nfs.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs,\n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num,\n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t cfg.cfg_vlrfilme,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc,\n\t\t emp.emp_cgc \n\nUNION ALL   \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART INOB' AS BASE,\n        GETDATE() AS DT_CARGA \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS, \n\t\t\tnfs b  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t( MNS.MNS_NFS_SERIE = b.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = b.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = b.nfs_tipo) and  \n         ( nfs.NFS_SERIE = b.nfs_ns_serie ) and  \n         ( nfs.NFS_NUMERO = b.nfs_ns_numero ) and  \n         ( nfs.NFS_TIPO = b.nfs_ns_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \t\n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,   \n         nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         CASE WHEN mns.mns_tipo = 'NR' THEN b.nfs_dt_vcto ELSE MNS.MNS_DT END,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t b.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs, \n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num, \n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc,\n\t\t emp.emp_cgc\n\nUNION ALL \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART INOB' AS BASE,\n        GETDATE() AS DT_CARGA     \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_dt_vcto >= GETDATE()  - 100) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND  \n         ( nfs.nfs_tipo <> 'NC' ) AND\n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) AND\n\t\t\tNOT EXISTS ( SELECT MNS.MNS_NUM FROM MNS \n\t\t\t\t\t\t\t\tWHERE ( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t\t\t\t\t\t\t( 8=8 ) AND \n\t\t\t\t\t\t\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) ) \n -------------- OK  2\nUNION ALL \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART INOB' AS BASE,\n        GETDATE() AS DT_CARGA  \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t ( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( mns.mns_mns_serie is null ) AND\n\t\t ( mns.mns_ind_liberado = 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( 8=8 ) AND \n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t ( rdi.rdi_mns_num = mns.mns_num ) AND \n\t\t ( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) \n\n---- OK 3\n\nUNION ALL \n\n  SELECT  top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART INOB' AS BASE,\n        GETDATE() AS DT_CARGA \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t ( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) AND \n\t\t\t( ( rdi.rdi_mcc_serie_dep is null ) OR \n\t\t\t  ( rdi.rdi_forma_pag = 'X' ) OR \n\t\t\t  ( rdi.rdi_seq_subst is null AND \n\t\t\t\t NOT EXISTS ( SELECT mns.mns_serie FROM mns\n\t\t\t\t\t\t\t\t\tWHERE ( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( rdi.rdi_mns_num = mns.mns_num ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mns.mns_ind_liberado = 'S' ) ) ) ) \n ------- OK 4\nUNION ALL \n\n  SELECT  top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART INOB' AS BASE,\n        GETDATE() AS DT_CARGA  \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac, \n\t\t\trdi b   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t ( rdi.rdi_vcto >= GETDATE()-100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( mns.mns_mns_serie is null ) AND\n\t\t ( mns.mns_ind_liberado = 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( 8=8 ) AND \n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( b.rdi_seq = rdi.rdi_seq_subst ) AND \n\t\t ( b.rdi_mns_serie = mns.mns_serie ) AND\n\t\t ( b.rdi_mns_num = mns.mns_num ) AND \n\t\t ( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t   ( EXISTS ( SELECT tca_cod FROM tca\n\t\t \t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) )",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_INOB_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Baixas INOB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "  SELECT  top 100\n  nfs.nfs_tipo  as NR_TIPO_TITULO,\n  cfg.cfg_cgc as CNPJ,\n\n  nfs.nfs_serie as NR_SERIE_TITULO,   \n  nfs.nfs_numero as NR_TITULO,  \n  MNS_DT as DT_RECEBIMENTO,\n  MNS_VLR AS VL_RECEBIDO,\n  0.00 AS VL_DESCONTOS,\n  0.00 AS VL_JUROS, \n  NFS_VLR_MULTA AS VL_MULTA,\n  MNS_DT AS DT_ATUALIZACAO,\n  MNS_TIPO AS DS_TIPO_RECEBIMENTO,\n  ' ' AS DS_TRANSACAO,\n   'SMART INOB' AS BASE,\n    GETDATE() AS DT_CARGA  \n   FROM mns ,           \n   cfg ,           \n   nfs  \n   WHERE ( nfs.nfs_serie = mns.mns_nfs_serie ) \n   and ( nfs.nfs_numero = mns.mns_nfs_numero ) \n   and ( nfs.nfs_tipo = mns.mns_nfs_tipo ) \n   and ( mns.mns_mns_serie is null ) ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_INOB_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					}
+				],
+				"folder": {
+					"name": "Contas a receber"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:26Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Contas a receber IOF')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline desenvolvido para alimentar as tableas:\n\nTitulos_receber e Baixa_Titulos_Receber\n\nIniciado conferencia pelo setor de Contas a Receber das informações alimentadas por Tasy e Smart.",
+				"activities": [
+					{
+						"name": "Titulos IOF",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART IOF' AS BASE,\n        GETDATE() AS DT_CARGA \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS \nLEFT JOIN (SELECT  \n       mns.mns_serie as serie, \n       mns.mns_num as numero, \n       mns.mns_nfs_serie as nfs_serie,\n       mns.mns_nfs_numero as nfs_numero,\n       mns.mns_nfs_tipo as nfs_tipo,    \n       (SELECT sum ( m2.mns_vlr ) \n        \tFROM mns m2, nfs \n\t\t\tWHERE  ( m2.mns_mns_serie = mns.mns_serie ) AND \n\t\t\t\t\t( m2.mns_mns_num = mns.mns_num ) AND \n               ( m2.mns_nfs_serie = nfs.nfs_serie ) AND\n               ( m2.mns_nfs_numero = nfs.nfs_numero ) AND\n               ( m2.mns_nfs_tipo = nfs.nfs_tipo )) AS imposto\n\t\t\tFROM   cnv, \n\t\t\t\t\t emp, \n\t\t\t\t\t nfs, \n\t\t\t\t\t cfg, \n\t\t\t\t\t mns \n\t\t\t WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n\t\t\t\t( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n\t\t\t\t( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100) AND  \n\t\t\t\t( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t\t( 8=8 ) AND \n\t\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\n\t\t\tGROUP  BY   mns.mns_serie , \n\t\t\t\t\t mns.mns_num , \n\t\t\t\t\t mns.mns_nfs_serie ,\n\t\t\t\t\t mns.mns_nfs_numero ,\n\t\t\t\t\t mns.mns_nfs_tipo  \n\n) m ON m.serie = mns.mns_serie and m.numero = mns.mns_num and m.nfs_serie = mns.mns_nfs_serie and m.nfs_numero = mns.mns_nfs_numero and m.nfs_tipo = mns.mns_nfs_tipo\n\n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) \nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,    \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         MNS.MNS_DT,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t cfg.cfg_vlrfilme, \n\t\t nfs.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs,\n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num,\n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t cfg.cfg_vlrfilme,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc,\n\t\t emp.emp_cgc \n\nUNION ALL   \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART IOF' AS BASE,\n        GETDATE() AS DT_CARGA \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS, \n\t\t\tnfs b  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t( MNS.MNS_NFS_SERIE = b.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = b.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = b.nfs_tipo) and  \n         ( nfs.NFS_SERIE = b.nfs_ns_serie ) and  \n         ( nfs.NFS_NUMERO = b.nfs_ns_numero ) and  \n         ( nfs.NFS_TIPO = b.nfs_ns_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \t\n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,   \n         nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         CASE WHEN mns.mns_tipo = 'NR' THEN b.nfs_dt_vcto ELSE MNS.MNS_DT END,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t b.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs, \n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num, \n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc,\n\t\t emp.emp_cgc\n\nUNION ALL \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART IOF' AS BASE,\n        GETDATE() AS DT_CARGA     \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_dt_vcto >= GETDATE()  - 100) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND  \n         ( nfs.nfs_tipo <> 'NC' ) AND\n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) AND\n\t\t\tNOT EXISTS ( SELECT MNS.MNS_NUM FROM MNS \n\t\t\t\t\t\t\t\tWHERE ( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t\t\t\t\t\t\t( 8=8 ) AND \n\t\t\t\t\t\t\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) ) \n -------------- OK  2\nUNION ALL \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART IOF' AS BASE,\n        GETDATE() AS DT_CARGA  \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t ( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( mns.mns_mns_serie is null ) AND\n\t\t ( mns.mns_ind_liberado = 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( 8=8 ) AND \n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t ( rdi.rdi_mns_num = mns.mns_num ) AND \n\t\t ( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) \n\n---- OK 3\n\nUNION ALL \n\n  SELECT  top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART IOF' AS BASE,\n        GETDATE() AS DT_CARGA \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t ( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) AND \n\t\t\t( ( rdi.rdi_mcc_serie_dep is null ) OR \n\t\t\t  ( rdi.rdi_forma_pag = 'X' ) OR \n\t\t\t  ( rdi.rdi_seq_subst is null AND \n\t\t\t\t NOT EXISTS ( SELECT mns.mns_serie FROM mns\n\t\t\t\t\t\t\t\t\tWHERE ( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( rdi.rdi_mns_num = mns.mns_num ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mns.mns_ind_liberado = 'S' ) ) ) ) \n ------- OK 4\nUNION ALL \n\n  SELECT  top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART IOF' AS BASE,\n        GETDATE() AS DT_CARGA  \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac, \n\t\t\trdi b   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t ( rdi.rdi_vcto >= GETDATE()-100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( mns.mns_mns_serie is null ) AND\n\t\t ( mns.mns_ind_liberado = 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( 8=8 ) AND \n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( b.rdi_seq = rdi.rdi_seq_subst ) AND \n\t\t ( b.rdi_mns_serie = mns.mns_serie ) AND\n\t\t ( b.rdi_mns_num = mns.mns_num ) AND \n\t\t ( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t   ( EXISTS ( SELECT tca_cod FROM tca\n\t\t \t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) )",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_IOF_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Baixas IOF",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "  SELECT  top 100\n  nfs.nfs_tipo  as NR_TIPO_TITULO,\n  cfg.cfg_cgc as CNPJ,\n\n  nfs.nfs_serie as NR_SERIE_TITULO,   \n  nfs.nfs_numero as NR_TITULO,  \n  MNS_DT as DT_RECEBIMENTO,\n  MNS_VLR AS VL_RECEBIDO,\n  0.00 AS VL_DESCONTOS,\n  0.00 AS VL_JUROS, \n  NFS_VLR_MULTA AS VL_MULTA,\n  MNS_DT AS DT_ATUALIZACAO,\n  MNS_TIPO AS DS_TIPO_RECEBIMENTO,\n  ' ' AS DS_TRANSACAO,\n   'SMART IOF' AS BASE,\n    GETDATE() AS DT_CARGA \n   FROM mns ,           \n   cfg ,           \n   nfs  \n   WHERE ( nfs.nfs_serie = mns.mns_nfs_serie ) \n   and ( nfs.nfs_numero = mns.mns_nfs_numero ) \n   and ( nfs.nfs_tipo = mns.mns_nfs_tipo ) \n   and ( mns.mns_mns_serie is null ) ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_IOF_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					}
+				],
+				"folder": {
+					"name": "Contas a receber"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:26Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Contas a receber Itabuna')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline desenvolvido para alimentar as tableas:\n\nTitulos_receber e Baixa_Titulos_Receber\n\nIniciado conferencia pelo setor de Contas a Receber das informações alimentadas por Tasy e Smart.",
+				"activities": [
+					{
+						"name": "Titulos Itabuna",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itabuna' AS BASE,\n        GETDATE() AS DT_CARGA \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS \nLEFT JOIN (SELECT  \n       mns.mns_serie as serie, \n       mns.mns_num as numero, \n       mns.mns_nfs_serie as nfs_serie,\n       mns.mns_nfs_numero as nfs_numero,\n       mns.mns_nfs_tipo as nfs_tipo,    \n       (SELECT sum ( m2.mns_vlr ) \n        \tFROM mns m2, nfs \n\t\t\tWHERE  ( m2.mns_mns_serie = mns.mns_serie ) AND \n\t\t\t\t\t( m2.mns_mns_num = mns.mns_num ) AND \n               ( m2.mns_nfs_serie = nfs.nfs_serie ) AND\n               ( m2.mns_nfs_numero = nfs.nfs_numero ) AND\n               ( m2.mns_nfs_tipo = nfs.nfs_tipo )) AS imposto\n\t\t\tFROM   cnv, \n\t\t\t\t\t emp, \n\t\t\t\t\t nfs, \n\t\t\t\t\t cfg, \n\t\t\t\t\t mns \n\t\t\t WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n\t\t\t\t( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n\t\t\t\t( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100) AND  \n\t\t\t\t( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t\t( 8=8 ) AND \n\t\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\n\t\t\tGROUP  BY   mns.mns_serie , \n\t\t\t\t\t mns.mns_num , \n\t\t\t\t\t mns.mns_nfs_serie ,\n\t\t\t\t\t mns.mns_nfs_numero ,\n\t\t\t\t\t mns.mns_nfs_tipo  \n\n) m ON m.serie = mns.mns_serie and m.numero = mns.mns_num and m.nfs_serie = mns.mns_nfs_serie and m.nfs_numero = mns.mns_nfs_numero and m.nfs_tipo = mns.mns_nfs_tipo\n\n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) \nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,    \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         MNS.MNS_DT,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t cfg.cfg_vlrfilme, \n\t\t nfs.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs,\n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num,\n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t cfg.cfg_vlrfilme,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc,\n\t\t emp.emp_cgc \n\nUNION ALL   \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itabuna' AS BASE,\n        GETDATE() AS DT_CARGA \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS, \n\t\t\tnfs b  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t( MNS.MNS_NFS_SERIE = b.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = b.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = b.nfs_tipo) and  \n         ( nfs.NFS_SERIE = b.nfs_ns_serie ) and  \n         ( nfs.NFS_NUMERO = b.nfs_ns_numero ) and  \n         ( nfs.NFS_TIPO = b.nfs_ns_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \t\n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,   \n         nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         CASE WHEN mns.mns_tipo = 'NR' THEN b.nfs_dt_vcto ELSE MNS.MNS_DT END,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t b.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs, \n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num, \n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc,\n\t\t emp.emp_cgc\n\nUNION ALL \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itabuna' AS BASE,\n        GETDATE() AS DT_CARGA     \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_dt_vcto >= GETDATE()  - 100) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND  \n         ( nfs.nfs_tipo <> 'NC' ) AND\n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) AND\n\t\t\tNOT EXISTS ( SELECT MNS.MNS_NUM FROM MNS \n\t\t\t\t\t\t\t\tWHERE ( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t\t\t\t\t\t\t( 8=8 ) AND \n\t\t\t\t\t\t\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) ) \n -------------- OK  2\nUNION ALL \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itabuna' AS BASE,\n        GETDATE() AS DT_CARGA  \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t ( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( mns.mns_mns_serie is null ) AND\n\t\t ( mns.mns_ind_liberado = 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( 8=8 ) AND \n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t ( rdi.rdi_mns_num = mns.mns_num ) AND \n\t\t ( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) \n\n---- OK 3\n\nUNION ALL \n\n  SELECT  top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itabuna' AS BASE,\n        GETDATE() AS DT_CARGA \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t ( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) AND \n\t\t\t( ( rdi.rdi_mcc_serie_dep is null ) OR \n\t\t\t  ( rdi.rdi_forma_pag = 'X' ) OR \n\t\t\t  ( rdi.rdi_seq_subst is null AND \n\t\t\t\t NOT EXISTS ( SELECT mns.mns_serie FROM mns\n\t\t\t\t\t\t\t\t\tWHERE ( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( rdi.rdi_mns_num = mns.mns_num ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mns.mns_ind_liberado = 'S' ) ) ) ) \n ------- OK 4\nUNION ALL \n\n  SELECT  top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itabuna' AS BASE,\n        GETDATE() AS DT_CARGA  \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac, \n\t\t\trdi b   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t ( rdi.rdi_vcto >= GETDATE()-100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( mns.mns_mns_serie is null ) AND\n\t\t ( mns.mns_ind_liberado = 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( 8=8 ) AND \n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( b.rdi_seq = rdi.rdi_seq_subst ) AND \n\t\t ( b.rdi_mns_serie = mns.mns_serie ) AND\n\t\t ( b.rdi_mns_num = mns.mns_num ) AND \n\t\t ( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t   ( EXISTS ( SELECT tca_cod FROM tca\n\t\t \t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) )",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Baixas Itabuna",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "  SELECT  top 100\n  nfs.nfs_tipo  as NR_TIPO_TITULO,\n  cfg.cfg_cgc as CNPJ,\n\n  nfs.nfs_serie as NR_SERIE_TITULO,   \n  nfs.nfs_numero as NR_TITULO,  \n  MNS_DT as DT_RECEBIMENTO,\n  MNS_VLR AS VL_RECEBIDO,\n  0.00 AS VL_DESCONTOS,\n  0.00 AS VL_JUROS, \n  NFS_VLR_MULTA AS VL_MULTA,\n  MNS_DT AS DT_ATUALIZACAO,\n  MNS_TIPO AS DS_TIPO_RECEBIMENTO,\n  ' ' AS DS_TRANSACAO,\n   'SMART Itabuna' AS BASE,\n        GETDATE() AS DT_CARGA  \n   FROM mns ,           \n   cfg ,           \n   nfs  \n   WHERE ( nfs.nfs_serie = mns.mns_nfs_serie ) \n   and ( nfs.nfs_numero = mns.mns_nfs_numero ) \n   and ( nfs.nfs_tipo = mns.mns_nfs_tipo ) \n   and ( mns.mns_mns_serie is null ) ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					}
+				],
+				"folder": {
+					"name": "Contas a receber"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:26Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Contas a receber Itaigara')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline desenvolvido para alimentar as tableas:\n\nTitulos_receber e Baixa_Titulos_Receber\n\nIniciado conferencia pelo setor de Contas a Receber das informações alimentadas por Tasy e Smart.",
+				"activities": [
+					{
+						"name": "Titulos Itaigara",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itaigara' AS BASE,\n        GETDATE() AS DT_CARGA \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS \nLEFT JOIN (SELECT  \n       mns.mns_serie as serie, \n       mns.mns_num as numero, \n       mns.mns_nfs_serie as nfs_serie,\n       mns.mns_nfs_numero as nfs_numero,\n       mns.mns_nfs_tipo as nfs_tipo,    \n       (SELECT sum ( m2.mns_vlr ) \n        \tFROM mns m2, nfs \n\t\t\tWHERE  ( m2.mns_mns_serie = mns.mns_serie ) AND \n\t\t\t\t\t( m2.mns_mns_num = mns.mns_num ) AND \n               ( m2.mns_nfs_serie = nfs.nfs_serie ) AND\n               ( m2.mns_nfs_numero = nfs.nfs_numero ) AND\n               ( m2.mns_nfs_tipo = nfs.nfs_tipo )) AS imposto\n\t\t\tFROM   cnv, \n\t\t\t\t\t emp, \n\t\t\t\t\t nfs, \n\t\t\t\t\t cfg, \n\t\t\t\t\t mns \n\t\t\t WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n\t\t\t\t( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n\t\t\t\t( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100) AND  \n\t\t\t\t( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t\t( 8=8 ) AND \n\t\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\n\t\t\tGROUP  BY   mns.mns_serie , \n\t\t\t\t\t mns.mns_num , \n\t\t\t\t\t mns.mns_nfs_serie ,\n\t\t\t\t\t mns.mns_nfs_numero ,\n\t\t\t\t\t mns.mns_nfs_tipo  \n\n) m ON m.serie = mns.mns_serie and m.numero = mns.mns_num and m.nfs_serie = mns.mns_nfs_serie and m.nfs_numero = mns.mns_nfs_numero and m.nfs_tipo = mns.mns_nfs_tipo\n\n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) \nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,    \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         MNS.MNS_DT,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t cfg.cfg_vlrfilme, \n\t\t nfs.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs,\n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num,\n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t cfg.cfg_vlrfilme,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc,\n\t\t emp.emp_cgc \n\nUNION ALL   \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itaigara' AS BASE,\n        GETDATE() AS DT_CARGA \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS, \n\t\t\tnfs b  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t( MNS.MNS_NFS_SERIE = b.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = b.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = b.nfs_tipo) and  \n         ( nfs.NFS_SERIE = b.nfs_ns_serie ) and  \n         ( nfs.NFS_NUMERO = b.nfs_ns_numero ) and  \n         ( nfs.NFS_TIPO = b.nfs_ns_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \t\n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,   \n         nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         CASE WHEN mns.mns_tipo = 'NR' THEN b.nfs_dt_vcto ELSE MNS.MNS_DT END,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t b.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs, \n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num, \n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc,\n\t\t emp.emp_cgc\n\nUNION ALL \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itaigara' AS BASE,\n        GETDATE() AS DT_CARGA     \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_dt_vcto >= GETDATE()  - 100) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND  \n         ( nfs.nfs_tipo <> 'NC' ) AND\n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) AND\n\t\t\tNOT EXISTS ( SELECT MNS.MNS_NUM FROM MNS \n\t\t\t\t\t\t\t\tWHERE ( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t\t\t\t\t\t\t( 8=8 ) AND \n\t\t\t\t\t\t\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) ) \n -------------- OK  2\nUNION ALL \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itaigara' AS BASE,\n        GETDATE() AS DT_CARGA  \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t ( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( mns.mns_mns_serie is null ) AND\n\t\t ( mns.mns_ind_liberado = 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( 8=8 ) AND \n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t ( rdi.rdi_mns_num = mns.mns_num ) AND \n\t\t ( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) \n\n---- OK 3\n\nUNION ALL \n\n  SELECT  top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itaigara' AS BASE,\n        GETDATE() AS DT_CARGA \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t ( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) AND \n\t\t\t( ( rdi.rdi_mcc_serie_dep is null ) OR \n\t\t\t  ( rdi.rdi_forma_pag = 'X' ) OR \n\t\t\t  ( rdi.rdi_seq_subst is null AND \n\t\t\t\t NOT EXISTS ( SELECT mns.mns_serie FROM mns\n\t\t\t\t\t\t\t\t\tWHERE ( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( rdi.rdi_mns_num = mns.mns_num ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mns.mns_ind_liberado = 'S' ) ) ) ) \n ------- OK 4\nUNION ALL \n\n  SELECT  top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Itaigara' AS BASE,\n        GETDATE() AS DT_CARGA  \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac, \n\t\t\trdi b   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t ( rdi.rdi_vcto >= GETDATE()-100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( mns.mns_mns_serie is null ) AND\n\t\t ( mns.mns_ind_liberado = 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( 8=8 ) AND \n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( b.rdi_seq = rdi.rdi_seq_subst ) AND \n\t\t ( b.rdi_mns_serie = mns.mns_serie ) AND\n\t\t ( b.rdi_mns_num = mns.mns_num ) AND \n\t\t ( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t   ( EXISTS ( SELECT tca_cod FROM tca\n\t\t \t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) )",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITAIGARA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Baixas Itaigara",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "  SELECT  top 100\n  nfs.nfs_tipo  as NR_TIPO_TITULO,\n  cfg.cfg_cgc as CNPJ,\n\n  nfs.nfs_serie as NR_SERIE_TITULO,   \n  nfs.nfs_numero as NR_TITULO,  \n  MNS_DT as DT_RECEBIMENTO,\n  MNS_VLR AS VL_RECEBIDO,\n  0.00 AS VL_DESCONTOS,\n  0.00 AS VL_JUROS, \n  NFS_VLR_MULTA AS VL_MULTA,\n  MNS_DT AS DT_ATUALIZACAO,\n  MNS_TIPO AS DS_TIPO_RECEBIMENTO,\n  ' ' AS DS_TRANSACAO,\n   'SMART Itaigara' AS BASE,\n        GETDATE() AS DT_CARGA  \n   FROM mns ,           \n   cfg ,           \n   nfs  \n   WHERE ( nfs.nfs_serie = mns.mns_nfs_serie ) \n   and ( nfs.nfs_numero = mns.mns_nfs_numero ) \n   and ( nfs.nfs_tipo = mns.mns_nfs_tipo ) \n   and ( mns.mns_mns_serie is null ) ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITAIGARA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					}
+				],
+				"folder": {
+					"name": "Contas a receber"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:26Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Contas a receber Oftalmoclin')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline desenvolvido para alimentar as tableas:\n\nTitulos_receber e Baixa_Titulos_Receber\n\nIniciado conferencia pelo setor de Contas a Receber das informações alimentadas por Tasy e Smart.",
+				"activities": [
+					{
+						"name": "Titulos Oftalmoclin",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Oftalmoclin' AS BASE,\n        GETDATE() AS DT_CARGA \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS \nLEFT JOIN (SELECT  \n       mns.mns_serie as serie, \n       mns.mns_num as numero, \n       mns.mns_nfs_serie as nfs_serie,\n       mns.mns_nfs_numero as nfs_numero,\n       mns.mns_nfs_tipo as nfs_tipo,    \n       (SELECT sum ( m2.mns_vlr ) \n        \tFROM mns m2, nfs \n\t\t\tWHERE  ( m2.mns_mns_serie = mns.mns_serie ) AND \n\t\t\t\t\t( m2.mns_mns_num = mns.mns_num ) AND \n               ( m2.mns_nfs_serie = nfs.nfs_serie ) AND\n               ( m2.mns_nfs_numero = nfs.nfs_numero ) AND\n               ( m2.mns_nfs_tipo = nfs.nfs_tipo )) AS imposto\n\t\t\tFROM   cnv, \n\t\t\t\t\t emp, \n\t\t\t\t\t nfs, \n\t\t\t\t\t cfg, \n\t\t\t\t\t mns \n\t\t\t WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n\t\t\t\t( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n\t\t\t\t( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100) AND  \n\t\t\t\t( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t\t( 8=8 ) AND \n\t\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\n\t\t\tGROUP  BY   mns.mns_serie , \n\t\t\t\t\t mns.mns_num , \n\t\t\t\t\t mns.mns_nfs_serie ,\n\t\t\t\t\t mns.mns_nfs_numero ,\n\t\t\t\t\t mns.mns_nfs_tipo  \n\n) m ON m.serie = mns.mns_serie and m.numero = mns.mns_num and m.nfs_serie = mns.mns_nfs_serie and m.nfs_numero = mns.mns_nfs_numero and m.nfs_tipo = mns.mns_nfs_tipo\n\n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) \nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,    \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         MNS.MNS_DT,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t cfg.cfg_vlrfilme, \n\t\t nfs.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs,\n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num,\n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t cfg.cfg_vlrfilme,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc,\n\t\t emp.emp_cgc \n\nUNION ALL   \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Oftalmoclin' AS BASE,\n        GETDATE() AS DT_CARGA \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS, \n\t\t\tnfs b  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t( MNS.MNS_NFS_SERIE = b.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = b.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = b.nfs_tipo) and  \n         ( nfs.NFS_SERIE = b.nfs_ns_serie ) and  \n         ( nfs.NFS_NUMERO = b.nfs_ns_numero ) and  \n         ( nfs.NFS_TIPO = b.nfs_ns_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \t\n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,   \n         nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         CASE WHEN mns.mns_tipo = 'NR' THEN b.nfs_dt_vcto ELSE MNS.MNS_DT END,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t b.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs, \n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num, \n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc,\n\t\t emp.emp_cgc\n\nUNION ALL \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Oftalmoclin' AS BASE,\n        GETDATE() AS DT_CARGA     \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_dt_vcto >= GETDATE()  - 100) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND  \n         ( nfs.nfs_tipo <> 'NC' ) AND\n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) AND\n\t\t\tNOT EXISTS ( SELECT MNS.MNS_NUM FROM MNS \n\t\t\t\t\t\t\t\tWHERE ( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t\t\t\t\t\t\t( 8=8 ) AND \n\t\t\t\t\t\t\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) ) \n -------------- OK  2\nUNION ALL \n\n  SELECT top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Oftalmoclin' AS BASE,\n        GETDATE() AS DT_CARGA  \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t ( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( mns.mns_mns_serie is null ) AND\n\t\t ( mns.mns_ind_liberado = 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( 8=8 ) AND \n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t ( rdi.rdi_mns_num = mns.mns_num ) AND \n\t\t ( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) \n\n---- OK 3\n\nUNION ALL \n\n  SELECT  top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Oftalmoclin' AS BASE,\n        GETDATE() AS DT_CARGA \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t ( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) AND \n\t\t\t( ( rdi.rdi_mcc_serie_dep is null ) OR \n\t\t\t  ( rdi.rdi_forma_pag = 'X' ) OR \n\t\t\t  ( rdi.rdi_seq_subst is null AND \n\t\t\t\t NOT EXISTS ( SELECT mns.mns_serie FROM mns\n\t\t\t\t\t\t\t\t\tWHERE ( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( rdi.rdi_mns_num = mns.mns_num ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mns.mns_ind_liberado = 'S' ) ) ) ) \n ------- OK 4\nUNION ALL \n\n  SELECT  top 10 \n        nfs.nfs_tipo as NR_TIPO_TITULO, \n        nfs.nfs_serie as NR_SERIE_TITULO,   \n        nfs.nfs_numero as NR_TITULO,   \n        nfs.nfs_dt_emis as DT_EMISSAO_TITULO,   \n        nfs.nfs_dt_vcto as DT_VENCIMENTO_TITULO,   \n        nfs.nfs_valor as VL_TITULO,   \n        nfs.nfs_vlr_multa as VL_MULTA,   \n        cnv.cnv_nome as DS_CONVENIO,   \n        emp.emp_nome_fantasia as DS_EMPRESA_CONVENIO,   \n\t\temp.emp_cgc AS CONV_CNPJ, \n        nfs.nfs_vlr_iss as VL_ISS,   \n        nfs.nfs_vlr_ir as VL_IR,   \n        cfg.cfg_vlrfilme as VL_FILME,   \n        nfs.nfs_perc_iss as VL_PERC_ISS,   \n        nfs.nfs_perc_ir as VL_PER_IR,   \n        nfs.nfs_perc_multa as VL_PERC_MULTA,   \n        nfs.nfs_perc_juro as VL_PERC_JURO,   \n        nfs.nfs_vlr_outros_imp as VL_OUTROS_IMP,\n\t\tnfs.nfs_remessa as NR_REMESSA,\n\t\tcfg.cfg_emp as MARCA,\n\t\tcfg.cfg_emp as DS_UNIDADE,\n        cfg.cfg_cgc as CNPJ,\n        'SMART Oftalmoclin' AS BASE,\n        GETDATE() AS DT_CARGA  \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac, \n\t\t\trdi b   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t ( rdi.rdi_vcto >= GETDATE()-100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t ( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t ( rdi.rdi_recepcao <> 'S' ) AND \n\t\t ( mns.mns_mns_serie is null ) AND\n\t\t ( mns.mns_ind_liberado = 'S' ) AND \n\t\t ( nfs.nfs_status = 'P' ) AND \n\t\t ( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t ( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t ( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t ( mte.mte_status = 'D' ) AND \n\t\t ( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t ( 8=8 ) AND \n\t\t ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t ( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND\n\t\t ( b.rdi_seq = rdi.rdi_seq_subst ) AND \n\t\t ( b.rdi_mns_serie = mns.mns_serie ) AND\n\t\t ( b.rdi_mns_num = mns.mns_num ) AND \n\t\t ( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t ( ( mte.mte_tipo <> 'C' ) OR\n\t\t   ( EXISTS ( SELECT tca_cod FROM tca\n\t\t \t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) )",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Baixas Oftalmoclin",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "  SELECT  top 100\n  nfs.nfs_tipo  as NR_TIPO_TITULO,\n  cfg.cfg_cgc as CNPJ,\n\n  nfs.nfs_serie as NR_SERIE_TITULO,   \n  nfs.nfs_numero as NR_TITULO,  \n  MNS_DT as DT_RECEBIMENTO,\n  MNS_VLR AS VL_RECEBIDO,\n  0.00 AS VL_DESCONTOS,\n  0.00 AS VL_JUROS, \n  NFS_VLR_MULTA AS VL_MULTA,\n  MNS_DT AS DT_ATUALIZACAO,\n  MNS_TIPO AS DS_TIPO_RECEBIMENTO,\n  ' ' AS DS_TRANSACAO,\n   'SMART Oftalmoclin' AS BASE,\n        GETDATE() AS DT_CARGA  \n   FROM mns ,           \n   cfg ,           \n   nfs  \n   WHERE ( nfs.nfs_serie = mns.mns_nfs_serie ) \n   and ( nfs.nfs_numero = mns.mns_nfs_numero ) \n   and ( nfs.nfs_tipo = mns.mns_nfs_tipo ) \n   and ( mns.mns_mns_serie is null ) ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					}
+				],
+				"folder": {
+					"name": "Contas a receber"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:25Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Contas a receber Sadalla')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline desenvolvido para alimentar as tableas:\n\nTitulos_receber e Baixa_Titulos_Receber\n\nIniciado conferencia pelo setor de Contas a Receber das informações alimentadas por Tasy e Smart.",
+				"activities": [
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					},
+					{
+						"name": "Baixa Titulo Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "select '' nr_tipo_titulo,\nobter_cgc_estabelecimento(R.CD_ESTABELECIMENTO) AS CNPJ, \n'' AS NR_SERIE_TITULO,\nl.nr_titulo, \nl.dt_recebimento, \nl.vl_recebido, \nl.vl_descontos, \nl.vl_juros, \nl.vl_multa, \nl.dt_atualizacao, \nt.ds_tipo_recebimento,\nx.DS_TRANSACAO,\n'TASY Delphi' AS BASE,\n SYSDATE AS DT_CARGA\nfrom titulo_receber r,\n     TITULO_RECEBER_LIQ L,\n     tipo_recebimento t,\n     TRANSACAO_FINANCEIRA X\nwhere r.nr_titulo = l.nr_titulo \nand l.cd_tipo_recebimento = t.cd_tipo_recebimento\nAND l.nr_seq_trans_fin = X.NR_SEQUENCIA",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false,
+							"enableSkipIncompatibleRow": true
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Titulos Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "SELECT  \n        a.ie_tipo_titulo as NR_TIPO_TITULO,\n        '' as NR_SERIE_TITULO,\n        A.NR_TITULO,\n        A.DT_EMISSAO as DT_EMISSAO_TITULO,\n        A.DT_VENCIMENTO DT_VENCIMENTO_TITULO,\n        A.VL_TITULO VL_TITULO,\n        A.VL_MULTA_FIXO AS VL_MULTA,\n        C.DS_CONVENIO,\n        B.DS_RAZAO_SOCIAL as DS_EMPRESA_CONVENIO,\n        B.CD_CGC AS CONV_CNPJ,\n        0 AS VL_ISS,\n        0 AS VL_IR,\n        0 AS VL_FILME,\n        0 AS VL_PERC_ISS,\n        0 AS VL_PER_IR,\n        A.TX_MULTA AS VL_PERC_MULTA,\n        A.TX_JUROS AS VL_PERC_JURO,\n        A.VL_OUTRAS_DESPESAS AS VL_OUTROS_IMP,\n        0 AS NR_REMESSA,\n        EM.NM_RAZAO_SOCIAL MARCA,\n        E.NM_FANTASIA_ESTAB AS DS_UNIDADE,\n        E.CD_CGC AS CNPJ,\n'TASY Delphi' AS BASE,\n SYSDATE AS DT_CARGA\nFROM    TITULO_RECEBER A, \n        PESSOA_JURIDICA B,\n        ESTABELECIMENTO E,\n        EMPRESA EM,\n        CONVENIO C\nwhere   b.cd_cgc = a.cd_cgc\nAND     a.CD_ESTABELECIMENTO = E.CD_ESTABELECIMENTO\nAND     E.CD_EMPRESA = EM.CD_EMPRESA\nAND     B.CD_CGC = C.CD_CGC\nAND     C.DT_CANCELAMENTO IS NULL",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"folder": {
+					"name": "Contas a receber"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:25Z"
 			},
 			"dependsOn": []
 		}
