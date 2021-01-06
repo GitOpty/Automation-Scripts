@@ -1,0 +1,938 @@
+{
+	"name": "ADF_MODELO",
+	"properties": {
+		"activities": [
+			{
+				"name": "LeCredenciaisDBorigem",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[dbo].[PADFCredenciais]",
+						"storedProcedureParameters": {
+							"COD_TABELA": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.ParCodTabela",
+									"type": "Expression"
+								}
+							}
+						},
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "SQL_DS_CONTROLE",
+						"type": "DatasetReference",
+						"parameters": {
+							"NomeTabela": "Tabela"
+						}
+					}
+				}
+			},
+			{
+				"name": "Variaveis-SrvOrigem",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "LeCredenciaisDBorigem",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(1,1)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "ServerName",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ServerName",
+								"value": {
+									"value": "@activity('LeCredenciaisDBorigem').output.firstRow.NOM_SERVIDOR",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "DataBaseName",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "ServerName",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "DataBaseName",
+								"value": {
+									"value": "@activity('LeCredenciaisDBorigem').output.firstRow.NOM_BASE",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "UserName",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "DataBaseName",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "UserName",
+								"value": {
+									"value": "@activity('LeCredenciaisDBorigem').output.firstRow.NOM_USUARIO",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Password",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "UserName",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "Password",
+								"value": {
+									"value": "@activity('LeCredenciaisDBorigem').output.firstRow.DESC_PASSWORD",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "TipoArmazenamento",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Password",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "TipoArmazenamento",
+								"value": {
+									"value": "@activity('LeCredenciaisDBorigem').output.firstRow.IND_TIPO_ARMAZENAMENTO",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SecretNamePassword",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "TipoArmazenamento",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "SecretNamePassword",
+								"value": {
+									"value": "@activity('LeCredenciaisDBorigem').output.firstRow.DESC_SECRET_PWD",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "LeDataProcessamento",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Variaveis-SrvOrigem",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[dbo].[PADFDataProcessamento]",
+						"storedProcedureParameters": {
+							"COD_TABELA": {
+								"type": "Int16",
+								"value": {
+									"value": "@pipeline().parameters.ParCodTabela",
+									"type": "Expression"
+								}
+							}
+						},
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "SQL_DS_CONTROLE",
+						"type": "DatasetReference",
+						"parameters": {
+							"NomeTabela": "Tabela"
+						}
+					}
+				}
+			},
+			{
+				"name": "SE_U_ONPREMISE_TO_AZURE_SQL",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "GravaLogInicioItem",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('TipoArmazenamento'),'SQL_ORIGEM'),equals(pipeline().parameters.ParTipoETL,'U'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Limpa Tabela Destino",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('truncate table ',pipeline().parameters.ParNomeSchemaDestino,pipeline().parameters.ParNomeTabelaDestino,' SELECT 0')",
+										"type": "Expression"
+									},
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "SQL_DS_DESTINO",
+									"type": "DatasetReference",
+									"parameters": {
+										"NomeTabela": "Tabela"
+									}
+								}
+							}
+						},
+						{
+							"name": "U_OnPremisse_AzureSql",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Limpa Tabela Destino",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@concat('select ',activity('LeDataProcessamento').output.firstRow.DSC_COLUNAS_NAO_SENSIVEIS,' from ',pipeline().parameters.ParNomeSchemaOrigem,if(equals(pipeline().parameters.ParNomeSchemaOrigem,''),'','.'),pipeline().parameters.ParNomeTabelaOrigem)",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBatchSize": 10000,
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "SQL_DS_ORIGEM",
+									"type": "DatasetReference",
+									"parameters": {
+										"NomeTabela": {
+											"value": "pipeline().parameters.ParNomeTabelaOrigem",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "SQL_DS_DESTINO",
+									"type": "DatasetReference",
+									"parameters": {
+										"NomeTabela": {
+											"value": "@concat(pipeline().parameters.ParNomeSchemaDestino,pipeline().parameters.ParNomeTabelaDestino)",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "SQL_RowsCopied",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "U_OnPremisse_AzureSql",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "nuregistros",
+								"value": {
+									"value": "@string(activity('U_OnPremisse_AzureSql').output.rowsCopied)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "U_OnPremisse_AzureDL",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Limpa Tabela Destino",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@concat('select ',activity('LeDataProcessamento').output.firstRow.DSC_COLUNAS_NAO_SENSIVEIS,' from ',pipeline().parameters.ParNomeSchemaOrigem,if(equals(pipeline().parameters.ParNomeSchemaOrigem,''),'','.'),pipeline().parameters.ParNomeTabelaOrigem)",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "SQL_DS_ORIGEM",
+									"type": "DatasetReference",
+									"parameters": {
+										"NomeTabela": {
+											"value": "pipeline().parameters.ParNomeTabelaOrigem",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ADLS_DS_DESTINO_GEN2",
+									"type": "DatasetReference",
+									"parameters": {
+										"FilePath": {
+											"value": "@toLower(concat(activity('LeCredenciaisDBorigem').output.firstRow.NOM_REGION,'/',replace(activity('LeCredenciaisDBorigem').output.firstRow.NOM_ALIAS,'_',''),'/',toLower(pipeline().parameters.ParNomeTabelaDestino),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,0,4),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,5,2),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,8,2)))",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@toLower(concat(toLower(pipeline().parameters.ParNomeTabelaDestino),'_',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,0,4),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,5,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,8,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,11,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,14,2),'.parquet'))",
+											"type": "Expression"
+										},
+										"FileSystem": {
+											"value": "@activity('LeCredenciaisDBorigem').output.FirstRow.NOM_CONTAINER_RAW",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "GravaLogInicioItem",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "LeDataProcessamento",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[PLogADFItem]",
+					"storedProcedureParameters": {
+						"COD_LOG": {
+							"value": {
+								"value": "@pipeline().parameters.ParIdPipeline",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"DAT_EXPORTACAO": {
+							"value": {
+								"value": "@activity('LeDataProcessamento').output.firstRow.DAT_INGESTAO",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"NOM_SCHEMA_ORIGEM": {
+							"value": {
+								"value": "@pipeline().parameters.ParNomeSchemaOrigem",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"NOM_TABELA_ORIGEM": {
+							"value": {
+								"value": "@pipeline().parameters.ParNomeTabelaOrigem",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"COD_SERVIDOR": {
+							"value": {
+								"value": "@pipeline().parameters.ParCodServidor",
+								"type": "Expression"
+							},
+							"type": "Int16"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "SQL_CONTROLE",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "SE_I_ONPREMISE_TO_AZURE_SQL",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "GravaLogInicioItem",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(equals(variables('TipoArmazenamento'),'SQL_ORIGEM'),equals(pipeline().parameters.ParTipoETL,'I'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Limpa I Tabela Destino",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('delete ',pipeline().parameters.ParNomeSchemaDestino,pipeline().parameters.ParNomeAlias,pipeline().parameters.ParNomeTabelaDestino,' where ',activity('LeDataProcessamento').output.firstRow.NOM_COLUNA_REFERENCIA,' >= ''',activity('LeDataProcessamento').output.firstRow.DAT_INGESTAO,''' and ',activity('LeDataProcessamento').output.firstRow.NOM_COLUNA_REFERENCIA,' <= ''',activity('LeDataProcessamento').output.firstRow.DAT_PROCESSAMENTO,'''',\n' SELECT 0')",
+										"type": "Expression"
+									},
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "SQL_DS_DESTINO",
+									"type": "DatasetReference",
+									"parameters": {
+										"NomeTabela": "Tabela"
+									}
+								}
+							}
+						},
+						{
+							"name": "I_OnPremisse_AzureSql",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Limpa I Tabela Destino",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@concat('select ',activity('LeDataProcessamento').output.firstRow.DSC_COLUNAS_NAO_SENSIVEIS,' from ',pipeline().parameters.ParNomeSchemaOrigem,if(equals(pipeline().parameters.ParNomeSchemaOrigem,''),'','.'),pipeline().parameters.ParNomeTabelaOrigem,' where ',activity('LeDataProcessamento').output.firstRow.NOM_COLUNA_REFERENCIA,' >= ''',activity('LeDataProcessamento').output.firstRow.DAT_INGESTAO,''' and ',activity('LeDataProcessamento').output.firstRow.NOM_COLUNA_REFERENCIA,' <= ''',activity('LeDataProcessamento').output.firstRow.DAT_PROCESSAMENTO,'''' )",
+										"type": "Expression"
+									},
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "AzureSqlSink"
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "SQL_DS_ORIGEM",
+									"type": "DatasetReference",
+									"parameters": {
+										"NomeTabela": {
+											"value": "@pipeline().parameters.ParNomeTabelaOrigem",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "SQL_DS_DESTINO",
+									"type": "DatasetReference",
+									"parameters": {
+										"NomeTabela": {
+											"value": "@concat(pipeline().parameters.ParNomeSchemaDestino,pipeline().parameters.ParNomeAlias,pipeline().parameters.ParNomeTabelaDestino)",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "SQL_I_RowsCopied",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "I_OnPremisse_AzureSql",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "nuregistros",
+								"value": {
+									"value": "@string(activity('I_OnPremisse_AzureSql').output.rowsCopied)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "I_OnPremisse_AzureDL",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Limpa I Tabela Destino",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"sqlReaderQuery": {
+										"value": "@concat('select ',activity('LeDataProcessamento').output.firstRow.DSC_COLUNAS_NAO_SENSIVEIS,' from ',pipeline().parameters.ParNomeSchemaOrigem,if(equals(pipeline().parameters.ParNomeSchemaOrigem,''),'','.'),pipeline().parameters.ParNomeTabelaOrigem,' where ',activity('LeDataProcessamento').output.firstRow.NOM_COLUNA_REFERENCIA,' >= ''',activity('LeDataProcessamento').output.firstRow.DAT_INGESTAO,''' and ',activity('LeDataProcessamento').output.firstRow.NOM_COLUNA_REFERENCIA,' <= ''',activity('LeDataProcessamento').output.firstRow.DAT_PROCESSAMENTO,'''' )",
+										"type": "Expression"
+									},
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "SQL_DS_ORIGEM",
+									"type": "DatasetReference",
+									"parameters": {
+										"NomeTabela": {
+											"value": "@pipeline().parameters.ParNomeTabelaOrigem",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ADLS_DS_DESTINO_GEN2",
+									"type": "DatasetReference",
+									"parameters": {
+										"FilePath": {
+											"value": "@toLower(concat(activity('LeCredenciaisDBorigem').output.firstRow.NOM_REGION,'/',replace(activity('LeCredenciaisDBorigem').output.firstRow.NOM_ALIAS,'_',''),'/',toLower(pipeline().parameters.ParNomeTabelaDestino),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,0,4),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,5,2),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,8,2)))",
+											"type": "Expression"
+										},
+										"FileName": {
+											"value": "@toLower(concat(toLower(pipeline().parameters.ParNomeTabelaDestino),'_',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,0,4),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,5,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,8,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,11,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,14,2),'.csv'))",
+											"type": "Expression"
+										},
+										"FileSystem": {
+											"value": "@activity('LeCredenciaisDBorigem').output.FirstRow.NOM_CONTAINER_RAW",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "GravaLogFimItem",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "SE_I_ONPREMISE_TO_AZURE_SQL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "SE_U_ONPREMISE_TO_AZURE_SQL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[PLogADFItemFim]",
+					"storedProcedureParameters": {
+						"COD_LOG": {
+							"value": {
+								"value": "@pipeline().parameters.ParIdPipeline",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"NOM_SCHEMA_ORIGEM": {
+							"value": {
+								"value": "@pipeline().parameters.ParNomeSchemaOrigem",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"NOM_TABELA_ORIGEM": {
+							"value": {
+								"value": "@pipeline().parameters.ParNomeTabelaOrigem",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"NUM_REGISTROS": {
+							"value": {
+								"value": "@variables('nuregistros')",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"COD_SERVIDOR": {
+							"value": {
+								"value": "@pipeline().parameters.ParCodServidor",
+								"type": "Expression"
+							},
+							"type": "Int16"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "SQL_CONTROLE",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "GravaLogFim",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "GravaLogFimItem",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[PADFIdPacoteFIM]",
+					"storedProcedureParameters": {
+						"COD_LOG": {
+							"value": {
+								"value": "@pipeline().parameters.ParIdPipeline",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						},
+						"DSC_PARAMETROS": {
+							"value": {
+								"value": "@concat('select ',activity('LeDataProcessamento').output.firstRow.DSC_COLUNAS_NAO_SENSIVEIS,' from ',pipeline().parameters.ParNomeSchemaOrigem,if(equals(pipeline().parameters.ParNomeSchemaOrigem,''),'','.'),pipeline().parameters.ParNomeTabelaOrigem)",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "SQL_CONTROLE",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"ParNomeSchemaOrigem": {
+				"type": "string"
+			},
+			"ParIdPipeline": {
+				"type": "string"
+			},
+			"ParNomeTabelaOrigem": {
+				"type": "string"
+			},
+			"ParNomeSchemaDestino": {
+				"type": "string"
+			},
+			"ParNomeAlias": {
+				"type": "string"
+			},
+			"ParNomeTabelaDestino": {
+				"type": "string"
+			},
+			"ParCodServidor": {
+				"type": "string"
+			},
+			"ParTipoETL": {
+				"type": "string"
+			},
+			"ParIndDestinoDL": {
+				"type": "string"
+			},
+			"ParIndDestinoSQL": {
+				"type": "string"
+			},
+			"ParCodTabela": {
+				"type": "string"
+			},
+			"SourceStore_Location": {
+				"type": "string"
+			},
+			"SourceStore_Directory": {
+				"type": "string"
+			},
+			"DestinationStore_Location": {
+				"type": "string"
+			},
+			"DestinationStore_Directory": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"nuregistros": {
+				"type": "String"
+			},
+			"receiver": {
+				"type": "String",
+				"defaultValue": "arnaldo.junior@dataex.com.br"
+			},
+			"ComandoGeraSelect": {
+				"type": "String",
+				"defaultValue": ",@coluna\t\tvarchar(max)  select   \t\t@coluna =  \t\t\tcase  \t\t\t\twhen @coluna is null  \t\t\t\t\tThen 'Convert(varchar(max),isnull('+ name  + ',' +\t \t\t\t\t\t\t\t\tcase when xtype in (56,60,62,104,106,127) then '0' +'))' \t\t\t\t\t\t\t\t\t when xtype in (42,61)\t\t\t\t  then '''1900-01-01'''+'),121)' \t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t  else '''''' +'))' \t\t\t\t\t\t\t\tend  \t\t\t\tElse \t\t  \t\t\t\t\t @coluna + '+' + 'Convert(varchar(max),isnull('+ name + ','\t+ \t\t\t\t\t\t\t\tcase when xtype in (56,60,62,104,106,127)\tthen '0' +'))' \t\t\t\t\t\t\t\t\t when xtype in (42,61)\t\t\t\t\tthen '''1900-01-01'''+'),121)' \t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\telse '''''' +'))' \t\t\t\t\t\t\t\tend \t\t\t\tend from  \t\tsys.syscolumns  where  \t\tid = OBJECT_ID(@Tabela) order by colid  select @coluna = ' SUBSTRING(sys.fn_sqlvarbasetostr(HASHBYTES(''MD5'',' +\t@coluna + ')),3,32) HASH_KEY from ' + @tabela  select @coluna ComandoSelectHash"
+			},
+			"ComandoSelectHash": {
+				"type": "String"
+			},
+			"DataBaseName": {
+				"type": "String"
+			},
+			"UserName": {
+				"type": "String"
+			},
+			"Password": {
+				"type": "String"
+			},
+			"TipoArmazenamento": {
+				"type": "String"
+			},
+			"ServerName": {
+				"type": "String"
+			},
+			"NomeBucket": {
+				"type": "String",
+				"defaultValue": "dl"
+			},
+			"DestinoDL": {
+				"type": "String"
+			},
+			"SecretNamePassword": {
+				"type": "String"
+			},
+			"FileSize": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"PathRaw": {
+				"type": "String"
+			},
+			"NumFiles": {
+				"type": "String",
+				"defaultValue": "0"
+			},
+			"dscParameters": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}
