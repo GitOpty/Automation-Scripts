@@ -28,13 +28,6 @@
 							}
 						},
 						"partitionOption": "None"
-					},
-					"dataset": {
-						"referenceName": "SQL_DS_CONTROLE",
-						"type": "DatasetReference",
-						"parameters": {
-							"NomeTabela": "Tabela"
-						}
 					}
 				}
 			},
@@ -205,13 +198,6 @@
 							}
 						},
 						"partitionOption": "None"
-					},
-					"dataset": {
-						"referenceName": "SQL_DS_CONTROLE",
-						"type": "DatasetReference",
-						"parameters": {
-							"NomeTabela": "Tabela"
-						}
 					}
 				}
 			},
@@ -253,13 +239,6 @@
 										"type": "Expression"
 									},
 									"partitionOption": "None"
-								},
-								"dataset": {
-									"referenceName": "SQL_DS_DESTINO",
-									"type": "DatasetReference",
-									"parameters": {
-										"NomeTabela": "Tabela"
-									}
 								}
 							}
 						},
@@ -292,45 +271,8 @@
 									"queryTimeout": "02:00:00",
 									"partitionOption": "None"
 								},
-								"sink": {
-									"type": "AzureSqlSink",
-									"writeBatchSize": 10000,
-									"disableMetricsCollection": false
-								},
-								"enableStaging": false,
-								"translator": {
-									"type": "TabularTranslator",
-									"typeConversion": true,
-									"typeConversionSettings": {
-										"allowDataTruncation": true,
-										"treatBooleanAsNumber": false
-									}
-								}
-							},
-							"inputs": [
-								{
-									"referenceName": "SQL_DS_ORIGEM",
-									"type": "DatasetReference",
-									"parameters": {
-										"NomeTabela": {
-											"value": "pipeline().parameters.ParNomeTabelaOrigem",
-											"type": "Expression"
-										}
-									}
-								}
-							],
-							"outputs": [
-								{
-									"referenceName": "SQL_DS_DESTINO",
-									"type": "DatasetReference",
-									"parameters": {
-										"NomeTabela": {
-											"value": "@concat(pipeline().parameters.ParNomeSchemaDestino,pipeline().parameters.ParNomeTabelaDestino)",
-											"type": "Expression"
-										}
-									}
-								}
-							]
+								"enableStaging": false
+							}
 						},
 						{
 							"name": "SQL_RowsCopied",
@@ -351,87 +293,6 @@
 									"type": "Expression"
 								}
 							}
-						},
-						{
-							"name": "U_OnPremisse_AzureDL",
-							"type": "Copy",
-							"dependsOn": [
-								{
-									"activity": "Limpa Tabela Destino",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"policy": {
-								"timeout": "7.00:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"source": {
-									"type": "SqlServerSource",
-									"sqlReaderQuery": {
-										"value": "@concat('select ',activity('LeDataProcessamento').output.firstRow.DSC_COLUNAS_NAO_SENSIVEIS,' from ',pipeline().parameters.ParNomeSchemaOrigem,if(equals(pipeline().parameters.ParNomeSchemaOrigem,''),'','.'),pipeline().parameters.ParNomeTabelaOrigem)",
-										"type": "Expression"
-									},
-									"queryTimeout": "02:00:00",
-									"partitionOption": "None"
-								},
-								"sink": {
-									"type": "ParquetSink",
-									"storeSettings": {
-										"type": "AzureBlobFSWriteSettings"
-									},
-									"formatSettings": {
-										"type": "ParquetWriteSettings"
-									}
-								},
-								"enableStaging": false,
-								"translator": {
-									"type": "TabularTranslator",
-									"typeConversion": true,
-									"typeConversionSettings": {
-										"allowDataTruncation": true,
-										"treatBooleanAsNumber": false
-									}
-								}
-							},
-							"inputs": [
-								{
-									"referenceName": "SQL_DS_ORIGEM",
-									"type": "DatasetReference",
-									"parameters": {
-										"NomeTabela": {
-											"value": "pipeline().parameters.ParNomeTabelaOrigem",
-											"type": "Expression"
-										}
-									}
-								}
-							],
-							"outputs": [
-								{
-									"referenceName": "ADLS_DS_DESTINO_GEN2",
-									"type": "DatasetReference",
-									"parameters": {
-										"FilePath": {
-											"value": "@toLower(concat(activity('LeCredenciaisDBorigem').output.firstRow.NOM_REGION,'/',replace(activity('LeCredenciaisDBorigem').output.firstRow.NOM_ALIAS,'_',''),'/',toLower(pipeline().parameters.ParNomeTabelaDestino),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,0,4),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,5,2),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,8,2)))",
-											"type": "Expression"
-										},
-										"FileName": {
-											"value": "@toLower(concat(toLower(pipeline().parameters.ParNomeTabelaDestino),'_',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,0,4),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,5,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,8,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,11,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,14,2),'.parquet'))",
-											"type": "Expression"
-										},
-										"FileSystem": {
-											"value": "@activity('LeCredenciaisDBorigem').output.FirstRow.NOM_CONTAINER_RAW",
-											"type": "Expression"
-										}
-									}
-								}
-							]
 						}
 					]
 				}
@@ -494,10 +355,6 @@
 							"type": "Int16"
 						}
 					}
-				},
-				"linkedServiceName": {
-					"referenceName": "SQL_CONTROLE",
-					"type": "LinkedServiceReference"
 				}
 			},
 			{
@@ -538,13 +395,6 @@
 										"type": "Expression"
 									},
 									"partitionOption": "None"
-								},
-								"dataset": {
-									"referenceName": "SQL_DS_DESTINO",
-									"type": "DatasetReference",
-									"parameters": {
-										"NomeTabela": "Tabela"
-									}
 								}
 							}
 						},
@@ -579,40 +429,8 @@
 								"sink": {
 									"type": "AzureSqlSink"
 								},
-								"enableStaging": false,
-								"translator": {
-									"type": "TabularTranslator",
-									"typeConversion": true,
-									"typeConversionSettings": {
-										"allowDataTruncation": true,
-										"treatBooleanAsNumber": false
-									}
-								}
-							},
-							"inputs": [
-								{
-									"referenceName": "SQL_DS_ORIGEM",
-									"type": "DatasetReference",
-									"parameters": {
-										"NomeTabela": {
-											"value": "@pipeline().parameters.ParNomeTabelaOrigem",
-											"type": "Expression"
-										}
-									}
-								}
-							],
-							"outputs": [
-								{
-									"referenceName": "SQL_DS_DESTINO",
-									"type": "DatasetReference",
-									"parameters": {
-										"NomeTabela": {
-											"value": "@concat(pipeline().parameters.ParNomeSchemaDestino,pipeline().parameters.ParNomeAlias,pipeline().parameters.ParNomeTabelaDestino)",
-											"type": "Expression"
-										}
-									}
-								}
-							]
+								"enableStaging": false
+							}
 						},
 						{
 							"name": "SQL_I_RowsCopied",
@@ -633,86 +451,6 @@
 									"type": "Expression"
 								}
 							}
-						},
-						{
-							"name": "I_OnPremisse_AzureDL",
-							"type": "Copy",
-							"dependsOn": [
-								{
-									"activity": "Limpa I Tabela Destino",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"policy": {
-								"timeout": "7.00:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"source": {
-									"type": "SqlServerSource",
-									"sqlReaderQuery": {
-										"value": "@concat('select ',activity('LeDataProcessamento').output.firstRow.DSC_COLUNAS_NAO_SENSIVEIS,' from ',pipeline().parameters.ParNomeSchemaOrigem,if(equals(pipeline().parameters.ParNomeSchemaOrigem,''),'','.'),pipeline().parameters.ParNomeTabelaOrigem,' where ',activity('LeDataProcessamento').output.firstRow.NOM_COLUNA_REFERENCIA,' >= ''',activity('LeDataProcessamento').output.firstRow.DAT_INGESTAO,''' and ',activity('LeDataProcessamento').output.firstRow.NOM_COLUNA_REFERENCIA,' <= ''',activity('LeDataProcessamento').output.firstRow.DAT_PROCESSAMENTO,'''' )",
-										"type": "Expression"
-									},
-									"partitionOption": "None"
-								},
-								"sink": {
-									"type": "ParquetSink",
-									"storeSettings": {
-										"type": "AzureBlobFSWriteSettings"
-									},
-									"formatSettings": {
-										"type": "ParquetWriteSettings"
-									}
-								},
-								"enableStaging": false,
-								"translator": {
-									"type": "TabularTranslator",
-									"typeConversion": true,
-									"typeConversionSettings": {
-										"allowDataTruncation": true,
-										"treatBooleanAsNumber": false
-									}
-								}
-							},
-							"inputs": [
-								{
-									"referenceName": "SQL_DS_ORIGEM",
-									"type": "DatasetReference",
-									"parameters": {
-										"NomeTabela": {
-											"value": "@pipeline().parameters.ParNomeTabelaOrigem",
-											"type": "Expression"
-										}
-									}
-								}
-							],
-							"outputs": [
-								{
-									"referenceName": "ADLS_DS_DESTINO_GEN2",
-									"type": "DatasetReference",
-									"parameters": {
-										"FilePath": {
-											"value": "@toLower(concat(activity('LeCredenciaisDBorigem').output.firstRow.NOM_REGION,'/',replace(activity('LeCredenciaisDBorigem').output.firstRow.NOM_ALIAS,'_',''),'/',toLower(pipeline().parameters.ParNomeTabelaDestino),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,0,4),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,5,2),'/',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,8,2)))",
-											"type": "Expression"
-										},
-										"FileName": {
-											"value": "@toLower(concat(toLower(pipeline().parameters.ParNomeTabelaDestino),'_',substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,0,4),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,5,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,8,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,11,2),substring(activity('LeDataProcessamento').output.firstRow.DAT_HORA_PROCESSAMENTO,14,2),'.csv'))",
-											"type": "Expression"
-										},
-										"FileSystem": {
-											"value": "@activity('LeCredenciaisDBorigem').output.FirstRow.NOM_CONTAINER_RAW",
-											"type": "Expression"
-										}
-									}
-								}
-							]
 						}
 					]
 				}
@@ -781,10 +519,6 @@
 							"type": "Int16"
 						}
 					}
-				},
-				"linkedServiceName": {
-					"referenceName": "SQL_CONTROLE",
-					"type": "LinkedServiceReference"
 				}
 			},
 			{
@@ -824,10 +558,6 @@
 							"type": "String"
 						}
 					}
-				},
-				"linkedServiceName": {
-					"referenceName": "SQL_CONTROLE",
-					"type": "LinkedServiceReference"
 				}
 			}
 		],
@@ -932,6 +662,9 @@
 			"dscParameters": {
 				"type": "String"
 			}
+		},
+		"folder": {
+			"name": "Data Warehouse"
 		},
 		"annotations": []
 	}
