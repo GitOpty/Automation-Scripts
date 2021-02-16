@@ -6,26 +6,6 @@
 			"type": "string",
 			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
-		},
-		"CloudTasyProd_connectionString": {
-			"type": "secureString",
-			"metadata": "Secure string for 'connectionString' of 'CloudTasyProd'"
-		},
-		"CloudTasyProd_NEW_connectionString": {
-			"type": "secureString",
-			"metadata": "Secure string for 'connectionString' of 'CloudTasyProd_NEW'"
-		},
-		"Folder_Nexcore_Consolidado_password": {
-			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'Folder_Nexcore_Consolidado'"
-		},
-		"Folder_Nexcore_Consolidado_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Consolidado"
-		},
-		"Folder_Nexcore_Consolidado_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\sa.automation"
 		}
 	},
 	"variables": {
@@ -2204,58 +2184,124 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/CloudTasyProd')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"name": "[concat(parameters('factoryName'), '/stage_cnv')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"annotations": [],
-				"type": "Oracle",
-				"typeProperties": {
-					"connectionString": "[parameters('CloudTasyProd_connectionString')]"
+				"description": "Tabela stage relativa ao Convenio",
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
 				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CloudTasyProd_NEW')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "Oracle",
-				"typeProperties": {
-					"connectionString": "[parameters('CloudTasyProd_NEW_connectionString')]"
+				"folder": {
+					"name": "Data Warehouse"
 				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Folder_Nexcore_Consolidado')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Folder onde são colocados os arquivos coletados do FTP Nexcore. Script agendado para execução diária no host 10.47.251.10",
 				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('Folder_Nexcore_Consolidado_properties_typeProperties_host')]",
-					"userId": "[parameters('Folder_Nexcore_Consolidado_properties_typeProperties_userId')]",
-					"password": {
-						"type": "SecureString",
-						"value": "[parameters('Folder_Nexcore_Consolidado_password')]"
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "cnv_cod",
+						"type": "varchar"
+					},
+					{
+						"name": "cnv_nome",
+						"type": "varchar"
+					},
+					{
+						"name": "cnv_rsoc",
+						"type": "varchar"
+					},
+					{
+						"name": "cnv_stat",
+						"type": "char"
+					},
+					{
+						"name": "cnv_caixa_fatura",
+						"type": "char"
+					},
+					{
+						"name": "cnv_tab",
+						"type": "varchar"
 					}
+				],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "bi_stg_cnv"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/stage_emp')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
 				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "emp_cod",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "emp_rsoc",
+						"type": "varchar"
+					},
+					{
+						"name": "emp_stat",
+						"type": "char"
+					},
+					{
+						"name": "emp_cgc",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "bi_stg_emp"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/stage_gcc')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "gcc_cod",
+						"type": "char"
+					},
+					{
+						"name": "gcc_descr",
+						"type": "varchar"
+					},
+					{
+						"name": "gcc_str_cod",
+						"type": "char"
+					}
+				],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "bi_stg_gcc"
 				}
 			},
 			"dependsOn": []
