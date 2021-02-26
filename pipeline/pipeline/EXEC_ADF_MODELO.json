@@ -1,0 +1,355 @@
+{
+	"name": "EXEC_ADF_MODELO",
+	"properties": {
+		"activities": [
+			{
+				"name": "GravaLogInicio",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[dbo].[PADFIdPacote]",
+						"storedProcedureParameters": {
+							"COD_TABELA": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.ParCodTabela",
+									"type": "Expression"
+								}
+							},
+							"NOM_PACOTE": {
+								"type": "String",
+								"value": "ADF_MODELO"
+							}
+						},
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "SQL_DS_CONTROLE",
+						"type": "DatasetReference",
+						"parameters": {
+							"NomeTabela": "Tabela"
+						}
+					}
+				}
+			},
+			{
+				"name": "Variaveis-PADFIdPacote",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "GravaLogInicio",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(1,1)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "IndTipoETL",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "TipoETL",
+								"value": {
+									"value": "@activity('GravaLogInicio').output.firstRow.IND_ETL",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "ListaDeEmails",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "IndTipoETL",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "receiver",
+								"value": {
+									"value": "@activity('GravaLogInicio').output.firstRow.DSC_EMAIL_ERRO",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "NomeSchemaOrigemSemNull",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "ListaDeEmails",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "VarNomeSchemaOrigem",
+								"value": {
+									"value": "@activity('GravaLogInicio').output.firstRow.NOM_SCHEMA_ORIGEM",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "IndDestinoDL",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "NomeSchemaOrigemSemNull",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IndDestinoDL",
+								"value": {
+									"value": "@activity('GravaLogInicio').output.firstRow.IND_DESTINO_DL\n",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "IndDestinoSQL",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "IndDestinoDL",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "IndDestinoSQL",
+								"value": {
+									"value": "@activity('GravaLogInicio').output.firstRow.IND_DESTINO_SQL",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "SeTipoETLUPDATE",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Variaveis-PADFIdPacote",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(equals(variables('TipoETL'),'U'),equals(variables('TipoETL'),'I'))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "ExecutaPipelineUPDATE",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "ADF_MODELO",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"ParNomeSchemaOrigem": {
+										"value": "@replace(variables('VarNomeSchemaOrigem'),' ','')",
+										"type": "Expression"
+									},
+									"ParIdPipeline": {
+										"value": "@activity('GravaLogInicio').output.firstRow.COD_LOG",
+										"type": "Expression"
+									},
+									"ParNomeTabelaOrigem": {
+										"value": "@activity('GravaLogInicio').output.firstRow.NOM_TABELA_ORIGEM",
+										"type": "Expression"
+									},
+									"ParNomeSchemaDestino": {
+										"value": "@activity('GravaLogInicio').output.firstRow.NOM_SCHEMA_DESTINO",
+										"type": "Expression"
+									},
+									"ParNomeAlias": {
+										"value": "@activity('GravaLogInicio').output.firstRow.NOM_ALIAS",
+										"type": "Expression"
+									},
+									"ParNomeTabelaDestino": {
+										"value": "@activity('GravaLogInicio').output.firstRow.NOM_TABELA_DESTINO",
+										"type": "Expression"
+									},
+									"ParCodServidor": {
+										"value": "@activity('GravaLogInicio').output.firstRow.COD_SERVIDOR",
+										"type": "Expression"
+									},
+									"ParTipoETL": {
+										"value": "@variables('TipoETL')",
+										"type": "Expression"
+									},
+									"ParIndDestinoDL": {
+										"value": "@variables('IndDestinoDL')",
+										"type": "Expression"
+									},
+									"ParIndDestinoSQL": {
+										"value": "@variables('IndDestinoSQL')",
+										"type": "Expression"
+									},
+									"ParCodTabela": {
+										"value": "@pipeline().parameters.ParCodTabela",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "GravaLogErroUPD",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "ExecutaPipelineUPDATE",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[dbo].[PLogADFItemErro]",
+								"storedProcedureParameters": {
+									"COD_LOG": {
+										"value": {
+											"value": "@activity('GravaLogInicio').output.firstRow.COD_LOG",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"DSC_ERRO": {
+										"value": {
+											"value": "@activity('ExecutaPipelineUPDATE').Error.Message",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"NOM_SCHEMA_ORIGEM": {
+										"value": {
+											"value": "@variables('VarNomeSchemaOrigem')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"NOM_TABELA_ORIGEM": {
+										"value": {
+											"value": "@activity('GravaLogInicio').output.firstRow.NOM_TABELA_ORIGEM",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"COD_TABELA": {
+										"value": {
+											"value": "@pipeline().parameters.ParCodTabela",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "SQL_CONTROLE",
+								"type": "LinkedServiceReference"
+							}
+						},
+						{
+							"name": "MsgErroUPD",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "GravaLogErroUPD",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "MsgErro",
+								"value": {
+									"value": "@concat('Pipeline com erro: ADF_MODELO: [',variables('VarNomeSchemaOrigem'),if(equals(variables('VarNomeSchemaOrigem'),''),'','.'),activity('GravaLogInicio').output.firstRow.NOM_TABELA_ORIGEM,']')",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"ParCodTabela": {
+				"type": "int"
+			}
+		},
+		"variables": {
+			"receiver": {
+				"type": "String",
+				"defaultValue": "arnaldo.junior@dataex.com.br"
+			},
+			"MsgErro": {
+				"type": "String"
+			},
+			"TipoETL": {
+				"type": "String"
+			},
+			"VarNomeSchemaOrigem": {
+				"type": "String"
+			},
+			"IndDestinoDL": {
+				"type": "String"
+			},
+			"IndDestinoSQL": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Data Warehouse"
+		},
+		"annotations": []
+	}
+}
