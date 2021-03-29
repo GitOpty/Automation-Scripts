@@ -30,7 +30,8 @@ usuario = "rodrigo.lima"
 senha = "Rdg110487!@#$"
 
 # CAMINHO GITHUB PYTHON
-link_github_local = "C:/Users/rodrigo.lima/MyGit/Python/Azure/output"
+# link_github_local = "C:/Users/rodrigo.lima/MyGit/Python/Azure/output"
+link_github_local = "C:/Users/rodrigo.lima/OneDrive - Opty/GitHub/Automation-Scripts/Python/Azure/output"
 
 try:
     # response = requests.get(link_sharepoint,auth=HTTPBasicAuth(usuario,senha))    
