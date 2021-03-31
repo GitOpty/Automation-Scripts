@@ -217,6 +217,11 @@ for i in range(len(nm_aba)):
         print(e)    
         next
 
+# CONVERT FORMAT
+df_final.update(df_final['Codigo'].fillna(0)) 
+df_final.astype({"cod_sys":'int32'}).dtypes
+# df_final.astype({"Codigo":'int64'}).dtypes
+
 nm_arq_root = link_github_local + '/depara_sys_regra.csv'    
 salva_arq = df_final.to_csv(nm_arq_root,encoding='utf-8-sig',index=False)
 
@@ -230,7 +235,7 @@ try:
     nome_arquivo = link_github_local + '/log_script.txt'
     arquivo = open(nome_arquivo, 'r+')
 except FileNotFoundError:
-    arquivo = open(nome_arquivo, 'w+')
+    arquivo = open(nome_arquivo, 'w')
     # arquivo.writelines(u'Arquivo criado pois nao existia')
 
 i=int(0)
