@@ -46,7 +46,6 @@ SELECT
 		ELSE smm_tiss_guia_operadora
 	END AS smm_tiss_guia_operadora,
 	smm_tpcod,
-    smm_str,
 	smm_tipo_fatura,
     smm_cod,
 	smm_exec,
@@ -60,7 +59,7 @@ SELECT
 	smm_vlr,
     smm_ajuste_vlr
 FROM
-	smm
+	smm (nolock)
 WHERE 
 	-- smm_dthr_exec >= '2015-01-01 00:00:00'
 	smm_dthr_alter = dateadd(day,-1, getdate())
