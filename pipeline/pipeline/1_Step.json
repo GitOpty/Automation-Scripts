@@ -40,13 +40,8 @@
 				}
 			},
 			{
-				"name": "ForEach1",
-				"type": "ForEach",
-				"dependsOn": [],
-				"userProperties": []
-			},
-			{
-				"name": "If Condition1",
+				"name": "Valid_Cnx_SetVAR",
+				"description": "Valida os parametros da conexão e set as variaveis",
 				"type": "IfCondition",
 				"dependsOn": [
 					{
@@ -58,9 +53,13 @@
 				],
 				"userProperties": [],
 				"typeProperties": {
+					"expression": {
+						"value": "@equals(1,1)",
+						"type": "Expression"
+					},
 					"ifTrueActivities": [
 						{
-							"name": "ServerName",
+							"name": "Server",
 							"type": "SetVariable",
 							"dependsOn": [],
 							"userProperties": [],
@@ -73,17 +72,166 @@
 							}
 						},
 						{
+							"name": "Username",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "ServerDB",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "UserName",
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.NOM_USUARIO",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Password",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Username",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "Password",
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.DESC_PASSWORD",
+									"type": "Expression"
+								}
+							}
+						},
+						{
 							"name": "ServerDB",
 							"type": "SetVariable",
-							"dependsOn": [],
+							"dependsOn": [
+								{
+									"activity": "Server",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
 							"userProperties": [],
 							"typeProperties": {
 								"variableName": "ServerDB",
-								"value": ""
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.NOM_BASE",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Schema_Origem",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Password",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "Schema_Table_Origem",
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.NOM_SCHEMA_ORIGEM",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Nm_Tabela_Origem",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Schema_Origem",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "Nm_Table_Origem",
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.NOM_TABELA_ORIGEM",
+									"type": "Expression"
+								}
 							}
 						}
 					]
 				}
+			},
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Valid_Cnx_SetVAR",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureTableSink",
+						"azureTableInsertType": "merge",
+						"writeBatchSize": 10000
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SQL_DW",
+						"type": "DatasetReference",
+						"parameters": {
+							"NM_TABELA": {
+								"value": "@variables('Nm_Table_Origem')",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AzureTable1",
+						"type": "DatasetReference"
+					}
+				]
 			}
 		],
 		"parameters": {
@@ -102,6 +250,12 @@
 				"type": "String"
 			},
 			"Password": {
+				"type": "String"
+			},
+			"Schema_Table_Origem": {
+				"type": "String"
+			},
+			"Nm_Table_Origem": {
 				"type": "String"
 			}
 		},
