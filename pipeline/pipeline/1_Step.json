@@ -3,7 +3,7 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Lookup1",
+				"name": "Param_Conexao",
 				"type": "Lookup",
 				"dependsOn": [],
 				"policy": {
@@ -17,6 +17,16 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[dbo].[PADFCredenciais_v2]",
+						"storedProcedureParameters": {
+							"COD_TABELA": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.ParCodTabela",
+									"type": "Expression"
+								}
+							}
+						},
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -28,8 +38,73 @@
 						}
 					}
 				}
+			},
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": []
+			},
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Param_Conexao",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"ifTrueActivities": [
+						{
+							"name": "ServerName",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ServerName",
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.NOM_SERVER",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "ServerDB",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ServerDB",
+								"value": ""
+							}
+						}
+					]
+				}
 			}
 		],
+		"parameters": {
+			"ParCodTabela": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"ServerName": {
+				"type": "String"
+			},
+			"ServerDB": {
+				"type": "String"
+			},
+			"UserName": {
+				"type": "String"
+			},
+			"Password": {
+				"type": "String"
+			}
+		},
 		"folder": {
 			"name": "DW"
 		},
