@@ -17,7 +17,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "SELECT \n    B.COD_TABELA\n    ,B.NOM_TABELA_DESTINO                               AS NM_TAB_DW \n    ,B.NOM_SCHEMA_ORIGEM + '.' + B.NOM_TABELA_ORIGEM    AS ROOT_ORG\n    ,B.NOM_SCHEMA_DESTINO + '.'+B.NOM_TABELA_DESTINO    AS ROOT_DEST \n    ,A.DSC_PARAMETROS\nFROM LOG_ADF A\nINNER JOIN CTR_ADF_TABELA_V2 B ON B.COD_TABELA = A.COD_TABELA\nWHERE A.COD_SITUACAO = 0\nORDER BY 1 ASC\n",
+						"sqlReaderQuery": "SELECT DISTINCT\n    B.COD_TABELA\n    ,B.NOM_TABELA_DESTINO                               AS NM_TAB_DW \n    ,B.NOM_SCHEMA_ORIGEM + '.' + B.NOM_TABELA_ORIGEM    AS ROOT_ORG\n    ,B.NOM_SCHEMA_DESTINO + '.'+B.NOM_TABELA_DESTINO    AS ROOT_DEST \n    ,A.DSC_PARAMETROS\nFROM LOG_ADF A\nINNER JOIN CTR_ADF_TABELA_V2 B ON B.COD_TABELA = A.COD_TABELA\nWHERE A.COD_SITUACAO = 0\nORDER BY 1 ASC\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -29,43 +29,8 @@
 				}
 			},
 			{
-				"name": "ForEach1",
-				"type": "ForEach",
-				"dependsOn": [
-					{
-						"activity": "Get Metadata1",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"userProperties": [],
-				"typeProperties": {
-					"items": {
-						"value": "@variables('vList')",
-						"type": "Expression"
-					},
-					"isSequential": true,
-					"activities": [
-						{
-							"name": "Append variable1",
-							"type": "AppendVariable",
-							"dependsOn": [],
-							"userProperties": [],
-							"typeProperties": {
-								"variableName": "vList",
-								"value": {
-									"value": "@activity('Lookup1').output.COD_TABELA",
-									"type": "Expression"
-								}
-							}
-						}
-					]
-				}
-			},
-			{
-				"name": "Get Metadata1",
-				"type": "GetMetadata",
+				"name": "Append variable1",
+				"type": "AppendVariable",
 				"dependsOn": [
 					{
 						"activity": "Lookup1",
@@ -74,25 +39,13 @@
 						]
 					}
 				],
-				"policy": {
-					"timeout": "7.00:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
 				"userProperties": [],
 				"typeProperties": {
-					"dataset": {
-						"referenceName": "CTR_DW",
-						"type": "DatasetReference"
-					},
-					"fieldList": [
-						{
-							"value": "@activity('Lookup1').output.value",
-							"type": "Expression"
-						}
-					]
+					"variableName": "vList",
+					"value": {
+						"value": "@activity('Lookup1').output.COD_TABELA",
+						"type": "Expression"
+					}
 				}
 			}
 		],
