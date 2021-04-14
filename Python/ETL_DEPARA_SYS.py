@@ -27,7 +27,7 @@ ESTB = np.array([
 # SHAREPOINT
 link_sharepoint = "https://hospitaldeolhos93.sharepoint.com/:f:/s/BI/EiuhlsjvEfRMvuvljhlqg-UBHku3qqall8_gAwItghotbw"
 usuario = "rodrigo.lima"
-senha = "Rdg110487!@#$"
+
 
 # CAMINHO GITHUB PYTHON
 # link_github_local = "C:/Users/rodrigo.lima/MyGit/Python/Azure/output"
