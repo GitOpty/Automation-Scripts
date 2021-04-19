@@ -1,0 +1,136 @@
+{
+	"name": "Dev Ciclo da Receita TASY",
+	"properties": {
+		"activities": [
+			{
+				"name": "Retorno Convenio",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "    SELECT        \n        CRM.NR_CONTA\n        ,CRM.NR_SEQ_ITEM_CONTA\n        ,CRM.CD_ITEM\n        ,CR.DT_RECEBIMENTO\n        ,CRM.DT_ATUALIZACAO\n        ,SUM(CRM.VL_GLOSA) as VLR_GLOSA\n        ,SUM(CRM.VL_PAGO)  AS VLR_PAGO        \n    FROM CONVENIO_RETORNO_MOVTO CRM\n    INNER JOIN CONVENIO_RETORNO CR ON CR.NR_SEQUENCIA = CRM.NR_SEQ_RETORNO\n    LEFT JOIN CONVENIO_RETORNO_ITEM CRI ON CRI.NR_SEQUENCIA = NR_SEQ_RET_ITEM\n    \n    GROUP BY\n        CRM.NR_CONTA\n        ,CRM.NR_SEQ_ITEM_CONTA\n        ,CRM.CD_ITEM\n        ,CR.DT_RECEBIMENTO\n       ,CRM.DT_ATUALIZACAO",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"tableOption": "autoCreate"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "NR_CONTA",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "NR_CONTA",
+									"type": "Int",
+									"physicalType": "Int"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_SEQ_ITEM_CONTA",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "NR_SEQ_ITEM_CONTA",
+									"type": "Int",
+									"physicalType": "Int"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ITEM",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "CD_ITEM",
+									"type": "Int",
+									"physicalType": "Int"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_RECEBIMENTO",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "DT_RECEBIMENTO",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_ATUALIZACAO",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "DT_ATUALIZACAO",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "VLR_GLOSA",
+									"type": "Double"
+								},
+								"sink": {
+									"name": "VLR_GLOSA",
+									"type": "Double",
+									"physicalType": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "VLR_PAGO",
+									"type": "Double"
+								},
+								"sink": {
+									"name": "VLR_PAGO",
+									"type": "Double",
+									"physicalType": "Double"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Tasy_Ciclo",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_RETORNO_CONVENIO",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Contas a receber"
+		},
+		"annotations": []
+	}
+}
