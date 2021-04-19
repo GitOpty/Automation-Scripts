@@ -7,7 +7,7 @@
 				"type": "Copy",
 				"dependsOn": [
 					{
-						"activity": "If Condition1",
+						"activity": "Stored procedure1",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -24,7 +24,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "OracleSource",
-						"oracleReaderQuery": "    SELECT        \n        CRM.NR_CONTA\n        ,CRM.NR_SEQ_ITEM_CONTA\n        ,CRM.CD_ITEM\n        ,CR.DT_RECEBIMENTO\n        ,CRM.DT_ATUALIZACAO\n        ,SUM(CRM.VL_GLOSA) as VLR_GLOSA\n        ,SUM(CRM.VL_PAGO)  AS VLR_PAGO        \n    FROM CONVENIO_RETORNO_MOVTO CRM\n    INNER JOIN CONVENIO_RETORNO CR ON CR.NR_SEQUENCIA = CRM.NR_SEQ_RETORNO\n    LEFT JOIN CONVENIO_RETORNO_ITEM CRI ON CRI.NR_SEQUENCIA = NR_SEQ_RET_ITEM\n    \n    GROUP BY\n        CRM.NR_CONTA\n        ,CRM.NR_SEQ_ITEM_CONTA\n        ,CRM.CD_ITEM\n        ,CR.DT_RECEBIMENTO\n       ,CRM.DT_ATUALIZACAO",
+						"oracleReaderQuery": "    SELECT        \n        CRM.NR_CONTA\n        ,CRM.NR_SEQ_ITEM_CONTA\n        ,CRM.CD_ITEM\n        ,CR.DT_RECEBIMENTO\n        ,CRM.DT_ATUALIZACAO\n        ,SUM(CRM.VL_GLOSA) as VLR_GLOSA\n        ,SUM(CRM.VL_PAGO)  AS VLR_PAGO        \n    FROM CONVENIO_RETORNO_MOVTO CRM\n    INNER JOIN CONVENIO_RETORNO CR ON CR.NR_SEQUENCIA = CRM.NR_SEQ_RETORNO\n    LEFT JOIN CONVENIO_RETORNO_ITEM CRI ON CRI.NR_SEQUENCIA = NR_SEQ_RET_ITEM\n    WHERE TRUNC(CRM.DT_ATUALIZACAO,'DD') = TRUNC(SYSDATE,'DD')\n    GROUP BY\n        CRM.NR_CONTA\n        ,CRM.NR_SEQ_ITEM_CONTA\n        ,CRM.CD_ITEM\n        ,CR.DT_RECEBIMENTO\n       ,CRM.DT_ATUALIZACAO",
 						"partitionOption": "None",
 						"queryTimeout": "02:00:00"
 					},
@@ -200,7 +200,34 @@
 						"referenceName": "Oracle_Update_ETL",
 						"type": "DatasetReference"
 					},
-					"firstRowOnly": false
+					"firstRowOnly": true
+				}
+			},
+			{
+				"name": "Stored procedure1",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "If Condition1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[sp_UpdateETL]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
 				}
 			}
 		],
