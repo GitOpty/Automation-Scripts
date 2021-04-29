@@ -1,0 +1,258 @@
+{
+	"name": "Dev Retorno Convenio TASY",
+	"properties": {
+		"activities": [
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Last Date Modify DB Tasy",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(1,1)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Get Metadata1",
+							"type": "GetMetadata",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "AZ_Update_ETL",
+									"type": "DatasetReference"
+								},
+								"fieldList": [
+									"exists"
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Last Date Modify DB Tasy",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT\n    CRM.DT_ATUALIZACAO\nFROM CONVENIO_RETORNO_MOVTO CRM\nWHERE TRUNC(CRM.DT_ATUALIZACAO,'DD') = TRUNC(SYSDATE,'DD')\nAND ROWNUM = 1",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"dataset": {
+						"referenceName": "Oracle_Update_ETL",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": true
+				}
+			},
+			{
+				"name": "Merger Dados",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Copy to Aux AZ",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[dbo].[sp_UpdateETL]"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Copy to Aux AZ",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "If Condition1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT\n    TMP.*\nFROM(\n    SELECT        \n        CRM.NR_SEQUENCIA\n        ,CRM.NR_CONTA\n        ,CRM.NR_SEQ_ITEM_CONTA\n        ,CRM.CD_ITEM\n        ,CR.DT_RECEBIMENTO\n        ,CRM.DT_ATUALIZACAO\n        ,CRM.VL_GLOSA as VLR_GLOSA\n        ,CRM.VL_PAGO  AS VLR_PAGO\n        ,ROW_NUMBER() OVER (PARTITION BY CRM.CD_ITEM,CRM.NR_CONTA,CRM.NR_SEQ_ITEM_CONTA ORDER BY CRM.DT_ATUALIZACAO DESC) ID_ROW\n    FROM CONVENIO_RETORNO_MOVTO CRM\n    INNER JOIN CONVENIO_RETORNO CR ON CR.NR_SEQUENCIA = CRM.NR_SEQ_RETORNO\n    LEFT JOIN CONVENIO_RETORNO_ITEM CRI ON CRI.NR_SEQUENCIA = NR_SEQ_RET_ITEM\n    WHERE TRUNC(CRM.DT_ATUALIZACAO,'DD') = TRUNC(SYSDATE,'DD')\n)TMP\nWHERE TMP.ID_ROW = 1",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"tableOption": "autoCreate"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "NR_CONTA",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "NR_CONTA",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 10
+								}
+							},
+							{
+								"source": {
+									"name": "NR_SEQ_ITEM_CONTA",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "NR_SEQ_ITEM_CONTA",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 10
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ITEM",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "CD_ITEM",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 15
+								}
+							},
+							{
+								"source": {
+									"name": "DT_RECEBIMENTO",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "DT_RECEBIMENTO",
+									"type": "DateTime",
+									"physicalType": "datetime2"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_ATUALIZACAO",
+									"type": "DateTime"
+								},
+								"sink": {
+									"name": "DT_ATUALIZACAO",
+									"type": "DateTime",
+									"physicalType": "datetime2"
+								}
+							},
+							{
+								"source": {
+									"name": "VLR_GLOSA",
+									"type": "Double"
+								},
+								"sink": {
+									"name": "VLR_GLOSA",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "VLR_PAGO",
+									"type": "Double"
+								},
+								"sink": {
+									"name": "VLR_PAGO",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_SEQUENCIA",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "NR_SEQUENCIA",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 18
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Oracle_Update_ETL",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_AUX_RET_CONV",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Ciclo Receita"
+		},
+		"annotations": []
+	}
+}

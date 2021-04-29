@@ -1,0 +1,268 @@
+{
+	"name": "Pipeline_DW",
+	"properties": {
+		"activities": [
+			{
+				"name": "Param_Conexao",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[dbo].[PADFCredenciais_v2]",
+						"storedProcedureParameters": {
+							"COD_TABELA": {
+								"type": "Int32",
+								"value": {
+									"value": "@pipeline().parameters.ParCodTabela",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "SQL_DW",
+						"type": "DatasetReference",
+						"parameters": {
+							"NM_TABELA": "Tabela"
+						}
+					}
+				}
+			},
+			{
+				"name": "Valid_Cnx_SetVAR",
+				"description": "Valida os parametros da conexão e set as variaveis",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Param_Conexao",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(1,1)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "Server",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ServerName",
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.NOM_SERVIDOR",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Username",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "ServerDB",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "UserName",
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.NOM_USUARIO",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Password",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Username",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "Password",
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.DESC_PASSWORD",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "ServerDB",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Server",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "ServerDB",
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.NOM_BASE",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Schema_Origem",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Password",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "Schema_Table_Origem",
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.NOM_SCHEMA_ORIGEM",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Nm_Tabela_Origem",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Schema_Origem",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "Nm_Table_Origem",
+								"value": {
+									"value": "@activity('Param_Conexao').output.firstRow.NOM_TABELA_ORIGEM",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Valid_Cnx_SetVAR",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT * FROM v_bi_cnv",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".csv"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SQL_ORIG",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "TESTE_DW",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"parameters": {
+			"ParCodTabela": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"ServerName": {
+				"type": "String"
+			},
+			"ServerDB": {
+				"type": "String"
+			},
+			"UserName": {
+				"type": "String"
+			},
+			"Password": {
+				"type": "String"
+			},
+			"Schema_Table_Origem": {
+				"type": "String"
+			},
+			"Nm_Table_Origem": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "DW"
+		},
+		"annotations": []
+	}
+}
