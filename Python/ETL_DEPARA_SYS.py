@@ -44,7 +44,7 @@ except:
 else:
 
     # CAMINHO LOCAL PRODUCAO
-    link_local = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))))) + "/Opty/Business Intelligence HO BRASIL - Documentos/Projetos/Power B.I 2.0/Nova Pasta - Marco/De-para"
+    link_local = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(os.path.dirname(os.getcwd()))))) + "\\Opty\\Business Intelligence HO BRASIL - Documentos\\Projetos\\Power B.I 2.0\\Nova Pasta - Marco\\De-para"
     # link_local = os.path.abspath(os.path.dirname(os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(os.getcwd())))))) + "/OneDrive - Opty/MyFiles/0_files"
     # link_local = "c:/Users/rodrigo.lima/OneDrive - Opty/MyFiles/0_files"
     os.chdir(link_local)
