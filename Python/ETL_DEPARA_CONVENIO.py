@@ -74,46 +74,32 @@ for i in range(len(nm_aba)):
         list_aba.insert(x,nm_aba[i][x].strip())
 
     # ABAS QUE PRECISA  SER SELECIONADA
-    word_find = ['PROCEDIMENTOS','PROCEDIMENTO']
+    word_find = ['CONVENIO','CONVENIOS']
     
     # COLUNAS QUE PRECISAM SER SELECIONADA
-    word_col_find = ['CodProcedimento'
-                      ,'Código'
-                      ,'CD_PROCEDIMENTO'
-                      ,'Cód Produto'
-                      ,'Código_do_Procedimento'
-                      ,'Descricao'
-                      ,'Descrição'
-                      ,'Descr.'
-                      ,'Descr'
-                      ,'Descrição Procedimento'
-                      ,'DS_PROCEDIMENTO'
-                      ,'Cirurgias'
-                      ,'Categoria'
-                      ,'Categoria Aux'
-                      ,'Categoria aux'
-                      ,'Classe'
-                      ,'Especialidade'
-                      ,'Esp.'
-                      ,'Esp'
-                      ,'Procedimento'
-                      ,'Proc.'
-                      ,'Proced'
-                      ,'Patologia'
-                      ,'Produto'
-                      ,'Nome do Produto'
+    word_col_find = ['CodConvenio'
+                        ,'COD_CONVENIO'
+                        ,'ID'
+                        ,'cd_convenio'
+                        ,'Convenio'
+                        ,'CONVENIO'
+                        ,'Convenios'
+                        ,'Convênio'
+                        ,'De-para'
+                        ,'De-para Convenio'
+                        ,'Convenio Ajustado'
+                        ,'Categoria convenio'
+                        ,'Categoria convênio'
+                        ,'Tipo Convenio'
+                        ,'Convenio/Particular'
                       ]
 
     # ORDER DAS COLUNAS
-    order1 = ['CodProcedimento','Código','Codigo','Cód.','Cod','Cód Produto','CD_PROCEDIMENTO','Código_do_Procedimento']
-    order2 = ['Descricao','Descrição','Descr.','Descr','Descrição Procedimento','Produto','Nome do Produto','Cirurgias','DS_PROCEDIMENTO']
-    order3 = ['Categoria','Cat.']
-    order4 = ['Categoria Aux','Cat. Aux','Cat.Aux','Categoria aux']
-    order5 = ['Classe']
-    order6 = ['Especialidade','Esp.','Esp']
-    order7 = ['Procedimento','Proc.','Proc','Proced']
-    order8 = ['Patologia']
-    # t = [[1,'CodProcedimento']]
+    order1 = ['COD_CONVENIO','ID','cd_convenio']
+    order2 = ['COnvenio','CONVENIO','Convenios','Convenio']
+    order3 = ['De-para','De-para Convenio','Convenio Ajustado']
+    order4 = ['Categoria convenio','Categoria convênio','Tipo Convenio','Convenio/Particular']
+
 
     try:
         busca = list(set(word_find).intersection(list_aba))
@@ -145,27 +131,21 @@ for i in range(len(nm_aba)):
                 f_col2 = list(set(order2).intersection(n_header))
                 f_col3 = list(set(order3).intersection(n_header))
                 f_col4 = list(set(order4).intersection(n_header))
-                f_col5 = list(set(order5).intersection(n_header))
-                f_col6 = list(set(order6).intersection(n_header))
-                f_col7 = list(set(order7).intersection(n_header))
-                f_col8 = list(set(order8).intersection(n_header))
 
                 # SE NÃO EXISTIR COD
+
                 if len(f_col) == 0:
                     new_df['Codigo'] = 0
 
                 try:
-                    new_df = new_df.rename({f_col[0]:'Codigo'}, axis='columns')
+                    new_df = new_df.rename({f_col[0]:'CODIGO'}, axis='columns')
                 except:
                     print(nm_sh)
 
-                new_df = new_df.rename({f_col2[0]:'Descricao'}, axis='columns')
-                new_df = new_df.rename({f_col3[0]:'Categoria'}, axis='columns')
-                new_df = new_df.rename({f_col4[0]:'Categoria_Aux'}, axis='columns')
-                new_df = new_df.rename({f_col5[0]:'Classe'}, axis='columns')
-                new_df = new_df.rename({f_col6[0]:'Especialidade'}, axis='columns')
-                new_df = new_df.rename({f_col7[0]:'Procedimento'}, axis='columns')
-                new_df = new_df.rename({f_col8[0]:'Patologia'}, axis='columns')
+                new_df = new_df.rename({f_col2[0]:'DESCRICAO'}, axis='columns')
+                new_df = new_df.rename({f_col3[0]:'CONVENIO_DEPARA'}, axis='columns')
+                new_df = new_df.rename({f_col4[0]:'TP_CONVENIO'}, axis='columns')
+
 
                 
                 array_nm_aba = np.array(nm_aba)    
@@ -183,8 +163,8 @@ for i in range(len(nm_aba)):
                             unidade = [ESTB[b][0]]
                             f = list(set(nw).intersection(unidade))
                             if len(f) > 0:
-                                new_df['cod_sys'] = ESTB[b][1]
-                                new_df['nm_sys'] = ESTB[b][0]
+                                new_df['COD_SYS'] = ESTB[b][1]
+                                new_df['NM_SYS'] = ESTB[b][0]
                         except:
                             print("Sem dados")    
 
@@ -195,7 +175,7 @@ for i in range(len(nm_aba)):
                     #     new_df['cod_sys'] = ESTB[b][1] 
                     #     new_df['nm_sys'] = ESTB[b][0] 
 
-                col_names = ['cod_sys','nm_sys','Codigo','Descricao','Categoria','Categoria_Aux','Classe','Especialidade','Procedimento','Patologia']
+                col_names = ['COD_SYS','NM_SYS','CODIGO','DESCRICAO','CONVENIO_DEPARA','TP_CONVENIO']
                 new_df = new_df.reindex(columns=col_names)
 
                 if k == 0:
@@ -218,11 +198,11 @@ for i in range(len(nm_aba)):
         next
 
 # CONVERT FORMAT
-df_final.update(df_final['Codigo'].fillna(0)) 
-df_final.astype({"cod_sys":'int32'}).dtypes
-# df_final.astype({"Codigo":'int64'}).dtypes
+df_final.update(df_final['CODIGO'].fillna(0)) 
+df_final.astype({"COD_SYS":'int32'}).dtypes
+df_final.astype({"CODIGO":'int64'}).dtypes
 
-nm_arq_root = link_github_local + '/depara_sys_regra.csv'    
+nm_arq_root = link_github_local + '/depara_sys_regra_convenio.csv'    
 salva_arq = df_final.to_csv(nm_arq_root,encoding='utf-8-sig',index=False)
 
 fim = datetime.datetime.now()
