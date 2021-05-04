@@ -200,7 +200,7 @@ for i in range(len(nm_aba)):
 # CONVERT FORMAT
 df_final.update(df_final['CODIGO'].fillna(0)) 
 df_final.astype({"COD_SYS":'int32'}).dtypes
-df_final.astype({"CODIGO":'int64'}).dtypes
+df_final['CODIGO'] = df_final["CODIGO"].astype(int)
 
 nm_arq_root = link_github_local + '/depara_sys_regra_convenio.csv'    
 salva_arq = df_final.to_csv(nm_arq_root,encoding='utf-8-sig',index=False)
