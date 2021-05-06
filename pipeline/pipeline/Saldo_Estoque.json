@@ -1,6 +1,1176 @@
 {
 	"name": "Saldo_Estoque",
 	"properties": {
+		"activities": [
+			{
+				"name": "Saldo Tasy HTML",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "Select Distinct Saldo_Estoque.Cd_Estabelecimento,\n    Nm_Fantasia_Estab,\n    Saldo_Estoque.Cd_Local_Estoque,\n    Ds_Local_Estoque,\n    Saldo_Estoque.Cd_Material,\n    Case \n        When Ds_Familia Is Null Then 'Sem classificação'\n        Else Ds_Familia\n        End Familia_Padrao,\n    Ds_Classe_Material Classe_Material,\n    Ds_Subgrupo_Material Subgrupo,\n    Ds_Grupo_Material Grupo,\n    Ds_Fabricante Fabricante,\n    Ds_Reduzida,    \n    To_Char(Qt_Estoque) Qt_Estoque,\n    To_Char(Vl_Custo_Medio) Vl_Custo_Medio\n    \n    From Fast_Ops.Saldo_Estoque\n    \n    Left Join Fast_Ops.Estabelecimento\n    On (Saldo_Estoque.Cd_Estabelecimento = Estabelecimento.Cd_Estabelecimento)\n    \n    Left Join Fast_Ops.Local_Estoque\n    On (Local_Estoque.Cd_Estabelecimento = Saldo_Estoque.Cd_Estabelecimento And\n        Local_Estoque.Cd_Local_Estoque = Saldo_Estoque.Cd_Local_Estoque)\n        \n    Left Join Fast_Ops.Material\n    On (Saldo_Estoque.Cd_Material = Material.Cd_Material) \n    \n    Left Join Fast_Ops.Material_Familia\n    On (Material.Nr_Seq_Familia = Material_Familia.Nr_Sequencia)\n    \n    Left Join Fast_Ops.Classe_Material\n    On (Material.Cd_Classe_Material = Classe_Material.Cd_Classe_Material)\n    \n    Left Join Fast_Ops.Subgrupo_Material\n    On (Classe_Material.Cd_Subgrupo_Material = Subgrupo_Material.Cd_Subgrupo_Material)\n    \n    Left Join Fast_Ops.Grupo_Material\n    On (Subgrupo_Material.Cd_Grupo_Material = Grupo_Material.Cd_Grupo_Material)\n    \n    Left Join Fast_Ops.Mat_Fabricante\n    On Material.Nr_Seq_Fabric =  Mat_Fabricante.Nr_Sequencia\n    \n    Where To_Char(Dt_Mesano_Referencia,'DD/MM/YYYY') = To_Char(Trunc(Sysdate,'MM'),'DD/MM/YYYY')",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "NM_FANTASIA_ESTAB"
+								},
+								"sink": {
+									"name": "NM_FANTASIA_ESTAB",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_LOCAL_ESTOQUE"
+								},
+								"sink": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_LOCAL_ESTOQUE"
+								},
+								"sink": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MATERIAL"
+								},
+								"sink": {
+									"name": "CD_MATERIAL",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "FAMILIA_PADRAO"
+								},
+								"sink": {
+									"name": "FAMILIA_PADRAO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CLASSE_MATERIAL"
+								},
+								"sink": {
+									"name": "CLASSE_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "SUBGRUPO"
+								},
+								"sink": {
+									"name": "SUBGRUPO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "GRUPO"
+								},
+								"sink": {
+									"name": "GRUPO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FABRICANTE"
+								},
+								"sink": {
+									"name": "FABRICANTE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_REDUZIDA"
+								},
+								"sink": {
+									"name": "DS_REDUZIDA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_ESTOQUE"
+								},
+								"sink": {
+									"name": "QT_ESTOQUE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_CUSTO_MEDIO"
+								},
+								"sink": {
+									"name": "VL_CUSTO_MEDIO",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_Estoque_Saldo_Tasy_HTML",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Saldo Tasy Delphi",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select distinct saldo_estoque.cd_estabelecimento,--´~\n    nm_fantasia_estab,\n    saldo_estoque.cd_local_estoque,\n    ds_local_estoque,\n    saldo_estoque.cd_material,\n    case \n        when ds_familia is null then 'Sem classificação'\n        else ds_familia\n        end familia_padrao,\n    ds_classe_material classe_material,\n    ds_subgrupo_material Subgrupo,\n    ds_grupo_material Grupo,\n    ds_fabricante Fabricante,\n    ds_reduzida,    \n    to_char(qt_estoque) qt_estoque,\n    to_char(vl_custo_medio) vl_custo_medio\n    \n    from saldo_estoque\n    \n    left join estabelecimento\n    on (saldo_estoque.cd_estabelecimento = estabelecimento.cd_estabelecimento)\n    \n    left join local_estoque\n    on (local_estoque.cd_estabelecimento = saldo_estoque.cd_estabelecimento AND\n        local_estoque.cd_local_estoque = saldo_estoque.cd_local_estoque)\n        \n    left join material\n    on (saldo_estoque.cd_material = material.cd_material) \n    \n    left join material_familia\n    on (material.nr_seq_familia = material_familia.nr_sequencia)\n    \n    left join classe_material\n    on (material.cd_classe_material = classe_material.cd_classe_material)\n    \n    left join subgrupo_material\n    on (classe_material.cd_subgrupo_material = subgrupo_material.cd_subgrupo_material)\n    \n    left join grupo_material\n    on (subgrupo_material.cd_grupo_material = grupo_material.cd_grupo_material)\n    \n    left join mat_fabricante\n    on material.nr_seq_fabric =  mat_fabricante.nr_sequencia    \n  \n    Where To_Char(Dt_Mesano_Referencia,'DD/MM/YYYY') = To_Char(Trunc(Sysdate,'MM'),'DD/MM/YYYY')",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SadallaTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_Estoque_Saldo_Tasy_DELPHI",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Saldo Smart ITG",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT DISTINCT ETQ_SBA_COD\n    , sba_nome\n    , str_e.str_nome\n    , ETQ_MAT_COD\n    , gmm_nome\n    , lma_nome\n    , fne_nome_fantasia\n    , mat_desc_resumida\n    , etq_ident_lote\n    , ETQ_QUANTIDADE \n    , ETQ_CML_PRECO_MEDIO\nFROM etq  with (nolock)\nLEFT JOIN mat  with (nolock)\n    ON etq_mat_cod = mat_cod\nLEFT JOIN gmm  with (nolock)\n    ON gmm_cod = mat_gmm_cod\nLEFT JOIN lma with (nolock)\n    ON lma_gmm_cod = gmm_cod\nLEFT JOIN sba  with (nolock)\n    ON sba_cod = etq_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN mmc with (nolock)\n    ON mmc_mat_cod = etq_MAT_COD\nLEFT JOIN fne with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nWHERE etq_mat_cod <> 0\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ETQ_SBA_COD",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "ETQ_SBA_COD",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "sba_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "sba_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "str_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "str_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_MAT_COD",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ETQ_MAT_COD",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "gmm_nome",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "gmm_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "lma_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "lma_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fne_nome_fantasia",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fne_nome_fantasia",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "mat_desc_resumida",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "mat_desc_resumida",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "etq_ident_lote",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "etq_ident_lote",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_QUANTIDADE",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 18
+								},
+								"sink": {
+									"name": "ETQ_QUANTIDADE",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_CML_PRECO_MEDIO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 10,
+									"precision": 20
+								},
+								"sink": {
+									"name": "ETQ_CML_PRECO_MEDIO",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_ITAIGARA_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_Estoque_Saldo_Smart_ITG",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Saldo Smart ITB",
+				"description": "",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT DISTINCT ETQ_SBA_COD\n    , sba_nome\n    , str_e.str_nome\n    , ETQ_MAT_COD\n    , gmm_nome\n    , lma_nome\n    , fne_nome_fantasia\n    , mat_desc_resumida\n    , etq_ident_lote\n    , ETQ_QUANTIDADE \n    , ETQ_CML_PRECO_MEDIO\nFROM etq  with (nolock)\nLEFT JOIN mat  with (nolock)\n    ON etq_mat_cod = mat_cod\nLEFT JOIN gmm  with (nolock)\n    ON gmm_cod = mat_gmm_cod\nLEFT JOIN lma with (nolock)\n    ON lma_gmm_cod = gmm_cod\nLEFT JOIN sba  with (nolock)\n    ON sba_cod = etq_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN mmc with (nolock)\n    ON mmc_mat_cod = etq_MAT_COD\nLEFT JOIN fne with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nWHERE etq_mat_cod <> 0\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ETQ_SBA_COD",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "ETQ_SBA_COD",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "sba_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "sba_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "str_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "str_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_MAT_COD",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ETQ_MAT_COD",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "gmm_nome",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "gmm_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "lma_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "lma_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fne_nome_fantasia",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fne_nome_fantasia",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "mat_desc_resumida",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "mat_desc_resumida",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "etq_ident_lote",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "etq_ident_lote",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_QUANTIDADE",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 18
+								},
+								"sink": {
+									"name": "ETQ_QUANTIDADE",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_CML_PRECO_MEDIO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 10,
+									"precision": 20
+								},
+								"sink": {
+									"name": "ETQ_CML_PRECO_MEDIO",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_ITABUNA_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_Estoque_Saldo_Smart_ITB",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Saldo Smart IOF",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT DISTINCT ETQ_SBA_COD\n    , sba_nome\n    , str_e.str_nome\n    , ETQ_MAT_COD\n    , gmm_nome\n    , lma_nome\n    , fne_nome_fantasia\n    , mat_desc_resumida\n    , etq_ident_lote\n    , ETQ_QUANTIDADE \n    , ETQ_CML_PRECO_MEDIO\nFROM etq  with (nolock)\nLEFT JOIN mat  with (nolock)\n    ON etq_mat_cod = mat_cod\nLEFT JOIN gmm  with (nolock)\n    ON gmm_cod = mat_gmm_cod\nLEFT JOIN lma with (nolock)\n    ON lma_gmm_cod = gmm_cod\nLEFT JOIN sba  with (nolock)\n    ON sba_cod = etq_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN mmc with (nolock)\n    ON mmc_mat_cod = etq_MAT_COD\nLEFT JOIN fne with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nWHERE etq_mat_cod <> 0\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ETQ_SBA_COD",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "ETQ_SBA_COD",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "sba_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "sba_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "str_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "str_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_MAT_COD",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ETQ_MAT_COD",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "gmm_nome",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "gmm_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "lma_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "lma_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fne_nome_fantasia",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fne_nome_fantasia",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "mat_desc_resumida",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "mat_desc_resumida",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "etq_ident_lote",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "etq_ident_lote",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_QUANTIDADE",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 18
+								},
+								"sink": {
+									"name": "ETQ_QUANTIDADE",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_CML_PRECO_MEDIO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 10,
+									"precision": 20
+								},
+								"sink": {
+									"name": "ETQ_CML_PRECO_MEDIO",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_IOF_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_Estoque_Saldo_Smart_IOF",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Saldo Smart HOSL",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT DISTINCT ETQ_SBA_COD\n    , sba_nome\n    , str_e.str_nome\n    , ETQ_MAT_COD\n    , gmm_nome\n    , lma_nome\n    , fne_nome_fantasia\n    , mat_desc_resumida\n    , etq_ident_lote\n    , ETQ_QUANTIDADE \n    , ETQ_CML_PRECO_MEDIO\nFROM etq  with (nolock)\nLEFT JOIN mat  with (nolock)\n    ON etq_mat_cod = mat_cod\nLEFT JOIN gmm  with (nolock)\n    ON gmm_cod = mat_gmm_cod\nLEFT JOIN lma with (nolock)\n    ON lma_gmm_cod = gmm_cod\nLEFT JOIN sba  with (nolock)\n    ON sba_cod = etq_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN mmc with (nolock)\n    ON mmc_mat_cod = etq_MAT_COD\nLEFT JOIN fne with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nWHERE etq_mat_cod <> 0\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ETQ_SBA_COD",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "ETQ_SBA_COD",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "sba_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "sba_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "str_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "str_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_MAT_COD",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ETQ_MAT_COD",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "gmm_nome",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "gmm_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "lma_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "lma_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fne_nome_fantasia",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fne_nome_fantasia",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "mat_desc_resumida",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "mat_desc_resumida",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "etq_ident_lote",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "etq_ident_lote",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_QUANTIDADE",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 18
+								},
+								"sink": {
+									"name": "ETQ_QUANTIDADE",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_CML_PRECO_MEDIO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 10,
+									"precision": 20
+								},
+								"sink": {
+									"name": "ETQ_CML_PRECO_MEDIO",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_Estoque_Saldo_Smart_HOSL",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Saldo Smart Oftalmoclin",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT DISTINCT ETQ_SBA_COD\n    , sba_nome\n    , str_e.str_nome\n    , ETQ_MAT_COD\n    , gmm_nome\n    , lma_nome\n    , fne_nome_fantasia\n    , mat_desc_resumida\n    , etq_ident_lote\n    , ETQ_QUANTIDADE \n    , ETQ_CML_PRECO_MEDIO\nFROM etq  with (nolock)\nLEFT JOIN mat  with (nolock)\n    ON etq_mat_cod = mat_cod\nLEFT JOIN gmm  with (nolock)\n    ON gmm_cod = mat_gmm_cod\nLEFT JOIN lma with (nolock)\n    ON lma_gmm_cod = gmm_cod\nLEFT JOIN sba  with (nolock)\n    ON sba_cod = etq_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN mmc with (nolock)\n    ON mmc_mat_cod = etq_MAT_COD\nLEFT JOIN fne with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nWHERE etq_mat_cod <> 0\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ETQ_SBA_COD",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "ETQ_SBA_COD",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "sba_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "sba_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "str_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "str_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_MAT_COD",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ETQ_MAT_COD",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "gmm_nome",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "gmm_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "lma_nome",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "lma_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fne_nome_fantasia",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fne_nome_fantasia",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "mat_desc_resumida",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "mat_desc_resumida",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "etq_ident_lote",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "etq_ident_lote",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_QUANTIDADE",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 18
+								},
+								"sink": {
+									"name": "ETQ_QUANTIDADE",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "ETQ_CML_PRECO_MEDIO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 10,
+									"precision": 20
+								},
+								"sink": {
+									"name": "ETQ_CML_PRECO_MEDIO",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_Estoque_Saldo_Smart_Oftalmoclin",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
 		"folder": {
 			"name": "Estoque"
 		},
