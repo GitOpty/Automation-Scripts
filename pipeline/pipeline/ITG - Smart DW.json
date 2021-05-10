@@ -1,0 +1,95 @@
+{
+	"name": "ITG - Smart DW",
+	"properties": {
+		"activities": [
+			{
+				"name": "Table to ETL",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT DISTINCT \nCAT.COD_TABELA\n,CAT.NOM_SCHEMA_ORIGEM + '.' + CAT.NOM_TABELA_ORIGEM    AS TB_ORIGEM\n,CAT.NOM_SCHEMA_DESTINO + '.' + CAT.NOM_TABELA_DESTINO  AS TB_DESTINO\n,LA.DSC_PARAMETROS\nFROM DBO.CTR_ADF_TABELA CAT (NOLOCK)\nINNER JOIN DBO.LOG_ADF LA (NOLOCK) ON LA.COD_TABELA = CAT.COD_TABELA\nWHERE LA.COD_SITUACAO = 0\nAND CAT.COD_TABELA IN (10,14)",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "AZ_ETL_DESTINO",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Var Tab",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Table to ETL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "ARRAY_TABELAS",
+					"value": {
+						"value": "@activity('Table to ETL').output.value",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Var Tab",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"activities": [
+						{
+							"name": "Copy data1",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"enableStaging": false
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"ARRAY_TABELAS": {
+				"type": "Array"
+			}
+		},
+		"folder": {
+			"name": "DW"
+		},
+		"annotations": []
+	}
+}
