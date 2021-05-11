@@ -33,7 +33,7 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "Table to ETL",
+						"activity": "ArrayTableETL",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -42,25 +42,85 @@
 				"userProperties": [],
 				"typeProperties": {
 					"items": {
-						"value": "activity('Table to ETL').output",
+						"value": "@variables('ARRAY_TABELAS')",
 						"type": "Expression"
 					},
 					"isSequential": true,
 					"activities": [
 						{
-							"name": "Set variable1",
+							"name": "TbOrigem",
 							"type": "SetVariable",
 							"dependsOn": [],
 							"userProperties": [],
 							"typeProperties": {
 								"variableName": "ORIGEM_TB",
 								"value": {
-									"value": "@item().name",
+									"value": "@item().TB_ORIGEM",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "TbDestino",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "TbOrigem",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "DESTINO_TB",
+								"value": {
+									"value": "@item().TB_DESTINO",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Query",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "TbDestino",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "QUERY",
+								"value": {
+									"value": "@item().DSC_PARAMETRO",
 									"type": "Expression"
 								}
 							}
 						}
 					]
+				}
+			},
+			{
+				"name": "ArrayTableETL",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Table to ETL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "ARRAY_TABELAS",
+					"value": {
+						"value": "@activity('Table to ETL').output.value",
+						"type": "Expression"
+					}
 				}
 			}
 		],
@@ -69,6 +129,12 @@
 				"type": "Array"
 			},
 			"ORIGEM_TB": {
+				"type": "String"
+			},
+			"DESTINO_TB": {
+				"type": "String"
+			},
+			"QUERY": {
 				"type": "String"
 			}
 		},
