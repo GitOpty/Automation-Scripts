@@ -17,7 +17,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "SELECT DISTINCT \nCAT.COD_TABELA\n,CAT.NOM_SCHEMA_ORIGEM + '.' + CAT.NOM_TABELA_ORIGEM    AS TB_ORIGEM\n,CAT.NOM_SCHEMA_DESTINO + '.' + CAT.NOM_TABELA_DESTINO  AS TB_DESTINO\n,CAT.NOM_SCHEMA_DESTINO\n,CAT.NOM_TABELA_DESTINO\n,LA.DSC_PARAMETROS\nFROM DBO.CTR_ADF_TABELA CAT (NOLOCK)\nINNER JOIN DBO.LOG_ADF LA (NOLOCK) ON LA.COD_TABELA = CAT.COD_TABELA\nWHERE LA.COD_SITUACAO = 0\nAND CAT.COD_TABELA IN (10,14)",
+						"sqlReaderQuery": "SELECT DISTINCT \nCAT.COD_TABELA\n,CAT.NOM_SCHEMA_ORIGEM + '.' + CAT.NOM_TABELA_ORIGEM    AS TB_ORIGEM\n,CAT.NOM_SCHEMA_DESTINO + '.' + CAT.NOM_TABELA_DESTINO  AS TB_DESTINO\n,CAT.NOM_SCHEMA_DESTINO\n,CAT.NOM_TABELA_DESTINO\n,LA.DSC_PARAMETROS\n,CAT.IND_ETL\nFROM DBO.CTR_ADF_TABELA CAT (NOLOCK)\nINNER JOIN DBO.LOG_ADF LA (NOLOCK) ON LA.COD_TABELA = CAT.COD_TABELA\nWHERE LA.COD_SITUACAO = 0\nAND CAT.COD_TABELA IN (10,14)",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -101,76 +101,6 @@
 							}
 						},
 						{
-							"name": "If Condition1",
-							"type": "IfCondition",
-							"dependsOn": [
-								{
-									"activity": "NmTbDestino",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
-							"userProperties": [],
-							"typeProperties": {
-								"expression": {
-									"value": "@equals(1,1)",
-									"type": "Expression"
-								},
-								"ifTrueActivities": [
-									{
-										"name": "Copy data1",
-										"type": "Copy",
-										"dependsOn": [],
-										"policy": {
-											"timeout": "7.00:00:00",
-											"retry": 0,
-											"retryIntervalInSeconds": 30,
-											"secureOutput": false,
-											"secureInput": false
-										},
-										"userProperties": [],
-										"typeProperties": {
-											"source": {
-												"type": "SqlServerSource",
-												"sqlReaderQuery": {
-													"value": "@variables('QUERY')",
-													"type": "Expression"
-												},
-												"queryTimeout": "02:00:00",
-												"partitionOption": "None"
-											},
-											"sink": {
-												"type": "AzureSqlSink",
-												"disableMetricsCollection": false
-											},
-											"enableStaging": false,
-											"translator": {
-												"type": "TabularTranslator",
-												"typeConversion": true,
-												"typeConversionSettings": {
-													"allowDataTruncation": true,
-													"treatBooleanAsNumber": false
-												}
-											}
-										},
-										"inputs": [
-											{
-												"referenceName": "SQL_ORIG",
-												"type": "DatasetReference"
-											}
-										],
-										"outputs": [
-											{
-												"referenceName": "AZ_ETL_DESTINO",
-												"type": "DatasetReference"
-											}
-										]
-									}
-								]
-							}
-						},
-						{
 							"name": "SchemaDestino",
 							"type": "SetVariable",
 							"dependsOn": [
@@ -208,6 +138,106 @@
 									"value": "@item().NOM_TABELA_DESTINO",
 									"type": "Expression"
 								}
+							}
+						},
+						{
+							"name": "TpETL",
+							"description": "U = Update, Truncate table\nI = Incremental",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "NmTbDestino",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "TP_ETL",
+								"value": {
+									"value": "@item().IND_ETL",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Switch1",
+							"type": "Switch",
+							"dependsOn": [
+								{
+									"activity": "TpETL",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"on": {
+									"value": "@variables('TP_ETL')",
+									"type": "Expression"
+								},
+								"cases": [
+									{
+										"value": "U",
+										"activities": [
+											{
+												"name": "Update Table DW",
+												"type": "Copy",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "7.00:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "SqlServerSource",
+														"sqlReaderQuery": {
+															"value": "@variables('QUERY')",
+															"type": "Expression"
+														},
+														"queryTimeout": "02:00:00",
+														"partitionOption": "None"
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"preCopyScript": {
+															"value": "@{concat('TRUNCATE TABLE ''',variables('DESTINO_TB'))}",
+															"type": "Expression"
+														},
+														"disableMetricsCollection": false
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "SQL_ORIG",
+														"type": "DatasetReference"
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "AZ_ETL_DESTINO",
+														"type": "DatasetReference"
+													}
+												]
+											}
+										]
+									}
+								]
 							}
 						}
 					]
@@ -251,6 +281,9 @@
 				"type": "String"
 			},
 			"TABLE_DEST": {
+				"type": "String"
+			},
+			"TP_ETL": {
 				"type": "String"
 			}
 		},
