@@ -1,0 +1,178 @@
+{
+	"name": "draft",
+	"properties": {
+		"activities": [
+			{
+				"name": "Saldo Tasy Delphi",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select distinct saldo_estoque.cd_estabelecimento,--´~\n    nm_fantasia_estab,\n    saldo_estoque.cd_local_estoque,\n    ds_local_estoque,\n    saldo_estoque.cd_material,\n    case \n        when ds_familia is null then 'Sem classificação'\n        else ds_familia\n        end familia_padrao,\n    ds_classe_material classe_material,\n    ds_subgrupo_material Subgrupo,\n    ds_grupo_material Grupo,\n    ds_fabricante Fabricante,\n    ds_reduzida,    \n    to_char(qt_estoque) qt_estoque,\n    to_char(vl_custo_medio) vl_custo_medio\n    \n    from saldo_estoque\n    \n    left join estabelecimento\n    on (saldo_estoque.cd_estabelecimento = estabelecimento.cd_estabelecimento)\n    \n    left join local_estoque\n    on (local_estoque.cd_estabelecimento = saldo_estoque.cd_estabelecimento AND\n        local_estoque.cd_local_estoque = saldo_estoque.cd_local_estoque)\n        \n    left join material\n    on (saldo_estoque.cd_material = material.cd_material) \n    \n    left join material_familia\n    on (material.nr_seq_familia = material_familia.nr_sequencia)\n    \n    left join classe_material\n    on (material.cd_classe_material = classe_material.cd_classe_material)\n    \n    left join subgrupo_material\n    on (classe_material.cd_subgrupo_material = subgrupo_material.cd_subgrupo_material)\n    \n    left join grupo_material\n    on (subgrupo_material.cd_grupo_material = grupo_material.cd_grupo_material)\n    \n    left join mat_fabricante\n    on material.nr_seq_fabric =  mat_fabricante.nr_sequencia    \n  \n    Where To_Char(Dt_Mesano_Referencia,'DD/MM/YYYY') = To_DATE('01/04/2021','DD/MM/YYYY')",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "NM_FANTASIA_ESTAB"
+								},
+								"sink": {
+									"name": "NM_FANTASIA_ESTAB",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_LOCAL_ESTOQUE"
+								},
+								"sink": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_LOCAL_ESTOQUE"
+								},
+								"sink": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MATERIAL"
+								},
+								"sink": {
+									"name": "CD_MATERIAL",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "FAMILIA_PADRAO"
+								},
+								"sink": {
+									"name": "FAMILIA_PADRAO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CLASSE_MATERIAL"
+								},
+								"sink": {
+									"name": "CLASSE_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "SUBGRUPO"
+								},
+								"sink": {
+									"name": "SUBGRUPO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "GRUPO"
+								},
+								"sink": {
+									"name": "GRUPO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FABRICANTE"
+								},
+								"sink": {
+									"name": "FABRICANTE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_REDUZIDA"
+								},
+								"sink": {
+									"name": "DS_REDUZIDA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_ESTOQUE"
+								},
+								"sink": {
+									"name": "QT_ESTOQUE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_CUSTO_MEDIO"
+								},
+								"sink": {
+									"name": "VL_CUSTO_MEDIO",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SadallaTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_Estoque_Saldo_Tasy_DELPHI",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Estoque"
+		},
+		"annotations": []
+	}
+}
