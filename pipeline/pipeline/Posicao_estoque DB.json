@@ -1,0 +1,49 @@
+{
+	"name": "Posicao_estoque DB",
+	"properties": {
+		"activities": [
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select distinct \n    TO_CHAR(saldo_estoque.cd_estabelecimento)           AS CD_ESTABELECIMENTO,\n    nm_fantasia_estab                                   AS DS_ESTABELECIMENTO,\n    TO_CHAR(saldo_estoque.cd_local_estoque)             AS CD_LOCAL_ESTOQUE,\n    ds_local_estoque,\n    0                                                   AS CD_ALMOXERIFADO,\n    ''                                                  AS DS_ALMOXERIFADO,\n    CAST(saldo_estoque.cd_material AS INT)              AS CD_MATERIAL,\n    MATERIAL.ds_reduzida                                AS DS_MATERIAL_SHORT,\n    TO_CHAR(classe_material.CD_CLASSE_MATERIAL)         AS CD_CLASSE_MATERIAL,    \n    classe_material.ds_classe_material                  AS DS_CLASSE_MATERIAL,\n    TO_CHAR(grupo_material.CD_GRUPO_MATERIAL)           AS CD_GRUPO_MATERIAL,\n    ds_grupo_material                                   AS DS_GRUPO_MATERIAL,\n   -- ds_fabricante Fabricante,       \n    qt_estoque                                          AS QT_ESTOQUE,\n    ROUND(vl_custo_medio)                               AS VL_MED_UNIT,\n    ROUND(vl_custo_medio * QT_ESTOQUE,2)                AS VL_TOTAL,\n    TO_CHAR(MATERIAL.IE_CONSIGNADO)                     AS IE_CONSIGNADO\n    from saldo_estoque\n    \n    left join estabelecimento\n    on (saldo_estoque.cd_estabelecimento = estabelecimento.cd_estabelecimento)\n    \n    left join local_estoque\n    on (local_estoque.cd_estabelecimento = saldo_estoque.cd_estabelecimento AND\n        local_estoque.cd_local_estoque = saldo_estoque.cd_local_estoque)\n        \n    left join material\n    on (saldo_estoque.cd_material = material.cd_material) \n    \n    left join material_familia\n    on (material.nr_seq_familia = material_familia.nr_sequencia)\n    \n    left join classe_material\n    on (material.cd_classe_material = classe_material.cd_classe_material)\n    \n    left join subgrupo_material\n    on (classe_material.cd_subgrupo_material = subgrupo_material.cd_subgrupo_material)\n    \n    left join grupo_material\n    on (subgrupo_material.cd_grupo_material = grupo_material.cd_grupo_material)\n    \n    left join mat_fabricante\n    on material.nr_seq_fabric =  mat_fabricante.nr_sequencia    \n  \n    Where To_Char(Dt_Mesano_Referencia,'DD/MM/YYYY') = TO_CHAR(TRUNC(SYSDATE,'MM')-30,'DD/MM/YYYY')",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"tableOption": "autoCreate"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_POSICAO_ESTOQUE",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Estoque"
+		},
+		"annotations": []
+	}
+}
