@@ -22,7 +22,9 @@
 						"queryTimeout": "02:00:00"
 					},
 					"sink": {
-						"type": "AzureSqlSink"
+						"type": "AzureSqlSink",
+						"preCopyScript": "TRUNCATE TABLE ESTOQUE_POSICAO",
+						"disableMetricsCollection": false
 					},
 					"enableStaging": false,
 					"translator": {
@@ -187,6 +189,208 @@
 				"inputs": [
 					{
 						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_ESTOQUE_POSICAO",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Posicao Estoque Sadalla",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Posicao Estoque HTML",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "select distinct \n    To_DATE(SLE.Dt_Mesano_Referencia,'DD/MM/YYYY')           AS MES_REF,\n    TO_CHAR(SLE.cd_estabelecimento)                          AS CD_ESTABELECIMENTO,\n    ESTB.nm_fantasia_estab                                   AS DS_ESTABELECIMENTO,\n    TO_CHAR(SLE.cd_local_estoque)                            AS CD_LOCAL_ESTOQUE,\n    LE.ds_local_estoque,\n    0                                                       AS CD_ALMOXERIFADO,\n    ''                                                      AS DS_ALMOXERIFADO,\n    CAST(SLE.cd_material AS INT)                            AS CD_MATERIAL,\n    MAT.ds_reduzida                                         AS DS_MATERIAL_SHORT,\n    TO_CHAR(MAT_C.CD_CLASSE_MATERIAL)                       AS CD_CLASSE_MATERIAL,    \n    MAT_C.ds_classe_material                                AS DS_CLASSE_MATERIAL,\n    TO_CHAR(MAT_GRP.CD_GRUPO_MATERIAL)                      AS CD_GRUPO_MATERIAL,\n    MAT_GRP.ds_grupo_material                               AS DS_GRUPO_MATERIAL,\n   -- ds_fabricante Fabricante,       \n    SLE.qt_estoque                                          AS QT_ESTOQUE,\n    ROUND(SLE.vl_custo_medio)                               AS VL_MED_UNIT,\n    ROUND(SLE.vl_custo_medio * QT_ESTOQUE,2)                AS VL_TOTAL,\n    TO_CHAR(MAT.IE_CONSIGNADO)                              AS IE_CONSIGNADO\n    from saldo_estoque SLE\n    \n    left join estabelecimento ESTB\n    on (SLE.cd_estabelecimento = ESTB.cd_estabelecimento)\n    \n    left join local_estoque LE\n    on (LE.cd_estabelecimento = SLE.cd_estabelecimento AND\n        LE.cd_local_estoque = SLE.cd_local_estoque)\n        \n    left join material MAT\n    on (SLE.cd_material = MAT.cd_material) \n    \n    left join material_familia MAT_F\n    on (MAT.nr_seq_familia = MAT_F.nr_sequencia)\n    \n    left join classe_material MAT_C\n    on (MAT.cd_classe_material = MAT_C.cd_classe_material)\n    \n    left join subgrupo_material MAT_SUB\n    on (MAT_C.cd_subgrupo_material = MAT_SUB.cd_subgrupo_material)\n    \n    left join grupo_material MAT_GRP\n    on (MAT_SUB.cd_grupo_material = MAT_GRP.cd_grupo_material)\n    \n    left join mat_fabricante MAT_FAB\n    on MAT.nr_seq_fabric =  MAT_FAB.nr_sequencia    \n  \n    Where To_Char(SLE.Dt_Mesano_Referencia,'DD/MM/YYYY') = TO_CHAR(TRUNC(SYSDATE,'MM')-30,'DD/MM/YYYY')\n    ",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "MES_REF"
+								},
+								"sink": {
+									"name": "MES_REF",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_ESTABELECIMENTO"
+								},
+								"sink": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_LOCAL_ESTOQUE"
+								},
+								"sink": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_LOCAL_ESTOQUE"
+								},
+								"sink": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ALMOXERIFADO"
+								},
+								"sink": {
+									"name": "CD_ALMOXERIFADO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_ALMOXERIFADO"
+								},
+								"sink": {
+									"name": "DS_ALMOXERIFADO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MATERIAL"
+								},
+								"sink": {
+									"name": "CD_MATERIAL",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MATERIAL_SHORT"
+								},
+								"sink": {
+									"name": "DS_MATERIAL_SHORT",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CLASSE_MATERIAL"
+								},
+								"sink": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CLASSE_MATERIAL"
+								},
+								"sink": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_ESTOQUE"
+								},
+								"sink": {
+									"name": "QT_ESTOQUE",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_MED_UNIT"
+								},
+								"sink": {
+									"name": "VL_MED_UNIT",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_TOTAL"
+								},
+								"sink": {
+									"name": "VL_TOTAL",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "IE_CONSIGNADO"
+								},
+								"sink": {
+									"name": "IE_CONSIGNADO",
+									"type": "Int32"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SadallaTasyPrdDataSet",
 						"type": "DatasetReference"
 					}
 				],
