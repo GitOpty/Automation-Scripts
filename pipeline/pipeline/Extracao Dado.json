@@ -920,6 +920,468 @@
 						"type": "DatasetReference"
 					}
 				]
+			},
+			{
+				"name": "IOF - Smart",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "ITB - Smart",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "with ctf as(\n\n    SELECT\n        x.ctf_cod    \n        ,x.ctf_tipo\n        ,case\n            when UPPER(x.ctf_categ) = 'C' then 'Consultas'\n            when UPPER(x.ctf_categ) = 'R' then 'Cirurgias'\n            when UPPER(x.ctf_categ) = 'E' then 'Exames'\n            when UPPER(x.ctf_categ) = 'T' then 'Taxas'\n            when UPPER(x.ctf_categ) = 'D' then 'Diárias'\n            when UPPER(x.ctf_categ) = 'A' then 'Terapia'\n            when UPPER(x.ctf_categ) = 'M' then 'Materiais'\n            when UPPER(x.ctf_categ) = 'S' then 'Materiais Especiais'\n            when UPPER(x.ctf_categ) = 'N' then 'Medicamentos'\n            when UPPER(x.ctf_categ) = 'G' then 'Gases'\n            when UPPER(x.ctf_categ) = 'O' then 'Outros'\n          end DS_CLASSIF_PROCEDIMENTO  \n    from dbo.ctf x\n) \n\n\n,prod as(\nSELECT\n    itm.smm_num_pai\n    ,itm.smm_num\n    ,a.osm_leg_cod                                                                          as CD_ESTABELECIMENTO\n    ,itm.smm_dthr_exec                                                                      as DT_LANCAMENTO\n    ,a.osm_num                                                                              as NR_ATENDIMENTO\n    ,a.osm_dthr                                                                             as DT_ENTRADA\n    ,a.osm_cnv                                                                              as CD_CONVENIO\n    ,pac.pac_reg                                                                            as CD_PESSOA_FISICA            \n    ,pac.pac_nome                                                                           AS NM_PACIENTE\n    -- ,cast(a.osm_serie as varchar(15)) + '.' + cast(a.osm_num as varchar(5))                 as NR_INTERNO_CONTA   \n    ,a.osm_serie                                                                            as NR_INTERNO_CONTA   \n    ,a.osm_atend                                                                            as CD_TIPO_ATEND\n    ,A.osm_proc                                                                             AS CD_PROCEDENCIA\n    -- ,a.osm_mcnv                                                                             as cd_carterinha_pac\n    -- ,a.osm_cid_cod                                                                          as cd_cid\n    -- ,a.osm_pln_cod                                                                          as cd_plano_convenio\n    ,a.osm_str                                                                              as CD_SETOR_ATENDIMENTO\n    ,itm.smm_str                                                                            as CD_SETOR_EXECUTANTE\n    ,a.osm_mreq                                                                             as CD_MEDICO_SOL\n    ,itm.smm_med                                                                            as CD_MEDICO_EXECUTANTE\n    -- ,itm.smm_cod                                                                            as cd_item_smart\n    -- ,itm.smm_pre_ccv                                                                        as cd_item_conv\n    ,CAST(CAST(a.osm_serie as varchar(10)) \n        + cast(a.osm_num as varchar(50)) \n        + CAST(itm.smm_num AS VARCHAR(50)) AS DECIMAL)                                      as NR_SEQUENCIA\n    ,pi.smk_cod                                                                             as NR_PROC_INTERNO       \n    ,pi.smk_amb                                                                             as CD_PROCEDIMENTO\n    ,pi.smk_rot                                                                             as DS_PROC_INTERNO \n    ,pi.smk_nome                                                                            as DS_PROCEDIMENTO\n    ,pi.smk_ctf\n    ,pi.smk_tipo\n    ,itm.smm_motivo_cancela                                                                 as MOTIVO_CANCEL_ITEM\n    ,itm.smm_canc_mot_cod                                                                   as CD_MOTIVO_CANCEL_ITEM\n    ,itm.smm_rpi_serie                                                                      as NR_SERIE_REPASSE\n    ,itm.smm_rpi_num                                                                        as NR_REPASSE\n    ,itm.smm_pacote                                                                         as IE_PACOTE\n    -- ,itm.smm_hon_seq\n    ,itm.smm_fat_serie\n    ,itm.smm_fat\n    ,itm.smm_tipo_fatura\n    ,itm.smm_dthr_alter                                                                     as dt_atualizacao                                                                      \n    ,itm.smm_qt                                                                             as QTD\n    ,itm.smm_vlr                                                                            AS VL_ITEM\n    ,isnull(itm.smm_ajuste_vlr,0)                                                           as VL_ITEM_AJUSTE\n    ,ROUND(ISNULL(round(\n                    (hon.hon_vl1 * itm.smm_qt) \n                  + (itm.smm_vlr + isnull(itm.smm_ajuste_vlr,0)) \n                  * hon.hon_pc1 / 100,3),0\n                  ),2)                                                                      AS VL_HM\n    ,ROUND(ISNULL(mte.mte_perc_desconto,0),2)                                               as PERC_DESCONTO\n\n\nFROM dbo.osm a                  (NOLOCK)\ninner join dbo.pac pac          (NOLOCK) on pac.pac_reg = a.osm_pac\ninner join dbo.smm itm          (NOLOCK) on itm.smm_osm_serie = a.osm_serie and itm.smm_osm = a.osm_num\ninner join dbo.smk pi           (NOLOCK) on pi.smk_cod = itm.smm_cod\n-- left join dbo.hon  hon          (NOLOCK) on hon.hon_seq = itm.smm_hon_seq\ninner join dbo.hon  hon          (NOLOCK) on hon.hon_seq = itm.smm_hon_seq\n\nOUTER APPLY (\n    SELECT\n        CASE \n            WHEN (MTE.mte_valor <> 0)\n                THEN MTE.mte_desconto / MTE.mte_valor\n            ELSE 0\n        END AS mte_perc_desconto\n    FROM MTE MTE (NOLOCK)\n    LEFT JOIN NFS NFS (NOLOCK)  ON MTE.MTE_NFS_NUMERO = NFS.nfs_numero AND MTE.MTE_NFS_SERIE = NFS.nfs_serie AND MTE.MTE_NFS_TIPO = NFS.NFS_TIPO\n    WHERE MTE.MTE_SERIE = ITM.SMM_MTE_SERIE AND MTE.MTE_SEQ = ITM.SMM_MTE_SEQ\n)MTE\n\n\nWHERE \n     itm.smm_vlr <> 0\n    and (itm.smm_pacote IS NULL OR ( itm.smm_pacote = 'C' )) \n    and itm.smm_exec <> 'C'\n    and itm.smm_sfat <> 'C'\n    and itm.smm_str like '%'\n    and pi.smk_ctf LIKE '%'\n    AND (itm.smm_sfat IN ('a', 'f', '?', 'p', '?'))\n    and substring(cast(CAST(a.osm_dthr as date) as varchar(10)),1,7) = SUBSTRING(cast(CAST(getdate() AS DATE) as varchar(10)),1,7)\n    -- AND CAST(a.osm_dthr AS DATE) BETWEEN '2021-01-01' AND CAST(GETDATE() AS DATE)\n\n\n)\n\nselect \n\n    90                                                  AS ID_SYSTEM\n    ,g.gcc_str_cod                                      AS CD_ESTABELECIMENTO\n    -- ,b.str_cod                                          AS CD_ESTABELECIMENTO\n    -- ,b.str_nome                                         AS DS_ESTABELECIMENTO\n    ,G.gcc_descr                                        AS DS_ESTABELECIMENTO\n    ,a.DT_ENTRADA\n    ,A.DT_LANCAMENTO\n    ,A.NR_ATENDIMENTO           \n    ,CAST(A.nr_interno_conta AS VARCHAR(10))\n        + CAST(A.NR_ATENDIMENTO AS VARCHAR(50))         AS NR_INTERNO_CONTA\n    ,emp.emp_cgc                                        as CGC_CONVENIO\n    ,A.cd_convenio                                      AS CD_CONVENIO\n    ,conv.cnv_nome                                      as DS_CONVENIO\n    ,a.CD_PESSOA_FISICA\n    ,A.NM_PACIENTE                                      AS NM_PACIENTE\n    ,A.CD_MEDICO_SOL\n    ,PSOL.psv_nome                                      AS MEDICO_SOLICITANTE\n    ,A.CD_MEDICO_EXECUTANTE\n    ,PEXC.psv_nome                                      AS MEDICO_EXECUTANTE\n    ,PEXC.psv_nome                                      AS MEDICO_RESPONSAVEL\n    ,PEXC.psv_nome                                      AS MEDICO_ATENDIMENTO\n    ,B.str_cod                                          as CD_SETOR_ATENDIMENTO\n    ,b.str_nome                                         as DS_SETOR_ATENDIMENTO\n    ,A.NR_SEQUENCIA\n    -- ,A.smm_num_pai\n    -- ,smk.smk_rot                                        as DS_PROC_PRINC\n    ,A.NR_PROC_INTERNO\n    ,A.DS_PROC_INTERNO\n    ,A.CD_PROCEDIMENTO\n    ,A.DS_PROCEDIMENTO\n    ,c.DS_CLASSIF_PROCEDIMENTO\n    ,A.CD_PROCEDENCIA\n    ,A.QTD                                              AS QTD_ITEM\n    ,A.VL_ITEM                                          AS VL_ITEM_ORIGINAL                 \n    ,A.VL_ITEM + A.VL_ITEM_AJUSTE                       AS VL_ITEM\n    ,a.VL_HM\n    ,a.PERC_DESCONTO\n    ,a.DT_ATUALIZACAO\nfrom prod a\ninner join dbo.str b                (nolock)        on b.str_cod = a.CD_SETOR_ATENDIMENTO  \ninner join dbo.gcc g                (NOLOCK)        on g.gcc_str_cod = b.str_str_cod\ninner join dbo.cnv conv             (NOLOCK)        on conv.cnv_cod = a.cd_convenio\ninner join dbo.emp                  (nolock)        on emp_cod = conv.cnv_emp_cod  \ninner join ctf     c                                on ctf_cod = a.smk_ctf  and ctf_tipo = a.smk_tipo\nINNER JOIN psv     PEXC             (NOLOCK)        ON PEXC.psv_cod = A.CD_MEDICO_EXECUTANTE\nINNER JOIN psv     PSOL             (NOLOCK)        ON PSOL.psv_cod = A.CD_MEDICO_SOL\n\n\nWHERE C.DS_CLASSIF_PROCEDIMENTO IS NOT NULL\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ID_SYSTEM",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYSTEM",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_ENTRADA",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "DT_ENTRADA",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_LANCAMENTO",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "DT_LANCAMENTO",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_ATENDIMENTO",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "NR_ATENDIMENTO",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_INTERNO_CONTA",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "NR_INTERNO_CONTA",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CGC_CONVENIO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "CGC_CONVENIO",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CONVENIO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_CONVENIO",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CONVENIO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_CONVENIO",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_PESSOA_FISICA",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_PESSOA_FISICA",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "NM_PACIENTE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "NM_PACIENTE",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MEDICO_SOL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_MEDICO_SOL",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "MEDICO_SOLICITANTE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "MEDICO_SOLICITANTE",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MEDICO_EXECUTANTE",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_MEDICO_EXECUTANTE",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "MEDICO_EXECUTANTE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "MEDICO_EXECUTANTE",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "MEDICO_RESPONSAVEL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "MEDICO_RESPONSAVEL",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "MEDICO_ATENDIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "MEDICO_ATENDIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_SETOR_ATENDIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_SETOR_ATENDIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_SETOR_ATENDIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_SETOR_ATENDIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_SEQUENCIA",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 18
+								},
+								"sink": {
+									"name": "NR_SEQUENCIA",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 18
+								}
+							},
+							{
+								"source": {
+									"name": "NR_PROC_INTERNO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "NR_PROC_INTERNO",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_PROC_INTERNO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_PROC_INTERNO",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_PROCEDIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_PROCEDIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_PROCEDIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_PROCEDIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CLASSIF_PROCEDIMENTO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_CLASSIF_PROCEDIMENTO",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_PROCEDENCIA",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_PROCEDENCIA",
+									"type": "String",
+									"physicalType": "char"
+								}
+							},
+							{
+								"source": {
+									"name": "QTD_ITEM",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 4
+								},
+								"sink": {
+									"name": "QTD_ITEM",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 4
+								}
+							},
+							{
+								"source": {
+									"name": "VL_ITEM_ORIGINAL",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "VL_ITEM_ORIGINAL",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_ITEM",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "VL_ITEM",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_HM",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "VL_HM",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "PERC_DESCONTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 15,
+									"precision": 27
+								},
+								"sink": {
+									"name": "PERC_DESCONTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 15,
+									"precision": 27
+								}
+							},
+							{
+								"source": {
+									"name": "DT_ATUALIZACAO",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "DT_ATUALIZACAO",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_IOF_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_PROD_DIARIA",
+						"type": "DatasetReference"
+					}
+				]
 			}
 		],
 		"folder": {
