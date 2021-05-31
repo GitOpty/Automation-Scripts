@@ -3,7 +3,7 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Copy data1",
+				"name": "Mov Estoque HTML",
 				"type": "Copy",
 				"dependsOn": [],
 				"policy": {
@@ -15,8 +15,73 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "WITH AUX AS(\nselect operacao_estoque.cd_operacao_estoque,\n    dt_movimento_estoque,\n    movimento_estoque.cd_local_estoque,\n    ds_local_estoque,\n    movimento_estoque.cd_estabelecimento,\n    nm_fantasia_estab,\n    movimento_estoque.nr_documento,\n    movimento_estoque.cd_material,\n    /*case \n        when ds_familia is null then 'Sem classificação'\n        else ds_familia\n        end familia_padrao,*/\n    MATERIAL.CD_CLASSE_MATERIAL,   \n    ds_classe_material classe_material,\n    ds_subgrupo_material Subgrupo,\n    ds_grupo_material Grupo,\n    ds_fabricante Fabricante,\n    ds_reduzida,\n    ds_operacao,\n    ie_entrada_saida,\n    cd_acao,\n    case \n        when ds_operacao in ('Consumo', 'Execução Prescrição', 'Consumo da Produção')\n        then sum(qt_movimento)/(avg(QT_CONV_ESTOQUE_CONSUMO))\n        else sum(qt_movimento)\n        end qt_movimento,\n    sum(case when movimento_estoque_valor.cd_tipo_valor = 5 then - movimento_estoque_valor.vl_movimento else + movimento_estoque_valor.vl_movimento end ) valor_movimento\n    \n    from movimento_estoque\n    left join operacao_estoque\n    on movimento_estoque.cd_operacao_estoque = operacao_estoque.cd_operacao_estoque\n    \n    left join estabelecimento\n    on (movimento_estoque.cd_estabelecimento = estabelecimento.cd_estabelecimento)\n    \n    left join local_estoque\n    on (local_estoque.cd_estabelecimento = movimento_estoque.cd_estabelecimento AND\n        local_estoque.cd_local_estoque = movimento_estoque.cd_local_estoque)\n        \n    left join material\n    on (movimento_estoque.cd_material = material.cd_material) \n    \n    left join material_familia\n    on (material.nr_seq_familia = material_familia.nr_sequencia)\n    \n    left join classe_material\n    on (material.cd_classe_material = classe_material.cd_classe_material)\n    \n    left join subgrupo_material\n    on (classe_material.cd_subgrupo_material = subgrupo_material.cd_subgrupo_material)\n    \n    left join grupo_material\n    on (subgrupo_material.cd_grupo_material = grupo_material.cd_grupo_material)\n    \n    left join mat_fabricante\n    on material.nr_seq_fabric =  mat_fabricante.nr_sequencia\n    \n    left join movimento_estoque_valor\n    on movimento_estoque_valor.nr_movimento_estoque = movimento_estoque.nr_movimento_estoque\n\n    --where dt_movimento_estoque >= '01/01/2020' \n\n    GROUP BY operacao_estoque.cd_operacao_estoque,\n        dt_movimento_estoque,\n        movimento_estoque.cd_local_estoque,\n        ds_local_estoque,\n        movimento_estoque.cd_estabelecimento,\n        nm_fantasia_estab,\n        movimento_estoque.nr_documento,\n        movimento_estoque.cd_material,\n        --case when ds_familia is null then 'Sem classificação' else ds_familia end,\n        material.cd_classe_material,\n        ds_classe_material,\n        ds_subgrupo_material,\n        ds_grupo_material,\n        ds_fabricante,\n        ds_reduzida,\n        ds_operacao,\n        ie_entrada_saida,\n        cd_acao\n)\nSELECT \n    TO_CHAR(A.DT_MOVIMENTO_ESTOQUE,'YYYY-MM-DD') AS MES_REF\n    ,A.CD_LOCAL_ESTOQUE\n    ,A.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,A.nm_fantasia_estab                         AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_REDUZIDA                                AS DS_MATERIAL_SHORT\n    ,A.CD_CLASSE_MATERIAL\n    ,A.CLASSE_MATERIAL                           AS DS_CLASSE_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_MOVIMENTO\n    ,CASE \n        WHEN A.CD_ACAO = 2 THEN A.VALOR_MOVIMENTO * -1\n        ELSE A.VALOR_MOVIMENTO\n     END VL_MOVIMENTO   \nFROM AUX A\nWHERE TO_CHAR(A.DT_MOVIMENTO_ESTOQUE,'YYYY-MM-DD') = TO_CHAR(TRUNC(SYSDATE,'MM'),'YYYY-MM-DD')",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
 					"enableStaging": false
-				}
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_MOVIMENTO_ESTOQUE",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Mov Estoque Delphi",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Mov Estoque HTML",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "WITH AUX AS(\nselect operacao_estoque.cd_operacao_estoque,\n    dt_movimento_estoque,\n    movimento_estoque.cd_local_estoque,\n    ds_local_estoque,\n    movimento_estoque.cd_estabelecimento,\n    nm_fantasia_estab,\n    movimento_estoque.nr_documento,\n    movimento_estoque.cd_material,\n    /*case \n        when ds_familia is null then 'Sem classificação'\n        else ds_familia\n        end familia_padrao,*/\n    MATERIAL.CD_CLASSE_MATERIAL,   \n    ds_classe_material classe_material,\n    ds_subgrupo_material Subgrupo,\n    ds_grupo_material Grupo,\n    ds_fabricante Fabricante,\n    ds_reduzida,\n    ds_operacao,\n    ie_entrada_saida,\n    cd_acao,\n    case \n        when ds_operacao in ('Consumo', 'Execução Prescrição', 'Consumo da Produção')\n        then sum(qt_movimento)/(avg(QT_CONV_ESTOQUE_CONSUMO))\n        else sum(qt_movimento)\n        end qt_movimento,\n    sum(case when movimento_estoque_valor.cd_tipo_valor = 5 then - movimento_estoque_valor.vl_movimento else + movimento_estoque_valor.vl_movimento end ) valor_movimento\n    \n    from movimento_estoque\n    left join operacao_estoque\n    on movimento_estoque.cd_operacao_estoque = operacao_estoque.cd_operacao_estoque\n    \n    left join estabelecimento\n    on (movimento_estoque.cd_estabelecimento = estabelecimento.cd_estabelecimento)\n    \n    left join local_estoque\n    on (local_estoque.cd_estabelecimento = movimento_estoque.cd_estabelecimento AND\n        local_estoque.cd_local_estoque = movimento_estoque.cd_local_estoque)\n        \n    left join material\n    on (movimento_estoque.cd_material = material.cd_material) \n    \n    left join material_familia\n    on (material.nr_seq_familia = material_familia.nr_sequencia)\n    \n    left join classe_material\n    on (material.cd_classe_material = classe_material.cd_classe_material)\n    \n    left join subgrupo_material\n    on (classe_material.cd_subgrupo_material = subgrupo_material.cd_subgrupo_material)\n    \n    left join grupo_material\n    on (subgrupo_material.cd_grupo_material = grupo_material.cd_grupo_material)\n    \n    left join mat_fabricante\n    on material.nr_seq_fabric =  mat_fabricante.nr_sequencia\n    \n    left join movimento_estoque_valor\n    on movimento_estoque_valor.nr_movimento_estoque = movimento_estoque.nr_movimento_estoque\n\n    --where dt_movimento_estoque >= '01/01/2020' \n\n    GROUP BY operacao_estoque.cd_operacao_estoque,\n        dt_movimento_estoque,\n        movimento_estoque.cd_local_estoque,\n        ds_local_estoque,\n        movimento_estoque.cd_estabelecimento,\n        nm_fantasia_estab,\n        movimento_estoque.nr_documento,\n        movimento_estoque.cd_material,\n        --case when ds_familia is null then 'Sem classificação' else ds_familia end,\n        material.cd_classe_material,\n        ds_classe_material,\n        ds_subgrupo_material,\n        ds_grupo_material,\n        ds_fabricante,\n        ds_reduzida,\n        ds_operacao,\n        ie_entrada_saida,\n        cd_acao\n)\nSELECT \n    TO_CHAR(A.DT_MOVIMENTO_ESTOQUE,'YYYY-MM-DD') AS MES_REF\n    ,A.CD_LOCAL_ESTOQUE\n    ,A.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,A.nm_fantasia_estab                         AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_REDUZIDA                                AS DS_MATERIAL_SHORT\n    ,A.CD_CLASSE_MATERIAL\n    ,A.CLASSE_MATERIAL                           AS DS_CLASSE_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_MOVIMENTO\n    ,CASE \n        WHEN A.CD_ACAO = 2 THEN A.VALOR_MOVIMENTO * -1\n        ELSE A.VALOR_MOVIMENTO\n     END VL_MOVIMENTO   \nFROM AUX A\nWHERE TO_CHAR(A.DT_MOVIMENTO_ESTOQUE,'YYYY-MM-DD') = TO_CHAR(TRUNC(SYSDATE,'MM'),'YYYY-MM-DD')",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SadallaTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_MOVIMENTO_ESTOQUE",
+						"type": "DatasetReference"
+					}
+				]
 			}
 		],
 		"folder": {
