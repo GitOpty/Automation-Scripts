@@ -351,7 +351,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
-						"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,gmm_cod                    as CD_CLASSE_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_CLASSE_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod    \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
+						"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -462,7 +462,7 @@
 								"source": {
 									"name": "DS_CLASSE_MATERIAL",
 									"type": "String",
-									"physicalType": "varchar"
+									"physicalType": "char"
 								},
 								"sink": {
 									"name": "DS_CLASSE_MATERIAL",
@@ -524,6 +524,30 @@
 									"physicalType": "decimal",
 									"scale": 0,
 									"precision": 18
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
 								}
 							}
 						],
@@ -569,7 +593,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
-						"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,gmm_cod                    as CD_CLASSE_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_CLASSE_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod    \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
+						"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -680,7 +704,7 @@
 								"source": {
 									"name": "DS_CLASSE_MATERIAL",
 									"type": "String",
-									"physicalType": "varchar"
+									"physicalType": "char"
 								},
 								"sink": {
 									"name": "DS_CLASSE_MATERIAL",
@@ -742,6 +766,30 @@
 									"physicalType": "decimal",
 									"scale": 0,
 									"precision": 18
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
 								}
 							}
 						],
@@ -787,7 +835,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
-						"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,gmm_cod                    as CD_CLASSE_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_CLASSE_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod    \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
+						"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -898,7 +946,7 @@
 								"source": {
 									"name": "DS_CLASSE_MATERIAL",
 									"type": "String",
-									"physicalType": "varchar"
+									"physicalType": "char"
 								},
 								"sink": {
 									"name": "DS_CLASSE_MATERIAL",
@@ -960,6 +1008,30 @@
 									"physicalType": "decimal",
 									"scale": 0,
 									"precision": 18
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
 								}
 							}
 						],
@@ -1005,7 +1077,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
-						"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,gmm_cod                    as CD_CLASSE_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_CLASSE_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod    \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
+						"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -1116,7 +1188,7 @@
 								"source": {
 									"name": "DS_CLASSE_MATERIAL",
 									"type": "String",
-									"physicalType": "varchar"
+									"physicalType": "char"
 								},
 								"sink": {
 									"name": "DS_CLASSE_MATERIAL",
@@ -1178,6 +1250,30 @@
 									"physicalType": "decimal",
 									"scale": 0,
 									"precision": 18
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
 								}
 							}
 						],
@@ -1223,7 +1319,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
-						"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,gmm_cod                    as CD_CLASSE_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_CLASSE_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod    \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
+						"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -1334,7 +1430,7 @@
 								"source": {
 									"name": "DS_CLASSE_MATERIAL",
 									"type": "String",
-									"physicalType": "varchar"
+									"physicalType": "char"
 								},
 								"sink": {
 									"name": "DS_CLASSE_MATERIAL",
@@ -1396,6 +1492,30 @@
 									"physicalType": "decimal",
 									"scale": 0,
 									"precision": 18
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
 								}
 							}
 						],
