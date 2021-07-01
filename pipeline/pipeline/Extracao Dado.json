@@ -7,7 +7,7 @@
 				"type": "IfCondition",
 				"dependsOn": [
 					{
-						"activity": "Day Now",
+						"activity": "Set variable1",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -16,7 +16,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"expression": {
-						"value": "@equals(activity('Day Now').output,1)",
+						"value": "@equals(trim(variables('day_now')),'1')",
 						"type": "Expression"
 					},
 					"ifFalseActivities": [
@@ -1881,7 +1881,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "SELECT day(GETDATE()) as day",
+						"sqlReaderQuery": "SELECT cast(day(GETDATE()) as varchar(2)) as day",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -1890,8 +1890,33 @@
 						"type": "DatasetReference"
 					}
 				}
+			},
+			{
+				"name": "Set variable1",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "Day Now",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "day_now",
+					"value": {
+						"value": "@activity('Day Now').output.firstRow.day",
+						"type": "Expression"
+					}
+				}
 			}
 		],
+		"variables": {
+			"day_now": {
+				"type": "String"
+			}
+		},
 		"folder": {
 			"name": "Producao Diaria"
 		},
