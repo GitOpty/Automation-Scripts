@@ -1,0 +1,180 @@
+{
+	"name": "Chamados Requestia - Teste",
+	"properties": {
+		"activities": [
+			{
+				"name": "Check table actions file exists",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "FILE_QTABLEACTION",
+						"type": "DatasetReference"
+					},
+					"fieldList": [
+						"exists"
+					],
+					"storeSettings": {
+						"type": "FileServerReadSettings",
+						"recursive": true
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "Table actions file exists",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Check table actions file exists",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(\nactivity('Check table actions file exists').output.exists, \ntrue)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Send table answer failure_copy1",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "Send email",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"EmailTo": "sergio.queiroz@opty.com.br",
+									"Subject": "Arquivo Requestia\\QTABLEANSWER não encontrado!",
+									"ErrorMessage": "O arquivo Requestia\\QTABLEANSWER não foi encontrado",
+									"MasterPipeline": {
+										"value": "@{pipeline().Pipeline}",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Copy table actions",
+							"description": "Copy actions table data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "FileServerReadSettings",
+										"recursive": true
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink"
+								},
+								"enableStaging": false,
+								"enableSkipIncompatibleRow": true,
+								"translator": {
+									"type": "TabularTranslator",
+									"mappings": [
+										{
+											"source": {
+												"name": "REQUEST",
+												"type": "String"
+											},
+											"sink": {
+												"name": "REQUEST"
+											}
+										},
+										{
+											"source": {
+												"name": "ACTTYPE",
+												"type": "String"
+											},
+											"sink": {
+												"name": "ACTTYPE"
+											}
+										},
+										{
+											"source": {
+												"name": "LASTANAL",
+												"type": "String"
+											},
+											"sink": {
+												"name": "LASTANAL"
+											}
+										},
+										{
+											"source": {
+												"name": "CURRSTATUS",
+												"type": "String"
+											},
+											"sink": {
+												"name": "CURRSTATUS"
+											}
+										},
+										{
+											"source": {
+												"name": "ACTDATE",
+												"type": "String"
+											},
+											"sink": {
+												"name": "ACTDATE"
+											}
+										}
+									]
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "FILE_QTABLEACTION",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "TABLE_QTABLEACTION",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"folder": {
+			"name": "Apoio"
+		},
+		"annotations": [],
+		"lastPublishTime": "2020-11-25T19:35:15Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
