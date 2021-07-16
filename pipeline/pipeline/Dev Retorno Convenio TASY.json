@@ -121,7 +121,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "OracleSource",
-						"oracleReaderQuery": "SELECT\n    TMP.*\nFROM(\n    SELECT        \n        CRM.NR_SEQUENCIA\n        ,CRM.NR_CONTA\n        ,CRM.NR_SEQ_ITEM_CONTA\n        ,0                  AS NR_TITULO\n        ,CRM.CD_ITEM\n        ,CR.DT_RECEBIMENTO\n        ,CRM.DT_ATUALIZACAO\n        ,CRM.VL_COBRADO     AS VLR_GUIA\n        ,CRM.VL_GLOSA       as VLR_GLOSA\n        ,CRM.VL_PAGO        AS VLR_PAGO\n        ,0                  AS VLR_AMENOR\n        ,ROW_NUMBER() OVER (PARTITION BY CRM.CD_ITEM,CRM.NR_CONTA,CRM.NR_SEQ_ITEM_CONTA ORDER BY CRM.DT_ATUALIZACAO DESC) ID_ROW\n    FROM CONVENIO_RETORNO_MOVTO CRM\n    INNER JOIN CONVENIO_RETORNO CR ON CR.NR_SEQUENCIA = CRM.NR_SEQ_RETORNO\n    LEFT JOIN CONVENIO_RETORNO_ITEM CRI ON CRI.NR_SEQUENCIA = NR_SEQ_RET_ITEM\n    --WHERE TRUNC(CRM.DT_ATUALIZACAO,'MM') > TRUNC(SYSDATE,'MM') - 180\n)TMP\nWHERE TMP.ID_ROW = 1",
+						"oracleReaderQuery": "SELECT\n    TMP.*\nFROM(\n    SELECT        \n        CRM.NR_SEQUENCIA\n        ,CR.NR_SEQUENCIA        AS NR_SEQ_RETORNO\n        ,CRM.NR_CONTA\n        ,CRM.NR_SEQ_ITEM_CONTA\n        ,0                  AS NR_TITULO\n        ,CRM.CD_ITEM\n        ,CR.DT_RECEBIMENTO\n        ,CRM.DT_ATUALIZACAO\n        ,CRM.VL_COBRADO     AS VLR_GUIA\n        ,CRM.VL_GLOSA       as VLR_GLOSA\n        ,CRM.VL_PAGO        AS VLR_PAGO\n        ,0                  AS VLR_AMENOR\n        ,ROW_NUMBER() OVER (PARTITION BY CRM.CD_ITEM,CRM.NR_CONTA,CRM.NR_SEQ_ITEM_CONTA ORDER BY CRM.DT_ATUALIZACAO DESC) ID_ROW\n    FROM CONVENIO_RETORNO_MOVTO CRM\n    INNER JOIN CONVENIO_RETORNO CR ON CR.NR_SEQUENCIA = CRM.NR_SEQ_RETORNO\n    LEFT JOIN CONVENIO_RETORNO_ITEM CRI ON CRI.NR_SEQUENCIA = NR_SEQ_RET_ITEM\n    --WHERE TRUNC(CRM.DT_ATUALIZACAO,'MM') > TRUNC(SYSDATE,'MM') - 180\n)TMP\nWHERE TMP.ID_ROW = 1",
 						"partitionOption": "None",
 						"queryTimeout": "02:00:00"
 					},
@@ -251,10 +251,8 @@
 								},
 								"sink": {
 									"name": "VLR_AMENOR",
-									"type": "Decimal",
-									"physicalType": "decimal",
-									"scale": 0,
-									"precision": 18
+									"type": "Double",
+									"physicalType": "float"
 								}
 							},
 							{
@@ -264,6 +262,17 @@
 								},
 								"sink": {
 									"name": "VLR_GUIA",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_SEQ_RETORNO",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "NR_SEQ_RETORNO",
 									"type": "Decimal",
 									"physicalType": "decimal",
 									"scale": 0,
@@ -313,7 +322,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "OracleSource",
-						"oracleReaderQuery": "    SELECT \n        CRI.NR_SEQUENCIA\n        ,CRI.NR_INTERNO_CONTA    NR_CONTA\n        ,0                      NR_SEQ_ITEM_CONTA\n        ,CRI.NR_TITULO\n        ,CRI.NR_SEQ_RETORNO\n        ,CR.DT_RECEBIMENTO\n        ,CRI.DT_ATUALIZACAO\n        ,0                      CD_ITEM\n        ,G.VL_GUIA              VLR_GUIA\n        ,SUM(CRI.VL_GLOSADO)    VLR_GLOSA  /*pode ser glosa acatada*/\n        ,SUM(CRI.VL_PAGO)       VLR_PAGO\n        ,SUM(CRI.VL_AMENOR)     VLR_AMENOR\n    \n    FROM CONVENIO_RETORNO_ITEM      CRI\n    INNER JOIN CONVENIO_RETORNO     CR              ON CR.NR_SEQUENCIA = CRI.NR_SEQ_RETORNO\n    OUTER APPLY(\n        SELECT \n            SUM(CPG.VL_GUIA)  AS VL_GUIA\n        FROM CONTA_PACIENTE_GUIA CPG\n        WHERE CPG.NR_INTERNO_CONTA = CRI.NR_INTERNO_CONTA\n            \n        )G\n    OUTER APPLY(\n                SELECT A.NR_SEQUENCIA   AS SEQ_MOV\n                FROM CONVENIO_RETORNO_MOVTO A\n                WHERE A.NR_SEQ_RETORNO = CRI.NR_SEQ_RETORNO AND A.NR_CONTA = CRI.NR_INTERNO_CONTA  AND ROWNUM = 1\n    )MOV_XML\n    WHERE MOV_XML.SEQ_MOV IS NULL\n            \n   --WHERE CRI.NR_TITULO = 99553 AND CRI.NR_INTERNO_CONTA = 546049\n    GROUP BY\n        CRI.NR_SEQUENCIA\n        ,CRI.NR_INTERNO_CONTA\n        ,CRI.NR_TITULO\n        ,CRI.NR_SEQ_RETORNO\n        ,CR.DT_RECEBIMENTO\n        ,CRI.DT_ATUALIZACAO\n        ,G.VL_GUIA",
+						"oracleReaderQuery": "    SELECT \n        CRI.NR_SEQUENCIA\n        ,CR.NR_SEQUENCIA         NR_SEQ_RETORNO\n        ,CRI.NR_INTERNO_CONTA    NR_CONTA\n        ,0                       NR_SEQ_ITEM_CONTA\n        ,CRI.NR_TITULO\n        ,CR.DT_RECEBIMENTO\n        ,CRI.DT_ATUALIZACAO\n        ,0                      CD_ITEM\n        ,G.VL_GUIA              VLR_GUIA\n        ,SUM(CRI.VL_GLOSADO)    VLR_GLOSA  /*pode ser glosa acatada*/\n        ,SUM(CRI.VL_PAGO)       VLR_PAGO\n        ,SUM(CRI.VL_AMENOR)     VLR_AMENOR\n    \n    FROM CONVENIO_RETORNO_ITEM      CRI\n    INNER JOIN CONVENIO_RETORNO     CR              ON CR.NR_SEQUENCIA = CRI.NR_SEQ_RETORNO\n    OUTER APPLY(\n        SELECT \n            SUM(CPG.VL_GUIA)  AS VL_GUIA\n        FROM CONTA_PACIENTE_GUIA CPG\n        WHERE CPG.NR_INTERNO_CONTA = CRI.NR_INTERNO_CONTA\n            \n        )G\n    OUTER APPLY(\n                SELECT A.NR_SEQUENCIA   AS SEQ_MOV\n                FROM CONVENIO_RETORNO_MOVTO A\n                WHERE A.NR_SEQ_RETORNO = CRI.NR_SEQ_RETORNO AND A.NR_CONTA = CRI.NR_INTERNO_CONTA  AND ROWNUM = 1\n    )MOV_XML\n    WHERE MOV_XML.SEQ_MOV IS NULL\n            \n   --WHERE CRI.NR_TITULO = 99553 AND CRI.NR_INTERNO_CONTA = 546049\n    GROUP BY\n        CRI.NR_SEQUENCIA\n        ,CR.NR_SEQUENCIA\n        ,CRI.NR_INTERNO_CONTA\n        ,CRI.NR_TITULO\n        ,CR.DT_RECEBIMENTO\n        ,CRI.DT_ATUALIZACAO\n        ,G.VL_GUIA",
 						"partitionOption": "None",
 						"queryTimeout": "02:00:00"
 					},
@@ -413,7 +422,7 @@
 								},
 								"sink": {
 									"name": "VLR_AMENOR",
-									"type": "Decimal"
+									"type": "Double"
 								}
 							},
 							{
@@ -422,6 +431,15 @@
 								},
 								"sink": {
 									"name": "VLR_GUIA",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_SEQ_RETORNO"
+								},
+								"sink": {
+									"name": "NR_SEQ_RETORNO",
 									"type": "Decimal"
 								}
 							}
