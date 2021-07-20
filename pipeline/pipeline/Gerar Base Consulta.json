@@ -1,0 +1,58 @@
+{
+	"name": "Gerar Base Consulta",
+	"properties": {
+		"activities": [
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT DISTINCT\nreplace(replace(EMP.emp_cgc,'.',''),'-','') CGC_CONV\n--,EMP.emp_raz_soc\n-- ,EMP.emp_nome_fantasia\nFROM CNV (NOLOCK)\ninner join dbo.emp     EMP             (nolock)        on EMP.emp_cod = CNV.cnv_emp_cod\nWHERE len(replace(replace(EMP.emp_cgc,'.',''),'-','')) = 14 and EMP.EMP_CGC NOT IN ('00000000000000')\n-- WHERE UPPER(CNV_CONTRATO) = 'CITO - PF       '\n-- WHERE cnv_nome LIKE '%BRADESCO%'\n-- WHERE CNV_CONTRATO = 'PJ              '\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_ITAIGARA_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_CNPJ_SYS",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "CNPJ"
+		},
+		"annotations": [],
+		"lastPublishTime": "2021-06-09T14:48:22Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
