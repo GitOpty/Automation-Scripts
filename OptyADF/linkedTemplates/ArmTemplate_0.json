@@ -14,6 +14,14 @@
 		"AzureSqlDatabase_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase'"
+		},
+		"SQL_CONTROLE_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SQL_CONTROLE'"
+		},
+		"SQL_DESTINO_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SQL_DESTINO'"
 		}
 	},
 	"variables": {
@@ -105,6 +113,32 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/SQL_CONTROLE')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('SQL_CONTROLE_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SQL_DESTINO')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('SQL_DESTINO_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/ServidorArquivosBI')]",
 			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
 			"apiVersion": "2018-06-01",
@@ -174,6 +208,43 @@
 				},
 				"annotations": [],
 				"lastPublishTime": "2019-09-10T17:22:40Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Processamento e Armaz')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "SP Processa Prod Diaria",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_PROCESSA_PROD_DIARIA]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"folder": {
+					"name": "Producao Diaria"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-07-20T18:04:44Z"
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
@@ -1568,171 +1639,6 @@
 				"typeProperties": {
 					"schema": "dbo",
 					"table": "Pacientes_Unidade"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_Ret_Agendamentos_Futuros_Unidade')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Retornos"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "CD_PESSOA_FISICA",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CD_CONVENIO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "DATA_AGENDA",
-						"type": "date"
-					},
-					{
-						"name": "HORA_AGENDA",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "IE_TIPO_AGENDA",
-						"type": "varchar"
-					},
-					{
-						"name": "NM_MEDICO",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "Ret_Agendamentos_Futuros_Unidade"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_Ret_Atendimentos_Unidade')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Retornos"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "NR_ATENDIMENTO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CD_MEDICO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "DT_ENTRADA",
-						"type": "date"
-					},
-					{
-						"name": "CD_ESTABELECIMENTO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CD_CGC",
-						"type": "varchar"
-					},
-					{
-						"name": "NM_MEDICO",
-						"type": "varchar"
-					},
-					{
-						"name": "NM_FANTASIA_ESTAB",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "Ret_Atendimentos_Unidade"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_Ret_Consulta_Oft_Unidade')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Retornos"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "NR_SEQUENCIA",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "DT_ATUALIZACAO",
-						"type": "date"
-					},
-					{
-						"name": "NR_ATENDIMENTO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CD_MEDICO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "NM_MEDICO",
-						"type": "varchar"
-					},
-					{
-						"name": "DS_RETORNO",
-						"type": "varchar"
-					},
-					{
-						"name": "DS_CONDUTA",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "Ret_Consulta_Oft_Unidade"
 				}
 			},
 			"dependsOn": [
