@@ -7,7 +7,7 @@
 				"type": "Lookup",
 				"dependsOn": [],
 				"policy": {
-					"timeout": "7.00:00:00",
+					"timeout": "0.00:05:00",
 					"retry": 0,
 					"retryIntervalInSeconds": 30,
 					"secureOutput": false,
@@ -91,7 +91,7 @@
 										"userProperties": [],
 										"typeProperties": {
 											"source": {
-												"type": "AzureSqlSource",
+												"type": "SqlServerSource",
 												"sqlReaderQuery": {
 													"value": "@concat(\n'select * from ',\nitem().NOME_SCHEMA_ORIGEM,\n'.',\nitem().NOME_TABELA_ORIGEM,' \nwhere ',\nitem().nome_coluna_referencia,\n' >= TO_TIMESTAMP(''',\nreplace(item().Data_Inicio,'T',' '),\n''') and ',\nitem().nome_coluna_referencia,\n' <= TO_TIMESTAMP(''',\nreplace(item().Data_Fim,'T',' '),\n'''',\n')'\n )",
 													"type": "Expression"
@@ -456,6 +456,10 @@
 										"typeProperties": {
 											"source": {
 												"type": "SqlServerSource",
+												"sqlReaderQuery": {
+													"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+													"type": "Expression"
+												},
 												"queryTimeout": "02:00:00",
 												"partitionOption": "None"
 											},
@@ -475,8 +479,18 @@
 										},
 										"inputs": [
 											{
-												"referenceName": "ORIGEM_TABELAS_ADF_1",
-												"type": "DatasetReference"
+												"referenceName": "ORIGEM_TABELAS_ADF",
+												"type": "DatasetReference",
+												"parameters": {
+													"schema_origem": {
+														"value": "@item().NOME_SCHEMA_ORIGEM",
+														"type": "Expression"
+													},
+													"tabela_origem": {
+														"value": "@item().NOME_TABELA_ORIGEM",
+														"type": "Expression"
+													}
+												}
 											}
 										],
 										"outputs": [
