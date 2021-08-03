@@ -24,7 +24,8 @@
 					"dataset": {
 						"referenceName": "LISTA_TABELAS_ADF",
 						"type": "DatasetReference"
-					}
+					},
+					"firstRowOnly": false
 				}
 			},
 			{
@@ -44,6 +45,7 @@
 						"value": "@activity('LISTA ORIGEM DESTINO').output.value",
 						"type": "Expression"
 					},
+					"isSequential": false,
 					"batchCount": 30,
 					"activities": [
 						{
@@ -93,7 +95,7 @@
 											"source": {
 												"type": "SqlServerSource",
 												"sqlReaderQuery": {
-													"value": "@concat(\n'select * from ',\nitem().NOME_SCHEMA_ORIGEM,\n'.',\nitem().NOME_TABELA_ORIGEM,' \nwhere ',\nitem().nome_coluna_referencia,\n' >= TO_TIMESTAMP(''',\nreplace(item().Data_Inicio,'T',' '),\n''') and ',\nitem().nome_coluna_referencia,\n' <= TO_TIMESTAMP(''',\nreplace(item().Data_Fim,'T',' '),\n'''',\n')'\n )",
+													"value": "@concat(\n'select * from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' where ', item().nome_coluna_referencia,' >= ''',\nitem().Data_Inicio, ''') and ', item().nome_coluna_referencia, ' <= ''', item().Data_Fim, ''''\n\n )",
 													"type": "Expression"
 												},
 												"queryTimeout": "02:00:00",
@@ -118,14 +120,8 @@
 												"referenceName": "ORIGEM_TABELAS_ADF",
 												"type": "DatasetReference",
 												"parameters": {
-													"schema_origem": {
-														"value": "@item().NOME_SCHEMA_ORIGEM",
-														"type": "Expression"
-													},
-													"tabela_origem": {
-														"value": "@item().NOME_TABELA_ORIGEM",
-														"type": "Expression"
-													}
+													"schema_name": "dbo",
+													"table_name": "tabela"
 												}
 											}
 										],
@@ -482,14 +478,8 @@
 												"referenceName": "ORIGEM_TABELAS_ADF",
 												"type": "DatasetReference",
 												"parameters": {
-													"schema_origem": {
-														"value": "@item().NOME_SCHEMA_ORIGEM",
-														"type": "Expression"
-													},
-													"tabela_origem": {
-														"value": "@item().NOME_TABELA_ORIGEM",
-														"type": "Expression"
-													}
+													"schema_name": "dbo",
+													"table_name": "tabela"
 												}
 											}
 										],
@@ -803,7 +793,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"items": {
-						"value": "@activity('LISTA ORIGEM DESTINO').output.value\n\n",
+						"value": "@activity('LISTA ORIGEM DESTINO').output.value",
 						"type": "Expression"
 					},
 					"batchCount": 15,
@@ -843,7 +833,8 @@
 											"type": "Expression"
 										}
 									}
-								}
+								},
+								"firstRowOnly": true
 							}
 						}
 					]
