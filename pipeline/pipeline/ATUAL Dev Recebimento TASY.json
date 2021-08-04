@@ -1,9 +1,9 @@
 {
-	"name": "pipeline1",
+	"name": "ATUAL Dev Recebimento TASY",
 	"properties": {
 		"activities": [
 			{
-				"name": "Receb ITG",
+				"name": "RECEBIMENTO TASY HTML",
 				"type": "Copy",
 				"dependsOn": [],
 				"policy": {
@@ -16,14 +16,14 @@
 				"userProperties": [],
 				"typeProperties": {
 					"source": {
-						"type": "SqlServerSource",
-						"sqlReaderQuery": "SELECT\n--    nfs.osm\n1  AS ID_SYS /*ITG*/\n,cast(ext.ext_osm_serie as varchar(20)) + cast(ext.ext_osm_num as varchar(80)) as fk_osm_num\n,cast(nfs.nfs_tipo as varchar(50)) + CAST(NFS.nfs_serie AS VARCHAR(50)) + CAST(NFS.nfs_numero AS VARCHAR(255)) AS fk_nfs\n,mns.MNS_DT         as dt_receb   \n,mns.MNS_TIPO\n,ext.ext_smm_num\n,ext.ext_mog_cod\n,ext.ext_valor_glosa\n,ext.EXT_GLOSA_ACATADA\n,ext.ext_valor_receb\nFROM NFS NFS WITH (NOLOCK)\nleft join mns mns with (nolock) on mns.MNS_NFS_NUMERO = nfs.nfs_numero and mns.MNS_NFS_SERIE = nfs.nfs_serie AND MNS.MNS_NFS_TIPO = NFS.nfs_tipo\nINNER join ext ext with(nolock)  on ext.ext_mns_num = mns.MNS_NUM and ext.ext_mns_serie = mns.MNS_SERIE",
-						"queryTimeout": "02:00:00",
-						"partitionOption": "None"
+						"type": "OracleSource",
+						"oracleReaderQuery": "WITH CATE AS(\n\nselect   \n  RT.nr_interno_conta,\n  b.nr_titulo,\n  b.vl_titulo,\n  b.vl_saldo_titulo,\n  a.dt_recebimento AS DT_RECEBIMENTO,\n  A.DT_ATUALIZACAO AS DT_ATUALIZACAO,\n  b.DT_VENCIMENTO,   \n  --obter_pessoa_titulo_receber(a.nr_titulo) as pf,\n  --obter_nome_convenio(obter_convenio_tit_rec(a.nr_titulo)) as convenio,\n  --substr(obter_nome_pf_pj(b.cd_pessoa_fisica, b.cd_cgc),1,255) nm_pessoa,\n  a.vl_glosa,\n  a.vl_descontos,\n  a.vl_juros,\n  a.vl_multa,\n  a.vl_recebido,\n  a.VL_RECURSO,\n  a.VL_REC_MAIOR\n  --nvl(obter_saldo_titulo_receber(a.nr_titulo,sysdate),0) + nvl(obter_juros_multa_titulo(a.nr_titulo,sysdate,'R','M'),0) + nvl(obter_juros_multa_titulo(a.nr_titulo,sysdate,'R','J'),0) vl_total,\n  --obter_nome_estab(b.cd_estabelecimento) as estabelecimento\nfrom   titulo_receber_liq a\nINNER JOIN titulo_receber_v B ON a.nr_titulo      = b.nr_titulo\nINNER JOIN CONTA_PACIENTE CP ON cp.nr_interno_conta = b.nr_interno_conta\nOUTER APPLY(\n        SELECT \n            RET.NR_INTERNO_CONTA\n        FROM CONVENIO_RETORNO_ITEM RET\n        WHERE RET.NR_INTERNO_CONTA = CP.NR_INTERNO_CONTA AND ROWNUM = 1\n)RT\nWHERE RT.NR_INTERNO_CONTA IS NULL\n    --and B.NR_TITULO = 30239\n--WHERE CP.CD_CONVENIO_PARAMETRO IN (1,130,216)\n)\n\n\n\n/*USO DA TABELA CONVENIO RETORNO ITEM*/\n ,  REC AS (   \n        SELECT \n            CRI.NR_SEQUENCIA\n            ,CR.NR_SEQUENCIA         NR_SEQ_RETORNO\n            ,CRI.NR_INTERNO_CONTA    NR_CONTA\n            ,0                       NR_SEQ_ITEM_CONTA\n            ,CRI.NR_TITULO\n            ,TR.DT_VENCIMENTO\n            ,CR.DT_RECEBIMENTO\n            ,CRI.DT_ATUALIZACAO\n            ,0                      CD_ITEM        \n            ,G.VL_GUIA              VLR_GUIA\n            ,SUM(CRI.VL_GLOSADO)    VLR_GLOSA  /*pode ser glosa acatada*/\n            ,SUM(CRI.VL_PAGO)       VLR_PAGO\n            ,SUM(CRI.VL_AMENOR)     VLR_AMENOR\n        \n        FROM CONVENIO_RETORNO_ITEM      CRI\n        INNER JOIN CONVENIO_RETORNO     CR              ON CR.NR_SEQUENCIA = CRI.NR_SEQ_RETORNO\n        OUTER APPLY(\n                    SELECT\n                    MIN(TR.DT_VENCIMENTO) DT_VENCIMENTO\n                    FROM TITULO_RECEBER TR\n                    WHERE CRI.NR_TITULO = TR.NR_TITULO\n        )TR\n        OUTER APPLY(\n            SELECT \n                SUM(CPG.VL_GUIA)  AS VL_GUIA\n            FROM CONTA_PACIENTE_GUIA CPG\n            WHERE CPG.NR_INTERNO_CONTA = CRI.NR_INTERNO_CONTA\n                \n            )G\n        --WHERE CR.DT_CONSISTENCIA IS NOT NULL\n           --WHERE CRI.NR_TITULO = 30239 \n        --WHERE CRI.NR_INTERNO_CONTA = 99469\n        GROUP BY\n            CRI.NR_SEQUENCIA\n            ,CR.NR_SEQUENCIA\n            ,CRI.NR_INTERNO_CONTA\n            ,CRI.NR_TITULO\n            ,TR.DT_VENCIMENTO\n            ,CR.DT_RECEBIMENTO\n            ,CRI.DT_ATUALIZACAO\n            ,G.VL_GUIA\n    )\n    \n        \n    SELECT\n            A.*            \n    FROM REC A\n\n     UNION ALL\n     \n     /*SOMENTE PARTICULAR */\n     SELECT\n        0                               AS NR_SEQUENCIA\n        ,0                              AS NR_SEQ_RETORNO\n        ,A.NR_INTERNO_CONTA             AS NR_CONTA\n        ,0                              AS NR_SEQ_ITEM_CONTA\n        ,A.NR_TITULO\n        ,MIN(A.DT_VENCIMENTO)           AS DT_VENCIMENTO\n        ,MIN(A.DT_RECEBIMENTO)          AS DT_RECEBIMENTO\n        ,MAX(A.DT_ATUALIZACAO)          AS DT_ATUALIZACAO\n        ,0                              AS CD_ITEM\n        ,AVG(A.VL_TITULO)               AS VLR_GUIA\n        ,SUM(A.VL_GLOSA)                AS VL_GLOSA\n        ,SUM(A.VL_RECEBIDO)             AS VLR_PAGO   \n        ,AVG(A.VL_SALDO_TITULO)         AS VLR_AMENOR\n    FROM CATE A\n    --WHERE A.NR_TITULO = :NR_TITULO\n    GROUP BY\n        A.NR_INTERNO_CONTA\n        ,A.NR_TITULO\n",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"preCopyScript": "TRUNCATE TABLE STG.aux_receb_smart",
+						"preCopyScript": "TRUNCATE TABLE dbo.aux_retorno_convenio",
 						"writeBehavior": "insert",
 						"disableMetricsCollection": false
 					},
@@ -33,141 +33,133 @@
 						"mappings": [
 							{
 								"source": {
-									"name": "fk_osm_num",
-									"type": "String",
-									"physicalType": "varchar"
+									"name": "NR_CONTA"
 								},
 								"sink": {
-									"name": "fk_osm_num",
-									"type": "String",
-									"physicalType": "varchar"
+									"name": "NR_CONTA",
+									"type": "Decimal"
 								}
 							},
 							{
 								"source": {
-									"name": "fk_nfs",
-									"type": "String",
-									"physicalType": "varchar"
+									"name": "NR_SEQ_ITEM_CONTA"
 								},
 								"sink": {
-									"name": "fk_nfs",
-									"type": "String",
-									"physicalType": "varchar"
+									"name": "NR_SEQ_ITEM_CONTA",
+									"type": "Decimal"
 								}
 							},
 							{
 								"source": {
-									"name": "dt_receb",
-									"type": "DateTime",
-									"physicalType": "datetime"
+									"name": "CD_ITEM"
 								},
 								"sink": {
-									"name": "dt_receb",
-									"type": "DateTime",
-									"physicalType": "datetime"
+									"name": "CD_ITEM",
+									"type": "Decimal"
 								}
 							},
 							{
 								"source": {
-									"name": "MNS_TIPO",
-									"type": "String",
-									"physicalType": "varchar"
+									"name": "DT_RECEBIMENTO"
 								},
 								"sink": {
-									"name": "MNS_TIPO",
-									"type": "String",
-									"physicalType": "varchar"
+									"name": "DT_RECEBIMENTO",
+									"type": "DateTime"
 								}
 							},
 							{
 								"source": {
-									"name": "ext_smm_num",
-									"type": "Int32",
-									"physicalType": "int"
+									"name": "DT_ATUALIZACAO"
 								},
 								"sink": {
-									"name": "ext_smm_num",
-									"type": "Int32",
-									"physicalType": "int"
+									"name": "DT_ATUALIZACAO",
+									"type": "DateTime"
 								}
 							},
 							{
 								"source": {
-									"name": "ext_mog_cod",
-									"type": "Int32",
-									"physicalType": "int"
+									"name": "VLR_GLOSA"
 								},
 								"sink": {
-									"name": "ext_mog_cod",
-									"type": "Int32",
-									"physicalType": "int"
+									"name": "VLR_GLOSA",
+									"type": "Double"
 								}
 							},
 							{
 								"source": {
-									"name": "ext_valor_glosa",
-									"type": "Double",
-									"physicalType": "float"
+									"name": "VLR_PAGO"
 								},
 								"sink": {
-									"name": "ext_valor_glosa",
-									"type": "Double",
-									"physicalType": "float"
+									"name": "VLR_PAGO",
+									"type": "Double"
 								}
 							},
 							{
 								"source": {
-									"name": "EXT_GLOSA_ACATADA",
-									"type": "Double",
-									"physicalType": "float"
+									"name": "NR_SEQUENCIA"
 								},
 								"sink": {
-									"name": "EXT_GLOSA_ACATADA",
-									"type": "Double",
-									"physicalType": "float"
+									"name": "NR_SEQUENCIA",
+									"type": "Decimal"
 								}
 							},
 							{
 								"source": {
-									"name": "ext_valor_receb",
-									"type": "Double",
-									"physicalType": "float"
+									"name": "NR_TITULO"
 								},
 								"sink": {
-									"name": "ext_valor_receb",
-									"type": "Double",
-									"physicalType": "float"
+									"name": "NR_TITULO",
+									"type": "Decimal"
 								}
 							},
 							{
 								"source": {
-									"name": "ID_SYS",
-									"type": "Int32",
-									"physicalType": "int"
+									"name": "VLR_AMENOR"
 								},
 								"sink": {
-									"name": "ID_SYS",
-									"type": "Int32",
-									"physicalType": "int"
+									"name": "VLR_AMENOR",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "VLR_GUIA"
+								},
+								"sink": {
+									"name": "VLR_GUIA",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_SEQ_RETORNO"
+								},
+								"sink": {
+									"name": "NR_SEQ_RETORNO",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_VENCIMENTO"
+								},
+								"sink": {
+									"name": "DT_VENCIMENTO",
+									"type": "DateTime"
 								}
 							}
-						],
-						"typeConversion": true,
-						"typeConversionSettings": {
-							"allowDataTruncation": true,
-							"treatBooleanAsNumber": false
-						}
+						]
 					}
 				},
 				"inputs": [
 					{
-						"referenceName": "SMART_ITAIGARA_PrdDataSet",
+						"referenceName": "CloudTasyPrdDataSet",
 						"type": "DatasetReference"
 					}
 				],
 				"outputs": [
 					{
-						"referenceName": "AZ_RECEB_SMART",
+						"referenceName": "AZ_AUX_RET_CONV",
 						"type": "DatasetReference"
 					}
 				]
