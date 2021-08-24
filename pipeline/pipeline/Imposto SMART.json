@@ -24,9 +24,9 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"writeBehavior": "insert",
 						"tableOption": "autoCreate",
-						"disableMetricsCollection": false
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
 					},
 					"enableStaging": false,
 					"translator": {
@@ -131,9 +131,9 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"writeBehavior": "insert",
 						"tableOption": "autoCreate",
-						"disableMetricsCollection": false
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
 					},
 					"enableStaging": false,
 					"translator": {
@@ -238,9 +238,9 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"writeBehavior": "insert",
 						"tableOption": "autoCreate",
-						"disableMetricsCollection": false
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
 					},
 					"enableStaging": false,
 					"translator": {
@@ -345,9 +345,9 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"writeBehavior": "insert",
 						"tableOption": "autoCreate",
-						"disableMetricsCollection": false
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
 					},
 					"enableStaging": false,
 					"translator": {
@@ -414,6 +414,113 @@
 				"inputs": [
 					{
 						"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_IMPOSTO_SMART",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Imposto HOSL",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Imposto Oftalmoclin",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT \n    94  AS ID_SYS /*ITB*/\n    ,cast(MNS.MNS_nfs_tipo as varchar(50)) + CAST(MNS.MNS_nfs_serie AS VARCHAR(50)) + CAST(MNS.MNS_nfs_numero AS VARCHAR(255)) AS fk_nfs\n    ,MNS.MNS_TIPO\n    ,MNS.MNS_VLR\nFROM MNS MNS WITH (NOLOCK)\nWHERE \n    UPPER(SUBSTRING(MNS.MNS_TIPO,1,1)) = 'I'",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "MNS_VLR",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 2,
+									"precision": 18
+								},
+								"sink": {
+									"name": "MNS_VLR",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
 						"type": "DatasetReference"
 					}
 				],
