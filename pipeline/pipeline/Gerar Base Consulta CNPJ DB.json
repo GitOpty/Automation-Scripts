@@ -24,9 +24,9 @@
 					"sink": {
 						"type": "AzureSqlSink",
 						"preCopyScript": "TRUNCATE TABLE STG.BI_CNPJ_CONVENIO",
-						"writeBehavior": "insert",
 						"tableOption": "autoCreate",
-						"disableMetricsCollection": false
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
 					},
 					"enableStaging": false,
 					"translator": {
@@ -86,8 +86,8 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"writeBehavior": "insert",
-						"tableOption": "autoCreate"
+						"tableOption": "autoCreate",
+						"writeBehavior": "insert"
 					},
 					"enableStaging": false,
 					"translator": {
@@ -147,8 +147,8 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"writeBehavior": "insert",
-						"tableOption": "autoCreate"
+						"tableOption": "autoCreate",
+						"writeBehavior": "insert"
 					},
 					"enableStaging": false,
 					"translator": {
@@ -208,8 +208,8 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"writeBehavior": "insert",
-						"tableOption": "autoCreate"
+						"tableOption": "autoCreate",
+						"writeBehavior": "insert"
 					},
 					"enableStaging": false,
 					"translator": {
@@ -246,7 +246,7 @@
 				"type": "Copy",
 				"dependsOn": [
 					{
-						"activity": "CNPJ CONV SMART - Oftalmoclin",
+						"activity": "CNPJ CONV SMART - HOSL",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -321,6 +321,67 @@
 				"inputs": [
 					{
 						"referenceName": "SadallaTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_OUT_CNPJ_CONVENIO",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "CNPJ CONV SMART - HOSL",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "CNPJ CONV SMART - Oftalmoclin",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT DISTINCT\nreplace(replace(EMP.emp_cgc,'.',''),'-','') CGC_CONV\n--,EMP.emp_raz_soc\n-- ,EMP.emp_nome_fantasia\nFROM CNV (NOLOCK)\ninner join dbo.emp     EMP             (nolock)        on EMP.emp_cod = CNV.cnv_emp_cod\nWHERE len(replace(replace(EMP.emp_cgc,'.',''),'-','')) = 14 and EMP.EMP_CGC NOT IN ('00000000000000')\n-- WHERE UPPER(CNV_CONTRATO) = 'CITO - PF       '\n-- WHERE cnv_nome LIKE '%BRADESCO%'\n-- WHERE CNV_CONTRATO = 'PJ              '\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"tableOption": "autoCreate",
+						"writeBehavior": "insert"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "CGC_CONV",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CGC_CONV",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
 						"type": "DatasetReference"
 					}
 				],
