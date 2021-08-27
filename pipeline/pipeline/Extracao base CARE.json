@@ -1,0 +1,252 @@
+{
+	"name": "Extracao base CARE",
+	"properties": {
+		"activities": [
+			{
+				"name": "Base Tasy HTML Care",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "WITH FILTRO_CIR AS(\n/*FILTRO DE PROCEDIMENTO QUE CLASSIFICA O PROGRAMA CARE*/\nSELECT DISTINCT\n    P.CD_PROCEDIMENTO\n    ,P.DS_PROCEDIMENTO\n    ,'Cirurgia' as grupo_proc\nFROM PROCEDIMENTO P\nWHERE UPPER(P.DS_PROCEDIMENTO) LIKE '%ANTIANGIO%'   OR UPPER(P.DS_PROCEDIMENTO) LIKE '%INTRAVITREA%'\n\n)\n, FITLRO_CONS_EX AS (\n    SELECT DISTINCT\n        P.CD_PROCEDIMENTO\n        ,CASE\n            WHEN P.CD_PROCEDIMENTO IN (10014,10101012) THEN 'Consultas'\n                ELSE 'Exames'\n             END grupo_proc\n         ,p.ds_procedimento    \n        --,decode(upper(GP.ds_grupo_proc),'CONSULTAS',GP.DS_GRUPO_PROC,'Exames') grupo_proc\n    FROM PROCEDIMENTO P\n    --INNER JOIN grupo_proc GP ON gp.cd_grupo_proc = p.cd_grupo_proc\n    WHERE P.CD_PROCEDIMENTO IN (10014\n                                ,10101012\n                                ,41501144\n                                ,41301315\n                                ,41301013\n                                ,50010093\n                                ,41301250\n                                ,41301420\n                                ,50010131\n                                ,50010123\n    )\n    AND UPPER(p.ie_situacao) = 'A'\n\n)\n\n,PROC AS (\n    SELECT\n        a.cd_procedimento\n        ,a.grupo_proc\n    FROM FILTRO_CIR A\n    \n    UNION ALL\n    \n    SELECT\n        a.cd_procedimento\n        ,a.grupo_proc\n    FROM FITLRO_CONS_EX A\n    \n)\n\n, PAC_CARE AS(\nSELECT DISTINCT\n    AP.CD_PESSOA_FISICA\nFROM PROCEDIMENTO_PACIENTE PP\nINNER JOIN ATENDIMENTO_PACIENTE AP ON AP.NR_ATENDIMENTO = PP.NR_ATENDIMENTO\nINNER JOIN FILTRO_CIR F ON F.CD_PROCEDIMENTO = PP.CD_PROCEDIMENTO\n\n)\n\nSELECT \n    1 as ID_SYS\n    ,EMP.CD_EMPRESA\n    ,EMP.DS_NOME_CURTO      AS SHORT_EMPRESA\n    ,ESTAB.CD_ESTABELECIMENTO\n    ,ESTAB.NM_FANTASIA_ESTAB\n    ,AP.IE_TIPO_ATENDIMENTO\n    ,PP.NR_ATENDIMENTO\n    ,AP.CD_PESSOA_FISICA\n    ,PF.NM_PESSOA_FISICA\n    ,DIAG.CD_DOENCA\n    ,DIAG.DS_DOENCA_CID\n    ,y.grupo_proc\n    ,PP.CD_CONVENIO\n    ,PP.CD_MEDICO_EXECUTOR\n    ,MED.NM_GUERRA  as NM_MEDICO\n    ,MED.IE_CORPO_CLINICO\n    ,TRUNC(AP.DT_ENTRADA)     AS DT_ENTRADA\n    ,TRUNC(PP.DT_PROCEDIMENTO) AS DT_PROCEDIMENTO \n    ,PP.CD_PROCEDIMENTO\n    ,P.DS_PROCEDIMENTO\n    ,PP.QT_PROCEDIMENTO\n    ,PP.VL_PROCEDIMENTO\nFROM PROCEDIMENTO_PACIENTE PP\nINNER JOIN ATENDIMENTO_PACIENTE AP ON AP.NR_ATENDIMENTO = PP.NR_ATENDIMENTO\nINNER JOIN PAC_CARE X ON X.CD_PESSOA_FISICA = AP.CD_PESSOA_FISICA\nINNER JOIN PESSOA_FISICA PF ON PF.CD_PESSOA_FISICA = AP.CD_PESSOA_FISICA\nINNER JOIN PROC Y   ON Y.CD_PROCEDIMENTO = PP.CD_PROCEDIMENTO\nINNER JOIN ESTABELECIMENTO ESTAB ON ESTAB.CD_ESTABELECIMENTO = AP.CD_ESTABELECIMENTO\nINNER JOIN MEDICO MED ON MED.CD_PESSOA_FISICA = PP.CD_MEDICO_EXECUTOR\nINNER JOIN EMPRESA EMP ON EMP.CD_EMPRESA = ESTAB.CD_EMPRESA\n\nOUTER APPLY(\n    SELECT\n        P.DS_PROCEDIMENTO\n    FROM PROCEDIMENTO P\n    WHERE P.CD_PROCEDIMENTO = PP.CD_PROCEDIMENTO AND ROWNUM = 1\n)P\n\nOUTER APPLY(\n    SELECT\n        TMP.*\n    FROM(    \n        SELECT \n            DD.NR_ATENDIMENTO\n            ,DD.CD_DOENCA\n            ,CD.DS_DOENCA_CID\n            ,ROW_NUMBER() OVER (PARTITION BY DD.NR_ATENDIMENTO ORDER BY DD.DT_ATUALIZACAO desc) ID_LINHA\n        FROM diagnostico_doenca DD\n        LEFT JOIN CID_DOENCA CD ON CD.CD_DOENCA_CID = DD.CD_DOENCA\n        WHERE DD.IE_CLASSIFICACAO_DOENCA = 'P'\n    )TMP\n    WHERE TMP.ID_LINHA = 1\n        AND TMP.NR_ATENDIMENTO = AP.NR_ATENDIMENTO\n\n)DIAG\n\nWHERE AP.IE_TIPO_ATENDIMENTO <> 3\n        AND AP.CD_PESSOA_FISICA <> 346\n\n\n",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ID_SYS"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_EMPRESA"
+								},
+								"sink": {
+									"name": "CD_EMPRESA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "SHORT_EMPRESA"
+								},
+								"sink": {
+									"name": "SHORT_EMPRESA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "NM_FANTASIA_ESTAB"
+								},
+								"sink": {
+									"name": "NM_FANTASIA_ESTAB",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "IE_TIPO_ATENDIMENTO"
+								},
+								"sink": {
+									"name": "IE_TIPO_ATENDIMENTO",
+									"type": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_ATENDIMENTO"
+								},
+								"sink": {
+									"name": "NR_ATENDIMENTO",
+									"type": "Int64"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_PESSOA_FISICA"
+								},
+								"sink": {
+									"name": "CD_PESSOA_FISICA",
+									"type": "Int64"
+								}
+							},
+							{
+								"source": {
+									"name": "NM_PESSOA_FISICA"
+								},
+								"sink": {
+									"name": "NM_PESSOA_FISICA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_DOENCA"
+								},
+								"sink": {
+									"name": "CD_DOENCA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_DOENCA_CID"
+								},
+								"sink": {
+									"name": "DS_DOENCA_CID",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "GRUPO_PROC"
+								},
+								"sink": {
+									"name": "GRUPO_PROC",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CONVENIO"
+								},
+								"sink": {
+									"name": "CD_CONVENIO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MEDICO_EXECUTOR"
+								},
+								"sink": {
+									"name": "CD_MEDICO_EXECUTOR",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "NM_MEDICO"
+								},
+								"sink": {
+									"name": "NM_MEDICO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "IE_CORPO_CLINICO"
+								},
+								"sink": {
+									"name": "IE_CORPO_CLINICO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_ENTRADA"
+								},
+								"sink": {
+									"name": "DT_ENTRADA",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_PROCEDIMENTO"
+								},
+								"sink": {
+									"name": "DT_PROCEDIMENTO",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_PROCEDIMENTO"
+								},
+								"sink": {
+									"name": "CD_PROCEDIMENTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_PROCEDIMENTO"
+								},
+								"sink": {
+									"name": "DS_PROCEDIMENTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_PROCEDIMENTO"
+								},
+								"sink": {
+									"name": "QT_PROCEDIMENTO",
+									"type": "Int64"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_PROCEDIMENTO"
+								},
+								"sink": {
+									"name": "VL_PROCEDIMENTO",
+									"type": "Decimal"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_CARE",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Care"
+		},
+		"annotations": []
+	}
+}
