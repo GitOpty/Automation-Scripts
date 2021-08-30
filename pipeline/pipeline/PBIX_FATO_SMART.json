@@ -1,0 +1,698 @@
+{
+	"name": "PBIX_FATO_SMART",
+	"properties": {
+		"activities": [
+			{
+				"name": "Processado a Fato FInal",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "\nWITH DayHorc AS( \n    \nSELECT \nF.*\n,cast(f.ID_SYS as varchar(10)) + f.fk_nfs   as fk_imposto\n,cast(SUBSTRING(CAST(CAST(F.DT_ENTRADA AS DATE) AS VARCHAR(20)),1,7) + '-01' as date) as MESANO_ENTRADA\n,cast(SUBSTRING(CAST(CAST(RECB.DT_RECEB AS DATE) AS VARCHAR(20)),1,7) + '-01' as date) as MESANO_RECEBIMENTO\n,CASE\n    WHEN DATEDIFF(DAY,f.dt_envio_nfs,isnull(RECB.DT_RECEB,getdate())) < -5 THEN cast(SUBSTRING(CAST(CAST(F.dt_nf_vcto AS DATE) AS VARCHAR(20)),1,7) + '-01' as date)\n    ELSE cast(SUBSTRING(CAST(CAST(F.dt_envio_nfs AS DATE) AS VARCHAR(20)),1,7) + '-01' as date)\n END  as MESANO_FATURAMENTO\n,RECB.dt_receb\n,RECB.vlr_glosa_inicial\n,RECB.vlr_glosa_acatada\n,RECB.vlr_receb\n,isnull(ROUND(F.vl_item \n                    - isnull(RECB.vlr_receb,0) \n                    - isnull(RECB.vlr_glosa_acatada,0)\n                ,2),0)       AS vlr_saldo\n,CASE\n    when f.status_faturamento <> 'FATURADO' then 'CTA A FATURAR'\n    when isnull(RECB.vlr_receb,0) = 0 and isnull(RECB.vlr_glosa_inicial,0) = 0 and DATEDIFF(DAY,F.dt_nf_vcto,isnull(RECB.DT_RECEB,getdate())) > 0 then 'INADIMPLENTE'\n    when isnull(RECB.vlr_receb,0) = 0 and DATEDIFF(DAY,F.dt_nf_vcto,isnull(RECB.DT_RECEB,getdate())) < 1 and RECB.DT_RECEB is null then 'CONTA A VENCER'\n    when isnull(RECB.vlr_glosa_inicial,0) > 0 then 'GLOSA'\n    when round(F.vl_item,2)  = round(isnull(RECB.vlr_receb,0),2) and F.status_faturamento = 'FATURADO' then 'PG INTEGRAL'\n    when round(F.vl_item,2)  > round(isnull(RECB.vlr_receb,0),2) and isnull(RECB.vlr_glosa_inicial,0) = 0 then 'PG PARCIALMENTE'\n     else 'S/STATUS'\nend  status_cta_receber\n,CASE\n    WHEN DATEDIFF(DAY,f.dt_envio_nfs,isnull(RECB.DT_RECEB,getdate())) < -5 THEN DATEDIFF(DAY,f.dt_nf_vcto,isnull(RECB.DT_RECEB,getdate()))\n    ELSE DATEDIFF(DAY,f.dt_envio_nfs,isnull(RECB.DT_RECEB,getdate()))\n END  as tempo_receb    \n,case\n    WHEN DATEDIFF(DAY,f.dt_nf_vcto,isnull(RECB.DT_RECEB,getdate())) < 0 THEN 0\n    else DATEDIFF(DAY,f.dt_nf_vcto,isnull(RECB.DT_RECEB,getdate()))                     \n end tempo_vencido    \n,DATEDIFF(DAY,f.dt_entrada,isnull(f.dt_inicio_pre_fat,getdate()))                as tempo_faturamento    \nFROM stg.aux_ciclo_rec_smart f\nOUTER APPLY(\n    SELECT \n        min(R.dt_receb)            as  dt_receb\n        ,SUM(R.ext_valor_glosa)     AS  vlr_glosa_inicial\n        ,SUM(R.EXT_GLOSA_ACATADA)   AS  vlr_glosa_acatada\n        ,SUM(R.ext_valor_receb)     AS  vlr_receb\n    FROM STG.aux_receb_smart R  \n    WHERE R.fk_osm_num = F.fk_num_os\n             AND R.ext_smm_num = f.smm_num\n             AND (ISNULL(F.nr_nfs,0) = 0 OR F.fk_nfs = R.fk_nfs)\n             AND R.ID_SYS = f.Id_sys         \n)RECB\nWHERE F.ID_SYS IN (90,91) \n    AND (F.cd_pessoa_fisica <> 480440 AND F.ID_SYS = 90)\n    AND UPPER(F.cd_convenio) NOT IN ('IOF','CMP','CME','RF1','RC1','PSM')\n    AND F.CD_ITEM NOT IN ('HMC','HMS')\n\n)\n\nSELECT \nF.*\n,cast(f.ID_SYS as varchar(10)) + f.fk_nfs   as fk_imposto\n,cast(SUBSTRING(CAST(CAST(F.DT_ENTRADA AS DATE) AS VARCHAR(20)),1,7) + '-01' as date) as MESANO_ENTRADA\n,cast(SUBSTRING(CAST(CAST(RECB.DT_RECEB AS DATE) AS VARCHAR(20)),1,7) + '-01' as date) as MESANO_RECEBIMENTO\n,CASE\n    WHEN DATEDIFF(DAY,f.dt_envio_nfs,isnull(RECB.DT_RECEB,getdate())) < -5 THEN cast(SUBSTRING(CAST(CAST(F.dt_nf_vcto AS DATE) AS VARCHAR(20)),1,7) + '-01' as date)\n    ELSE cast(SUBSTRING(CAST(CAST(F.dt_envio_nfs AS DATE) AS VARCHAR(20)),1,7) + '-01' as date)\n END  as MESANO_FATURAMENTO\n,RECB.dt_receb\n,RECB.vlr_glosa_inicial\n,RECB.vlr_glosa_acatada\n,RECB.vlr_receb\n,isnull(ROUND(F.vl_item \n                    - isnull(RECB.vlr_receb,0) \n                    - isnull(RECB.vlr_glosa_acatada,0)\n                ,2),0)       AS vlr_saldo\n,CASE\n    when f.status_faturamento <> 'FATURADO' then 'CTA A FATURAR'\n    when isnull(RECB.vlr_receb,0) = 0 and isnull(RECB.vlr_glosa_inicial,0) = 0 and DATEDIFF(DAY,F.dt_nf_vcto,isnull(RECB.DT_RECEB,getdate())) > 0 then 'INADIMPLENTE'\n    when isnull(RECB.vlr_receb,0) = 0 and DATEDIFF(DAY,F.dt_nf_vcto,isnull(RECB.DT_RECEB,getdate())) < 1 and RECB.DT_RECEB is null then 'CONTA A VENCER'\n    when isnull(RECB.vlr_glosa_inicial,0) > 0 then 'GLOSA'\n    when round(F.vl_item,2)  = round(isnull(RECB.vlr_receb,0),2) and F.status_faturamento = 'FATURADO' then 'PG INTEGRAL'\n    when round(F.vl_item,2)  > round(isnull(RECB.vlr_receb,0),2) and isnull(RECB.vlr_glosa_inicial,0) = 0 then 'PG PARCIALMENTE'\n     else 'S/STATUS'\nend  status_cta_receber\n,CASE\n    WHEN DATEDIFF(DAY,f.dt_envio_nfs,isnull(RECB.DT_RECEB,getdate())) < -5 THEN DATEDIFF(DAY,f.dt_nf_vcto,isnull(RECB.DT_RECEB,getdate()))\n    ELSE DATEDIFF(DAY,f.dt_envio_nfs,isnull(RECB.DT_RECEB,getdate()))\n END  as tempo_receb    \n,case\n    WHEN DATEDIFF(DAY,f.dt_nf_vcto,isnull(RECB.DT_RECEB,getdate())) < 0 THEN 0\n    else DATEDIFF(DAY,f.dt_nf_vcto,isnull(RECB.DT_RECEB,getdate()))                     \n end tempo_vencido    \n,DATEDIFF(DAY,f.dt_entrada,isnull(f.dt_inicio_pre_fat,getdate()))                as tempo_faturamento    \nFROM stg.aux_ciclo_rec_smart f\nOUTER APPLY(\n    SELECT \n        min(R.dt_receb)            as  dt_receb\n        ,SUM(R.ext_valor_glosa)     AS  vlr_glosa_inicial\n        ,SUM(R.EXT_GLOSA_ACATADA)   AS  vlr_glosa_acatada\n        ,SUM(R.ext_valor_receb)     AS  vlr_receb\n    FROM STG.aux_receb_smart R  \n    WHERE R.fk_osm_num = F.fk_num_os\n             AND R.ext_smm_num = f.smm_num\n             AND (ISNULL(F.nr_nfs,0) = 0 OR F.fk_nfs = R.fk_nfs)\n             AND R.ID_SYS = f.Id_sys         \n)RECB\n    WHERE F.ID_SYS NOT IN (90,91) \n\nUNION ALL\n\nSELECT * FROM DayHorc\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "NR_SEQUENCIA",
+									"type": "Int64",
+									"physicalType": "bigint"
+								},
+								"sink": {
+									"name": "NR_SEQUENCIA",
+									"type": "Int64",
+									"physicalType": "Int64"
+								}
+							},
+							{
+								"source": {
+									"name": "cd_pessoa_fisica",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "cd_pessoa_fisica",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "nr_atendimento",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "nr_atendimento",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "nr_interno_conta",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "nr_interno_conta",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fk_num_os",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_num_os",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "cd_carterinha_pac",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "cd_carterinha_pac",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "nr_guia",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "nr_guia",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "cd_cid",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "cd_cid",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "senha_conv",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "senha_conv",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "cgc_convenio",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "cgc_convenio",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "nm_razao_social",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "nm_razao_social",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "nm_nome_fantasia",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "nm_nome_fantasia",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "cd_convenio",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "cd_convenio",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ds_convenio",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "ds_convenio",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_entrada",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_entrada",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "cd_estabelecimento",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "cd_estabelecimento",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ds_estabelecimento",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "ds_estabelecimento",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "cd_estab_fat",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "cd_estab_fat",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ds_estab_fat",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "ds_estab_fat",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ds_setor_atendimento",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "ds_setor_atendimento",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ds_setor_executante",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "ds_setor_executante",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_lanc_item",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_lanc_item",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "classif_item",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "classif_item",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "cd_amb",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "cd_amb",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "cd_item",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "cd_item",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ds_item",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "ds_item",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "qt_item",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 4
+								},
+								"sink": {
+									"name": "qt_item",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "vl_item",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "vl_item",
+									"type": "Double",
+									"physicalType": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_inicio_pre_fat",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_inicio_pre_fat",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "pre_fatura",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "pre_fatura",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "status_pre_fatura",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "status_pre_fatura",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "status_faturamento",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "status_faturamento",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "nr_nfs",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "nr_nfs",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_emissao_nf",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_emissao_nf",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_nf_vcto",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_nf_vcto",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_envio_nfs",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_envio_nfs",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "pac_nome",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "pac_nome",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "SMM_NUM",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "SMM_NUM",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fk_imposto",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_imposto",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "MESANO_ENTRADA",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "MESANO_ENTRADA",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "MESANO_RECEBIMENTO",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "MESANO_RECEBIMENTO",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "MESANO_FATURAMENTO",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "MESANO_FATURAMENTO",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "vlr_glosa_inicial",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "vlr_glosa_inicial",
+									"type": "Double",
+									"physicalType": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "vlr_glosa_acatada",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "vlr_glosa_acatada",
+									"type": "Double",
+									"physicalType": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "vlr_receb",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "vlr_receb",
+									"type": "Double",
+									"physicalType": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "vlr_saldo",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "vlr_saldo",
+									"type": "Double",
+									"physicalType": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "status_cta_receber",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "status_cta_receber",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "tempo_receb",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "tempo_receb",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "tempo_vencido",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "tempo_vencido",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "tempo_faturamento",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "tempo_faturamento",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SQL_ORIGEM_DW",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SQL_DESTINO_DW",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Ciclo Receita/PBIX"
+		},
+		"annotations": []
+	}
+}
