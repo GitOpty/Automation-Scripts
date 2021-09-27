@@ -1,0 +1,945 @@
+{
+	"name": "Dev Recebimento SMART",
+	"properties": {
+		"activities": [
+			{
+				"name": "Receb ITB",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Receb ITG",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT\n--    nfs.osm\n91  AS ID_SYS /*ITB*/\n,cast(ext.ext_osm_serie as varchar(20)) + cast(ext.ext_osm_num as varchar(80)) as fk_osm_num\n,cast(nfs.nfs_tipo as varchar(50)) + CAST(NFS.nfs_serie AS VARCHAR(50)) + CAST(NFS.nfs_numero AS VARCHAR(255)) AS fk_nfs\n,mns.MNS_DT         as dt_receb   \n,mns.MNS_TIPO\n,ext.ext_smm_num\n,ext.ext_mog_cod\n,ext.ext_valor_glosa\n,ext.EXT_GLOSA_ACATADA\n,ext.ext_valor_receb\n,ext.ext_valor_imposto\nFROM NFS NFS WITH (NOLOCK)\nleft join mns mns with (nolock) on mns.MNS_NFS_NUMERO = nfs.nfs_numero and mns.MNS_NFS_SERIE = nfs.nfs_serie AND MNS.MNS_NFS_TIPO = NFS.nfs_tipo\nINNER join ext ext with(nolock)  on ext.ext_mns_num = mns.MNS_NUM and ext.ext_mns_serie = mns.MNS_SERIE",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "fk_osm_num",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_osm_num",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_smm_num",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ext_smm_num",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_mog_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ext_mog_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_glosa",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_glosa",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "EXT_GLOSA_ACATADA",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "EXT_GLOSA_ACATADA",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_receb",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_receb",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_imposto",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_imposto",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_ITABUNA_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_RECEB_SMART",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Receb IOF",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Receb ITB",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT\n--    nfs.osm\n92  AS ID_SYS /*IOF*/\n,cast(ext.ext_osm_serie as varchar(20)) + cast(ext.ext_osm_num as varchar(80)) as fk_osm_num\n,cast(nfs.nfs_tipo as varchar(50)) + CAST(NFS.nfs_serie AS VARCHAR(50)) + CAST(NFS.nfs_numero AS VARCHAR(255)) AS fk_nfs\n,mns.MNS_DT         as dt_receb   \n,mns.MNS_TIPO\n,ext.ext_smm_num\n,ext.ext_mog_cod\n,ext.ext_valor_glosa\n,ext.EXT_GLOSA_ACATADA\n,ext.ext_valor_receb\n,ext.ext_valor_imposto\nFROM NFS NFS WITH (NOLOCK)\nleft join mns mns with (nolock) on mns.MNS_NFS_NUMERO = nfs.nfs_numero and mns.MNS_NFS_SERIE = nfs.nfs_serie AND MNS.MNS_NFS_TIPO = NFS.nfs_tipo\nINNER join ext ext with(nolock)  on ext.ext_mns_num = mns.MNS_NUM and ext.ext_mns_serie = mns.MNS_SERIE",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "fk_osm_num",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_osm_num",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_smm_num",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ext_smm_num",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_mog_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ext_mog_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_glosa",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_glosa",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "EXT_GLOSA_ACATADA",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "EXT_GLOSA_ACATADA",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_receb",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_receb",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_imposto",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_imposto",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_IOF_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_RECEB_SMART",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Receb OFT",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Receb IOF",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT\n--    nfs.osm\n93  AS ID_SYS /*OFT*/\n,cast(ext.ext_osm_serie as varchar(20)) + cast(ext.ext_osm_num as varchar(80)) as fk_osm_num\n,cast(nfs.nfs_tipo as varchar(50)) + CAST(NFS.nfs_serie AS VARCHAR(50)) + CAST(NFS.nfs_numero AS VARCHAR(255)) AS fk_nfs\n,mns.MNS_DT         as dt_receb   \n,mns.MNS_TIPO\n,ext.ext_smm_num\n,ext.ext_mog_cod\n,ext.ext_valor_glosa\n,ext.EXT_GLOSA_ACATADA\n,ext.ext_valor_receb\n,ext.ext_valor_imposto\nFROM NFS NFS WITH (NOLOCK)\nleft join mns mns with (nolock) on mns.MNS_NFS_NUMERO = nfs.nfs_numero and mns.MNS_NFS_SERIE = nfs.nfs_serie AND MNS.MNS_NFS_TIPO = NFS.nfs_tipo\nINNER join ext ext with(nolock)  on ext.ext_mns_num = mns.MNS_NUM and ext.ext_mns_serie = mns.MNS_SERIE",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "fk_osm_num",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_osm_num",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_smm_num",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ext_smm_num",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_mog_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ext_mog_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_glosa",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_glosa",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "EXT_GLOSA_ACATADA",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "EXT_GLOSA_ACATADA",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_receb",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_receb",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_imposto",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_imposto",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_RECEB_SMART",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Receb ITG",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT\n--    nfs.osm\n90  AS ID_SYS /*ITG*/\n,cast(ext.ext_osm_serie as varchar(20)) + cast(ext.ext_osm_num as varchar(80)) as fk_osm_num\n,cast(nfs.nfs_tipo as varchar(50)) + CAST(NFS.nfs_serie AS VARCHAR(50)) + CAST(NFS.nfs_numero AS VARCHAR(255)) AS fk_nfs\n,mns.MNS_DT         as dt_receb   \n,mns.MNS_TIPO\n,ext.ext_smm_num\n,ext.ext_mog_cod\n,ext.ext_valor_glosa\n,ext.EXT_GLOSA_ACATADA\n,ext.ext_valor_receb\n,ext.ext_valor_imposto\nFROM NFS NFS WITH (NOLOCK)\nleft join mns mns with (nolock) on mns.MNS_NFS_NUMERO = nfs.nfs_numero and mns.MNS_NFS_SERIE = nfs.nfs_serie AND MNS.MNS_NFS_TIPO = NFS.nfs_tipo\nINNER join ext ext with(nolock)  on ext.ext_mns_num = mns.MNS_NUM and ext.ext_mns_serie = mns.MNS_SERIE",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "TRUNCATE TABLE STG.aux_receb_smart",
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "fk_osm_num",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_osm_num",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_smm_num",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ext_smm_num",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_mog_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ext_mog_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_glosa",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_glosa",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "EXT_GLOSA_ACATADA",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "EXT_GLOSA_ACATADA",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_receb",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_receb",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_imposto",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_imposto",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_ITAIGARA_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_RECEB_SMART",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Receb HOSL",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Receb OFT",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT\n--    nfs.osm\n94  AS ID_SYS /*ITG*/\n,cast(ext.ext_osm_serie as varchar(20)) + cast(ext.ext_osm_num as varchar(80)) as fk_osm_num\n,cast(nfs.nfs_tipo as varchar(50)) + CAST(NFS.nfs_serie AS VARCHAR(50)) + CAST(NFS.nfs_numero AS VARCHAR(255)) AS fk_nfs\n,mns.MNS_DT         as dt_receb   \n,mns.MNS_TIPO\n,ext.ext_smm_num\n,ext.ext_mog_cod\n,ext.ext_valor_glosa\n,ext.EXT_GLOSA_ACATADA\n,ext.ext_valor_receb\n,ext.ext_valor_imposto\nFROM NFS NFS WITH (NOLOCK)\nleft join mns mns with (nolock) on mns.MNS_NFS_NUMERO = nfs.nfs_numero and mns.MNS_NFS_SERIE = nfs.nfs_serie AND MNS.MNS_NFS_TIPO = NFS.nfs_tipo\nINNER join ext ext with(nolock)  on ext.ext_mns_num = mns.MNS_NUM and ext.ext_mns_serie = mns.MNS_SERIE",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "fk_osm_num",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_osm_num",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fk_nfs",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "dt_receb",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								}
+							},
+							{
+								"source": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "MNS_TIPO",
+									"type": "String",
+									"physicalType": "varchar"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_smm_num",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ext_smm_num",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_mog_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ext_mog_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_glosa",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_glosa",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "EXT_GLOSA_ACATADA",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "EXT_GLOSA_ACATADA",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_receb",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_receb",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							},
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								}
+							},
+							{
+								"source": {
+									"name": "ext_valor_imposto",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "ext_valor_imposto",
+									"type": "Double",
+									"physicalType": "float"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_RECEB_SMART",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Ciclo Receita/Recebimento"
+		},
+		"annotations": []
+	}
+}

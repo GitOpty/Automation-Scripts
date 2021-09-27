@@ -1,0 +1,182 @@
+{
+	"name": "ATUAL Dev Recebimento TASY",
+	"properties": {
+		"activities": [
+			{
+				"name": "RECEBIMENTO TASY HTML",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "WITH CATE AS(\n\nselect   \n  TR.CD_ESTABELECIMENTO,\n  CP.nr_interno_conta,\n  NVL(b.nr_titulo,TR.NR_TITULO)                     AS NR_TITULO,\n  NVL(b.vl_titulo,TR.VL_TITULO)                     AS VL_TITULO,\n  NVL(b.vl_saldo_titulo, TR.VL_SALDO_TITULO)        AS VL_SALDO_TITULO,\n  a.dt_recebimento AS DT_RECEBIMENTO,\n  A.DT_ATUALIZACAO AS DT_ATUALIZACAO,\n  NVL(b.DT_VENCIMENTO,TR.DT_VENCIMENTO)             AS DT_VENCIMENTO,   \n  --obter_pessoa_titulo_receber(a.nr_titulo) as pf,\n  --obter_nome_convenio(obter_convenio_tit_rec(a.nr_titulo)) as convenio,\n  --substr(obter_nome_pf_pj(b.cd_pessoa_fisica, b.cd_cgc),1,255) nm_pessoa,\n  a.vl_glosa,\n  a.vl_descontos,\n  a.vl_juros,\n  a.vl_multa,\n  a.vl_recebido,\n  a.VL_RECURSO,\n  a.VL_REC_MAIOR\n  --nvl(obter_saldo_titulo_receber(a.nr_titulo,sysdate),0) + nvl(obter_juros_multa_titulo(a.nr_titulo,sysdate,'R','M'),0) + nvl(obter_juros_multa_titulo(a.nr_titulo,sysdate,'R','J'),0) vl_total,\n  --obter_nome_estab(b.cd_estabelecimento) as estabelecimento\nFROM CONTA_PACIENTE CP\nOUTER APPLY (\n    SELECT\n          TR.nr_titulo,\n          TR.CD_ESTABELECIMENTO,\n          TR.DT_VENCIMENTO,\n          TR.vl_titulo,\n          TR.vl_saldo_titulo          \n    FROM TITULO_RECEBER TR\n    WHERE (CP.NR_INTERNO_CONTA = TR.NR_INTERNO_CONTA OR (CP.NR_SEQ_PROTOCOLO = TR.NR_SEQ_PROTOCOLO)) AND ROWNUM = 1\n)TR\nLEFT JOIN  TITULO_RECEBER B ON B.NR_INTERNO_CONTA = CP.NR_INTERNO_CONTA\nLEFT JOIN   titulo_receber_liq a ON A.NR_TITULO = B.NR_TITULO\n\n--INNER JOIN CONTA_PACIENTE CP ON (B.NR_INTERNO_CONTA,NULL,B.NR_SEQ_PROTOCOLO,B.NR_INTERNO_CONTA) = (B.NR_INTERNO_CONTA,NULL,CP.NR_SEQ_PROTOCOLO,CP.NR_INTERNO_CONTA)\nOUTER APPLY(\n        SELECT \n            RET.NR_INTERNO_CONTA\n        FROM CONVENIO_RETORNO_ITEM RET\n        WHERE RET.NR_INTERNO_CONTA = CP.NR_INTERNO_CONTA AND ROWNUM = 1\n)RT\nWHERE RT.NR_INTERNO_CONTA IS NULL\n)\n\n\n\n/*USO DA TABELA CONVENIO RETORNO ITEM*/\n ,  REC AS (   \n        SELECT \n            CR.CD_ESTABELECIMENTO\n            ,CRI.NR_SEQUENCIA\n            ,CR.NR_SEQUENCIA         NR_SEQ_RETORNO\n            ,CRI.NR_INTERNO_CONTA    NR_CONTA\n            ,0                       NR_SEQ_ITEM_CONTA\n            ,CRI.NR_TITULO\n            ,TR.DT_VENCIMENTO\n            ,CR.DT_RECEBIMENTO\n            ,CRI.DT_ATUALIZACAO\n            ,0                      CD_ITEM        \n            ,G.VL_GUIA              VLR_GUIA\n            ,SUM(CRI.VL_GLOSADO)    VLR_GLOSA  /*pode ser glosa acatada*/\n            ,SUM(CRI.VL_PAGO)       VLR_PAGO\n            ,SUM(CRI.VL_AMENOR)     VLR_AMENOR\n        \n        FROM CONVENIO_RETORNO_ITEM      CRI\n        INNER JOIN CONVENIO_RETORNO     CR              ON CR.NR_SEQUENCIA = CRI.NR_SEQ_RETORNO\n        OUTER APPLY(\n                    SELECT\n                    MIN(TR.DT_VENCIMENTO) DT_VENCIMENTO\n                    FROM TITULO_RECEBER TR\n                    WHERE CRI.NR_TITULO = TR.NR_TITULO\n        )TR\n        OUTER APPLY(\n            SELECT \n                SUM(CPG.VL_GUIA)  AS VL_GUIA\n            FROM CONTA_PACIENTE_GUIA CPG\n            WHERE CPG.NR_INTERNO_CONTA = CRI.NR_INTERNO_CONTA\n                \n            )G\n        --WHERE CR.DT_CONSISTENCIA IS NOT NULL\n           --WHERE CRI.NR_TITULO = 30239 \n        --WHERE CRI.NR_INTERNO_CONTA = 99469\n        GROUP BY\n            CR.CD_ESTABELECIMENTO\n            ,CRI.NR_SEQUENCIA\n            ,CR.NR_SEQUENCIA\n            ,CRI.NR_INTERNO_CONTA\n            ,CRI.NR_TITULO\n            ,TR.DT_VENCIMENTO\n            ,CR.DT_RECEBIMENTO\n            ,CRI.DT_ATUALIZACAO\n            ,G.VL_GUIA\n    )\n      \n    SELECT\n            A.*            \n    FROM REC A\n\n     UNION ALL\n     \n     /*SOMENTE PARTICULAR */\n     SELECT\n        A.CD_ESTABELECIMENTO\n        ,0                               AS NR_SEQUENCIA\n        ,0                              AS NR_SEQ_RETORNO\n        ,A.NR_INTERNO_CONTA             AS NR_CONTA\n        ,0                              AS NR_SEQ_ITEM_CONTA\n        ,A.NR_TITULO\n        ,MIN(A.DT_VENCIMENTO)           AS DT_VENCIMENTO\n        ,MIN(A.DT_RECEBIMENTO)          AS DT_RECEBIMENTO\n        ,MAX(A.DT_ATUALIZACAO)          AS DT_ATUALIZACAO\n        ,0                              AS CD_ITEM\n        ,AVG(A.VL_TITULO)               AS VLR_GUIA\n        ,SUM(A.VL_GLOSA)                AS VL_GLOSA\n        ,SUM(A.VL_RECEBIDO)             AS VLR_PAGO   \n        ,AVG(A.VL_SALDO_TITULO)         AS VLR_AMENOR\n    FROM CATE A\n    --WHERE A.NR_TITULO = :NR_TITULO\n    GROUP BY\n        A.CD_ESTABELECIMENTO\n        ,A.NR_INTERNO_CONTA\n        ,A.NR_TITULO",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "TRUNCATE TABLE dbo.aux_retorno_convenio",
+						"disableMetricsCollection": false,
+						"writeBehavior": "insert"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "NR_CONTA"
+								},
+								"sink": {
+									"name": "NR_CONTA",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_SEQ_ITEM_CONTA"
+								},
+								"sink": {
+									"name": "NR_SEQ_ITEM_CONTA",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ITEM"
+								},
+								"sink": {
+									"name": "CD_ITEM",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_RECEBIMENTO"
+								},
+								"sink": {
+									"name": "DT_RECEBIMENTO",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_ATUALIZACAO"
+								},
+								"sink": {
+									"name": "DT_ATUALIZACAO",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "VLR_GLOSA"
+								},
+								"sink": {
+									"name": "VLR_GLOSA",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "VLR_PAGO"
+								},
+								"sink": {
+									"name": "VLR_PAGO",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_SEQUENCIA"
+								},
+								"sink": {
+									"name": "NR_SEQUENCIA",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_TITULO"
+								},
+								"sink": {
+									"name": "NR_TITULO",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "VLR_AMENOR"
+								},
+								"sink": {
+									"name": "VLR_AMENOR",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "VLR_GUIA"
+								},
+								"sink": {
+									"name": "VLR_GUIA",
+									"type": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_SEQ_RETORNO"
+								},
+								"sink": {
+									"name": "NR_SEQ_RETORNO",
+									"type": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_VENCIMENTO"
+								},
+								"sink": {
+									"name": "DT_VENCIMENTO",
+									"type": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "Decimal"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_AUX_RET_CONV",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Ciclo Receita/Recebimento"
+		},
+		"annotations": []
+	}
+}

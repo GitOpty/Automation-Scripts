@@ -1,0 +1,364 @@
+{
+	"name": "DataType_Origem_Destino",
+	"properties": {
+		"activities": [
+			{
+				"name": "ITG",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT \n'90' as estabelecimento     \n,t.name AS 'TableName'\n,c.name  AS 'ColumnName'\n,sys.name as 'DataType'\n,c.max_length\n,c.precision\n,c.scale\n,c.collation_name\nFROM        sys.columns c\nJOIN        sys.tables  t   ON c.object_id = t.object_id\ninner join  sys.types sys   on sys.system_type_id = c.system_type_id\n-- WHERE       substring(upper(t.name),1,7) = 'TBL_OSM'\nWHERE UPPER(T.name) in (\n    'cnv'\n,'ctf'\n,'emp'\n,'ext'\n,'fat'\n,'gcc'\n,'hon'\n,'mns'\n,'mte'\n,'nfs'\n,'nfl'\n,'osm'\n,'pac'\n,'psv'\n,'smk'\n,'smm'\n,'str'\n\n)\nORDER BY    TableName\n            ,ColumnName\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "estabelecimento",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "estabelecimento",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TableName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "TableName",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ColumnName",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "ColumnName",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DataType",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "DataType",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "max_length",
+									"type": "Int16",
+									"physicalType": "smallint"
+								},
+								"sink": {
+									"name": "max_length",
+									"type": "Int16",
+									"physicalType": "Int16"
+								}
+							},
+							{
+								"source": {
+									"name": "precision",
+									"type": "Byte",
+									"physicalType": "tinyint"
+								},
+								"sink": {
+									"name": "precision",
+									"type": "Byte",
+									"physicalType": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "scale",
+									"type": "Byte",
+									"physicalType": "tinyint"
+								},
+								"sink": {
+									"name": "scale",
+									"type": "Byte",
+									"physicalType": "Byte"
+								}
+							},
+							{
+								"source": {
+									"name": "collation_name",
+									"type": "String",
+									"physicalType": "nvarchar"
+								},
+								"sink": {
+									"name": "collation_name",
+									"type": "String",
+									"physicalType": "String"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_ITAIGARA_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_DATATYPE",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "ITB",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "ITG",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT \n'91' as estabelecimento     \n,t.name AS 'TableName'\n,c.name  AS 'ColumnName'\n,sys.name as 'DataType'\n,c.max_length\n,c.precision\n,c.scale\n,c.collation_name\nFROM        sys.columns c\nJOIN        sys.tables  t   ON c.object_id = t.object_id\ninner join  sys.types sys   on sys.system_type_id = c.system_type_id\n-- WHERE       substring(upper(t.name),1,7) = 'TBL_OSM'\nWHERE UPPER(T.name) in (\n    'cnv'\n,'ctf'\n,'emp'\n,'ext'\n,'fat'\n,'gcc'\n,'hon'\n,'mns'\n,'mte'\n,'nfs'\n,'nfl'\n,'osm'\n,'pac'\n,'psv'\n,'smk'\n,'smm'\n,'str'\n\n)\nORDER BY    TableName\n            ,ColumnName\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_ITABUNA_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_DATATYPE",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "IOF",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "ITB",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT \n'92' as estabelecimento     \n,t.name AS 'TableName'\n,c.name  AS 'ColumnName'\n,sys.name as 'DataType'\n,c.max_length\n,c.precision\n,c.scale\n,c.collation_name\nFROM        sys.columns c\nJOIN        sys.tables  t   ON c.object_id = t.object_id\ninner join  sys.types sys   on sys.system_type_id = c.system_type_id\n-- WHERE       substring(upper(t.name),1,7) = 'TBL_OSM'\nWHERE UPPER(T.name) in (\n    'cnv'\n,'ctf'\n,'emp'\n,'ext'\n,'fat'\n,'gcc'\n,'hon'\n,'mns'\n,'mte'\n,'nfs'\n,'nfl'\n,'osm'\n,'pac'\n,'psv'\n,'smk'\n,'smm'\n,'str'\n\n)\nORDER BY    TableName\n            ,ColumnName\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_IOF_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_DATATYPE",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Oftalmoclin",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "IOF",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT \n'93' as estabelecimento     \n,t.name AS 'TableName'\n,c.name  AS 'ColumnName'\n,sys.name as 'DataType'\n,c.max_length\n,c.precision\n,c.scale\n,c.collation_name\nFROM        sys.columns c\nJOIN        sys.tables  t   ON c.object_id = t.object_id\ninner join  sys.types sys   on sys.system_type_id = c.system_type_id\n-- WHERE       substring(upper(t.name),1,7) = 'TBL_OSM'\nWHERE UPPER(T.name) in (\n    'cnv'\n,'ctf'\n,'emp'\n,'ext'\n,'fat'\n,'gcc'\n,'hon'\n,'mns'\n,'mte'\n,'nfs'\n,'nfl'\n,'osm'\n,'pac'\n,'psv'\n,'smk'\n,'smm'\n,'str'\n\n)\nORDER BY    TableName\n            ,ColumnName\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_DATATYPE",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "HOSL",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Oftalmoclin",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": "SELECT \n'94' as estabelecimento     \n,t.name AS 'TableName'\n,c.name  AS 'ColumnName'\n,sys.name as 'DataType'\n,c.max_length\n,c.precision\n,c.scale\n,c.collation_name\nFROM        sys.columns c\nJOIN        sys.tables  t   ON c.object_id = t.object_id\ninner join  sys.types sys   on sys.system_type_id = c.system_type_id\n-- WHERE       substring(upper(t.name),1,7) = 'TBL_OSM'\nWHERE UPPER(T.name) in (\n    'cnv'\n,'ctf'\n,'emp'\n,'ext'\n,'fat'\n,'gcc'\n,'hon'\n,'mns'\n,'mte'\n,'nfs'\n,'nfl'\n,'osm'\n,'pac'\n,'psv'\n,'smk'\n,'smm'\n,'str'\n\n)\nORDER BY    TableName\n            ,ColumnName\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink"
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_DATATYPE",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "DW Ciclo/Try Old"
+		},
+		"annotations": []
+	}
+}
