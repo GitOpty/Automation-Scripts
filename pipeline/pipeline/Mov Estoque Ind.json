@@ -5,7 +5,14 @@
 			{
 				"name": "Mov Estoque IOF",
 				"type": "Copy",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "DT_FIM",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "7.00:00:00",
 					"retry": 0,
@@ -17,7 +24,10 @@
 				"typeProperties": {
 					"source": {
 						"type": "SqlServerSource",
-						"sqlReaderQuery": "SELECT MMA_TIPO_OPERACAO\n    , mma_data_mov\n    , MMA_SBA_COD\n    , sba_nome\n    , str_e.str_nome\n    , mma_mat_cod\n    , mma_ism_seq\n    , MMA_ISM_SEQ as MMA_ISM_SEQ_2\n    , mma_lot_num\n    , gmm_nome\n    , fne_nome_fantasia\n    , mat_desc_resumida\n    , tmm_descr \n    , tmm_tipo\n    , mma_qtd\n    , mma_valor\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nWHERE mma_data_mov >= '01/01/2021'\n",
+						"sqlReaderQuery": {
+							"value": "@concat('\n\nSELECT  \n\n    92 AS ID_SYS /*ITG*/\n    ,CAST(mma_data_mov AS DATE) AS DATA_MOVIMENTO\n    , MMA_SBA_COD               AS CD_LOCAL_ESTOQUE\n    , sba_nome                  AS DS_LOCAL_ESTOQUE\n    , STR_e.str_cod             as CD_ESTABELECIMENTO\n    , str_e.str_nome            AS DS_ESTABELECIMENTO\n    , mma_mat_cod               AS CD_MATERIAL\n    , mat_desc_resumida         AS DS_MATERIAL\n    , 0                         AS CD_CLASSE_MATERIAL\n    ,null                       AS DS_CLASSE_MATERIAL\n    , GMM_COD                   AS CD_GRUPO_MATERIAL\n    , gmm_nome                  AS DS_GRUPO_MATERIAL\n    ,MMA_TIPO_OPERACAO          as CD_TIPO_OPERACAO\n    , tmm_descr                 as DS_OPERACAO\n    , CASE\n        WHEN MMA_TIPO_OPERACAO =', '''E4''','  THEN    mma_qtd * -1\n         ELSE mma_qtd\n      END                       AS QT_MOVIMENTO\n    , mma_valor                 AS VL_MOVIMENTO\nFROM mma                with (nolock)\nLEFT JOIN tmm           with (nolock)           ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat           with (nolock)           ON mma_mat_cod = mat_cod\nLEFT JOIN gmm           with (nolock)           ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba           with (nolock)           ON sba_cod = mma_sba_cod\nLEFT JOIN str           with (nolock)           ON str_cod = sba_str_cod\nLEFT JOIN str str_e     with (nolock)           ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne           with (nolock)           ON mat_fne_ult_entrada = FNE_COD\nWHERE  SUBSTRING(CAST(CAST(mma_data_mov AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n",
+							"type": "Expression"
+						},
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -38,196 +48,196 @@
 						"mappings": [
 							{
 								"source": {
-									"name": "MMA_TIPO_OPERACAO",
-									"type": "String",
-									"physicalType": "char"
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
 								},
 								"sink": {
-									"name": "MMA_TIPO_OPERACAO",
+									"name": "ID_SYS",
 									"type": "String",
 									"physicalType": "String"
 								}
 							},
 							{
 								"source": {
-									"name": "mma_data_mov",
+									"name": "DATA_MOVIMENTO",
 									"type": "DateTime",
-									"physicalType": "datetime"
+									"physicalType": "date"
 								},
 								"sink": {
-									"name": "mma_data_mov",
+									"name": "DATA_MOVIMENTO",
 									"type": "String",
 									"physicalType": "String"
 								}
 							},
 							{
 								"source": {
-									"name": "MMA_SBA_COD",
+									"name": "CD_LOCAL_ESTOQUE",
 									"type": "String",
 									"physicalType": "char"
 								},
 								"sink": {
-									"name": "MMA_SBA_COD",
+									"name": "CD_LOCAL_ESTOQUE",
 									"type": "String",
 									"physicalType": "String"
 								}
 							},
 							{
 								"source": {
-									"name": "sba_nome",
+									"name": "DS_LOCAL_ESTOQUE",
 									"type": "String",
 									"physicalType": "char"
 								},
 								"sink": {
-									"name": "sba_nome",
+									"name": "DS_LOCAL_ESTOQUE",
 									"type": "String",
 									"physicalType": "String"
 								}
 							},
 							{
 								"source": {
-									"name": "str_nome",
+									"name": "CD_ESTABELECIMENTO",
 									"type": "String",
 									"physicalType": "char"
 								},
 								"sink": {
-									"name": "str_nome",
+									"name": "CD_ESTABELECIMENTO",
 									"type": "String",
 									"physicalType": "String"
 								}
 							},
 							{
 								"source": {
-									"name": "mma_mat_cod",
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MATERIAL",
 									"type": "Int32",
 									"physicalType": "int"
 								},
 								"sink": {
-									"name": "mma_mat_cod",
+									"name": "CD_MATERIAL",
 									"type": "String",
 									"physicalType": "String"
 								}
 							},
 							{
 								"source": {
-									"name": "mma_ism_seq",
-									"type": "Int32",
-									"physicalType": "int"
-								},
-								"sink": {
-									"name": "mma_ism_seq",
-									"type": "String",
-									"physicalType": "String"
-								}
-							},
-							{
-								"source": {
-									"name": "MMA_ISM_SEQ_2",
-									"type": "Int32",
-									"physicalType": "int"
-								},
-								"sink": {
-									"name": "MMA_ISM_SEQ_2",
-									"type": "String",
-									"physicalType": "String"
-								}
-							},
-							{
-								"source": {
-									"name": "mma_lot_num",
+									"name": "DS_MATERIAL",
 									"type": "String",
 									"physicalType": "char"
 								},
 								"sink": {
-									"name": "mma_lot_num",
+									"name": "DS_MATERIAL",
 									"type": "String",
 									"physicalType": "String"
 								}
 							},
 							{
 								"source": {
-									"name": "gmm_nome",
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL",
 									"type": "String",
 									"physicalType": "varchar"
 								},
 								"sink": {
-									"name": "gmm_nome",
+									"name": "DS_GRUPO_MATERIAL",
 									"type": "String",
 									"physicalType": "String"
 								}
 							},
 							{
 								"source": {
-									"name": "fne_nome_fantasia",
+									"name": "CD_TIPO_OPERACAO",
 									"type": "String",
 									"physicalType": "char"
 								},
 								"sink": {
-									"name": "fne_nome_fantasia",
+									"name": "CD_TIPO_OPERACAO",
 									"type": "String",
 									"physicalType": "String"
 								}
 							},
 							{
 								"source": {
-									"name": "mat_desc_resumida",
-									"type": "String",
-									"physicalType": "char"
-								},
-								"sink": {
-									"name": "mat_desc_resumida",
-									"type": "String",
-									"physicalType": "String"
-								}
-							},
-							{
-								"source": {
-									"name": "tmm_descr",
+									"name": "DS_OPERACAO",
 									"type": "String",
 									"physicalType": "varchar"
 								},
 								"sink": {
-									"name": "tmm_descr",
+									"name": "DS_OPERACAO",
 									"type": "String",
 									"physicalType": "String"
 								}
 							},
 							{
 								"source": {
-									"name": "tmm_tipo",
-									"type": "String",
-									"physicalType": "char"
-								},
-								"sink": {
-									"name": "tmm_tipo",
-									"type": "String",
-									"physicalType": "String"
-								}
-							},
-							{
-								"source": {
-									"name": "mma_qtd",
+									"name": "QT_MOVIMENTO",
 									"type": "Decimal",
 									"physicalType": "decimal",
 									"scale": 0,
-									"precision": 14
+									"precision": 16
 								},
 								"sink": {
-									"name": "mma_qtd",
+									"name": "QT_MOVIMENTO",
 									"type": "String",
 									"physicalType": "String"
 								}
 							},
 							{
 								"source": {
-									"name": "mma_valor",
+									"name": "VL_MOVIMENTO",
 									"type": "Decimal",
 									"physicalType": "decimal",
 									"scale": 10,
 									"precision": 20
 								},
 								"sink": {
-									"name": "mma_valor",
+									"name": "VL_MOVIMENTO",
 									"type": "String",
 									"physicalType": "String"
 								}
@@ -252,8 +262,43 @@
 						"type": "DatasetReference"
 					}
 				]
+			},
+			{
+				"name": "DT_INICIO",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "DT_INICIO",
+					"value": "2021-09-01"
+				}
+			},
+			{
+				"name": "DT_FIM",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "DT_INICIO",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "DT_FIM",
+					"value": "2021-09-01"
+				}
 			}
 		],
+		"variables": {
+			"DT_INICIO": {
+				"type": "String"
+			},
+			"DT_FIM": {
+				"type": "String"
+			}
+		},
 		"folder": {
 			"name": "Estoque"
 		},
