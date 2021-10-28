@@ -13,6 +13,732 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/Nota Fiscal')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline que extrai informações de notas fiscais das unidades para compor relatório ao setor de FP&A.",
+				"activities": [
+					{
+						"name": "Nota Fiscal Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "select obter_cgc_estabelecimento(n.cd_estabelecimento) as CNPJ,\nobter_nome_estab(n.cd_estabelecimento) as DS_UNIDADE ,\nn.DT_EMISSAO,\ndt_entrada_saida as dt_entrada_saida,\nn.nr_sequencia, \nn.nr_nota_fiscal, \ni.cd_conta_contabil, \nc.ds_conta_contabil, \nobter_nome_pj(n.cd_cgc) as fornecedor,\t\nsum(i.vl_total_item_nf) as vl_total_item_nf,\nSUBSTR(n.ds_observacao,1,100) AS ds_observacao\nfrom nota_fiscal n,\nnota_fiscal_item i,\nconta_contabil c,\noperacao_nota a\nwhere n.nr_sequencia = i.nr_sequencia\nand i.cd_conta_contabil = c.cd_conta_contabil (+)\nand n.cd_operacao_nf = a.cd_operacao_nf (+)\nand a.ie_operacao_fiscal = 'E'\nand n.ie_situacao = 1\ngroup by n.cd_estabelecimento,\nn.cd_estabelecimento ,\nn.DT_EMISSAO,\ndt_entrada_saida,\nn.nr_sequencia, \nn.nr_nota_fiscal, \ni.cd_conta_contabil, \nc.ds_conta_contabil, \nn.cd_cgc,\t\nn.ds_observacao\norder by 5",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Nota Fiscal HOB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "select obter_cgc_estabelecimento(n.cd_estabelecimento) as CNPJ,\nobter_nome_estab(n.cd_estabelecimento) as DS_UNIDADE ,\nn.DT_EMISSAO,\ndt_entrada_saida as dt_entrada_saida,\nn.nr_sequencia, \nn.nr_nota_fiscal, \ni.cd_conta_contabil, \nc.ds_conta_contabil, \nobter_nome_pj(n.cd_cgc) as fornecedor,\t\nsum(i.vl_total_item_nf) as vl_total_item_nf,\nSUBSTR(n.ds_observacao,1,100) AS ds_observacao\nfrom nota_fiscal n,\nnota_fiscal_item i,\nconta_contabil c,\noperacao_nota a\nwhere n.nr_sequencia = i.nr_sequencia\nand i.cd_conta_contabil = c.cd_conta_contabil (+)\nand n.cd_operacao_nf = a.cd_operacao_nf (+)\nand a.ie_operacao_fiscal = 'E'\nand n.ie_situacao = 1\ngroup by n.cd_estabelecimento,\nn.cd_estabelecimento ,\nn.DT_EMISSAO,\ndt_entrada_saida,\nn.nr_sequencia, \nn.nr_nota_fiscal, \ni.cd_conta_contabil, \nc.ds_conta_contabil, \nn.cd_cgc,\t\nn.ds_observacao\norder by 5",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Nota Fiscal Itaigara",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITAIGARA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Nota Fiscal HOSL",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_HOSL_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Nota Fiscal Itabuna",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Nota Fiscal INOB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_INOB_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Nota Fiscal IOF",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_IOF_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Nota Fiscal Oftalmoclin",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Fiscal"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:25Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Orientacao e Conversao Cirurgicas')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline utilizado para alimentar tabelas do SMC:\n\n",
+				"activities": [
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					},
+					{
+						"name": "Orientacoes Cirurgicas Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "-- ORIENTAÇÃO\n\nSELECT Z.DT_AGENDA, Z.CD_AGENDA, Z.CD_PESSOA_FISICA, Z.NM_PESSOA_FISICA,Z.IE_LADO,Z.AUTORIZACAO AS DS_AUTORIZACAO,Z.PROCEDIMENTO, Z.CNPJ, Z.DS_UNIDADE, Z.BASE, Z.NR_SEQ_PROC_INTERNO,\n\n(SELECT COUNT(*)\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AB.CD_AGENDA NOT IN (4442,4443,4444,4445,4513,4563,4553,5273,4464,4465,4466,4467,4552,3043,11)\nAND AB.CD_PESSOA_FISICA = Z.CD_PESSOA_FISICA\nAND AG_1.CD_TIPO_AGENDA = 1\nAND AB.DT_AGENDA > Z.DT_AGENDA) AS INDICADOR_CIRURGIA\n\nFROM\n\n(SELECT MAX(A.DT_AGENDA) AS DT_AGENDA, A.CD_AGENDA, A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO) AS AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\n\nA.IE_LADO,\nES.CD_CGC AS CNPJ,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\n'Tasy Delphi' as BASE,\nA.NR_SEQ_PROC_INTERNO\n\nFROM AGENDA_PACIENTE A,\n     PESSOA_FISICA PF,\n     AGENDA AG,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE A.CD_PESSOA_FISICA = PF.CD_PESSOA_FISICA\nAND A.CD_AGENDA = AG.CD_AGENDA\nAND AG.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND ES.CD_EMPRESA = ES.CD_EMPRESA\nAND A.CD_AGENDA IN (4442,4443,4444,4445,4513,4563,4553,5273,4464,4465,4466,4467,4552,3043,11)\nAND AG.CD_TIPO_AGENDA = 1\nGROUP BY A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA,A.IE_LADO, OBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO), OBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED),\nES.CD_CGC, ES.NM_FANTASIA_ESTAB, A.CD_AGENDA, A.NR_SEQ_PROC_INTERNO\nORDER BY 1 desc) Z \nWHERE Z.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "DT_AGENDA"
+										},
+										"sink": {
+											"name": "DT_AGENDA",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_AGENDA"
+										},
+										"sink": {
+											"name": "CD_AGENDA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PESSOA_FISICA"
+										},
+										"sink": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "NM_PESSOA_FISICA"
+										},
+										"sink": {
+											"name": "NM_PESSOA_FISICA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_AUTORIZACAO"
+										},
+										"sink": {
+											"name": "DS_AUTORIZACAO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_LADO"
+										},
+										"sink": {
+											"name": "IE_LADO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "PROCEDIMENTO"
+										},
+										"sink": {
+											"name": "PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CNPJ"
+										},
+										"sink": {
+											"name": "CNPJ",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_UNIDADE"
+										},
+										"sink": {
+											"name": "DS_UNIDADE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "BASE"
+										},
+										"sink": {
+											"name": "BASE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "INDICADOR_CIRURGIA"
+										},
+										"sink": {
+											"name": "INDICADOR_CIRURGIA",
+											"type": "Int32"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Orientacao_Cirurgia_Unidade",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Agendamento Cirurgico Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "-- AGENDA CIRURGICA\n\nSELECT\nAB.DT_AGENDA, AB.CD_AGENDA,\nAB.CD_PESSOA_FISICA, \nPF_1.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,AB.IE_AUTORIZACAO) AS DS_AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(AB.CD_PROCEDIMENTO, AB.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\nAB.NR_CIRURGIA,\nAB.IE_LADO,\nAB.CD_CONVENIO,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\nES.CD_CGC AS CNPJ,\n'Tasy Delphi' as BASE,\nAB.NR_SEQ_PROC_INTERNO\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AG_1.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND AB.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365\nAND ES.CD_EMPRESA = EM.CD_EMPRESA\nAND AB.CD_AGENDA NOT IN (4442,4443,4444,4445,4513,4563,4553,5273,4464,4465,4466,4467,4552,3043,11)\nAND AG_1.CD_TIPO_AGENDA = 1\nORDER BY 1",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Agendamento_Cirurgia_Unidade",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Orientacoes Cirurgicas HOB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "-- ORIENTAÇÃO\n\nSELECT Z.DT_AGENDA, Z.CD_AGENDA, Z.CD_PESSOA_FISICA, Z.NM_PESSOA_FISICA,Z.IE_LADO,Z.AUTORIZACAO AS DS_AUTORIZACAO,Z.PROCEDIMENTO, Z.CNPJ, Z.DS_UNIDADE, Z.BASE, Z.NR_SEQ_PROC_INTERNO,\n\n(SELECT COUNT(*)\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AB.CD_AGENDA NOT IN (549,802,659,776,665,607,663,666,664,662,660,661,609)\nAND AB.CD_PESSOA_FISICA = Z.CD_PESSOA_FISICA\nAND AG_1.CD_TIPO_AGENDA = 1\nAND AB.DT_AGENDA > Z.DT_AGENDA) AS INDICADOR_CIRURGIA\n\nFROM\n\n(SELECT MAX(A.DT_AGENDAMENTO) AS DT_AGENDA, A.CD_AGENDA, A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO) AS AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\nA.IE_LADO,\nES.CD_CGC AS CNPJ,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\n'Tasy HTML' as BASE,\nA.NR_SEQ_PROC_INTERNO\n\nFROM AGENDA_PACIENTE A,\n     PESSOA_FISICA PF,\n     AGENDA AG,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE A.CD_PESSOA_FISICA = PF.CD_PESSOA_FISICA\nAND A.CD_AGENDA = AG.CD_AGENDA\nAND AG.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND ES.CD_EMPRESA = ES.CD_EMPRESA\nAND A.CD_AGENDA IN (549,802,659,776,665,607,663,666,664,662,660,661,609)\nAND AG.CD_TIPO_AGENDA = 1\nGROUP BY A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA,A.IE_LADO, OBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO), OBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED),\nES.CD_CGC, ES.NM_FANTASIA_ESTAB, A.CD_AGENDA, A.NR_SEQ_PROC_INTERNO\nORDER BY 1 desc) Z \nWHERE Z.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Orientacao_Cirurgia_Unidade",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Agendamento Cirurgico HOB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "-- AGENDA CIRURGICA\n\nSELECT\nAB.DT_AGENDA, AB.CD_AGENDA,\nAB.CD_PESSOA_FISICA, \nPF_1.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,AB.IE_AUTORIZACAO) AS DS_AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(AB.CD_PROCEDIMENTO, AB.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\nAB.NR_CIRURGIA,\nAB.IE_LADO,\nAB.CD_CONVENIO,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\nES.CD_CGC AS CNPJ,\n'Tasy HTML' as BASE,\nAB.NR_SEQ_PROC_INTERNO\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AG_1.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND AB.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365\nAND ES.CD_EMPRESA = EM.CD_EMPRESA\nAND AB.CD_AGENDA NOT IN (549,802,659,776,665,607,663,666,664,662,660,661,609)\nAND AG_1.CD_TIPO_AGENDA = 1\nORDER BY 1",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Agendamento_Cirurgia_Unidade",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Cirurgias"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-12T14:12:16Z"
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Pacientes')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -11531,79 +12257,6 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/Producao Medica Sadalla')]"
 			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Daily 0300 AM')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Execução de pipelines as 05:00",
-				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "Chamados Requestia",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					}
-				],
-				"type": "ScheduleTrigger",
-				"typeProperties": {
-					"recurrence": {
-						"frequency": "Day",
-						"interval": 1,
-						"startTime": "2020-01-21T22:31:00",
-						"timeZone": "E. South America Standard Time",
-						"schedule": {
-							"minutes": [
-								0
-							],
-							"hours": [
-								3
-							]
-						}
-					}
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Daily 0630 AM')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "Agendas Projesi Testes",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					}
-				],
-				"type": "ScheduleTrigger",
-				"typeProperties": {
-					"recurrence": {
-						"frequency": "Day",
-						"interval": 1,
-						"startTime": "2019-09-27T11:00:00",
-						"timeZone": "E. South America Standard Time",
-						"schedule": {
-							"minutes": [
-								30
-							],
-							"hours": [
-								6
-							]
-						}
-					}
-				}
-			},
-			"dependsOn": []
 		}
 	]
 }
