@@ -28,7 +28,7 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"preCopyScript": "truncate table dw.depara_sys",
+						"preCopyScript": "--truncate table dbo.depara_sys",
 						"tableOption": "autoCreate",
 						"disableMetricsCollection": false
 					},
@@ -45,7 +45,7 @@
 								"sink": {
 									"name": "cod_sys",
 									"type": "String",
-									"physicalType": "String"
+									"physicalType": "nvarchar"
 								}
 							},
 							{
@@ -57,7 +57,7 @@
 								"sink": {
 									"name": "nm_sys",
 									"type": "String",
-									"physicalType": "String"
+									"physicalType": "nvarchar"
 								}
 							},
 							{
@@ -69,7 +69,7 @@
 								"sink": {
 									"name": "Codigo",
 									"type": "String",
-									"physicalType": "String"
+									"physicalType": "nvarchar"
 								}
 							},
 							{
@@ -81,7 +81,7 @@
 								"sink": {
 									"name": "Descricao",
 									"type": "String",
-									"physicalType": "String"
+									"physicalType": "nvarchar"
 								}
 							},
 							{
@@ -93,7 +93,7 @@
 								"sink": {
 									"name": "Categoria",
 									"type": "String",
-									"physicalType": "String"
+									"physicalType": "nvarchar"
 								}
 							},
 							{
@@ -105,7 +105,7 @@
 								"sink": {
 									"name": "Categoria_Aux",
 									"type": "String",
-									"physicalType": "String"
+									"physicalType": "nvarchar"
 								}
 							},
 							{
@@ -117,7 +117,7 @@
 								"sink": {
 									"name": "Classe",
 									"type": "String",
-									"physicalType": "String"
+									"physicalType": "nvarchar"
 								}
 							},
 							{
@@ -129,7 +129,7 @@
 								"sink": {
 									"name": "Especialidade",
 									"type": "String",
-									"physicalType": "String"
+									"physicalType": "nvarchar"
 								}
 							},
 							{
@@ -141,7 +141,7 @@
 								"sink": {
 									"name": "Procedimento",
 									"type": "String",
-									"physicalType": "String"
+									"physicalType": "nvarchar"
 								}
 							},
 							{
@@ -153,7 +153,19 @@
 								"sink": {
 									"name": "Patologia",
 									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_ATUALIZACAO",
+									"type": "String",
 									"physicalType": "String"
+								},
+								"sink": {
+									"name": "DT_ATUALIZACAO",
+									"type": "String",
+									"physicalType": "nvarchar"
 								}
 							}
 						],
@@ -180,7 +192,14 @@
 			{
 				"name": "Depara Convenio",
 				"type": "Copy",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Depara Procedimento",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "7.00:00:00",
 					"retry": 0,
@@ -203,13 +222,87 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"preCopyScript": "truncate table dw.depara_sys_convenio",
+						"preCopyScript": "--truncate table dw.depara_sys_convenio",
 						"tableOption": "autoCreate",
 						"disableMetricsCollection": false
 					},
 					"enableStaging": false,
 					"translator": {
 						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "COD_SYS",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "COD_SYS",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "NM_SYS",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "NM_SYS",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CODIGO",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "CODIGO",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "DESCRICAO",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "DESCRICAO",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "CONVENIO_DEPARA",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "CONVENIO_DEPARA",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							},
+							{
+								"source": {
+									"name": "TP_CONVENIO",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "TP_CONVENIO",
+									"type": "String",
+									"physicalType": "nvarchar"
+								}
+							}
+						],
 						"typeConversion": true,
 						"typeConversionSettings": {
 							"allowDataTruncation": true,
@@ -229,6 +322,60 @@
 						"type": "DatasetReference"
 					}
 				]
+			},
+			{
+				"name": "Engenharia Reversa Convenio",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Depara Convenio",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "dbo.SP_CONVENIO_PROD_DIARIA_AJ"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Engenharia Reversa Procedimento Smart Tasy",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Engenharia Reversa Convenio",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "dbo.SP_ENGENHARIA_REVERSA_PROCEDIMENTO_SMART_TASY"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				}
 			}
 		],
 		"folder": {
