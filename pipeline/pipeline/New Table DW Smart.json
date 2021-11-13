@@ -1,0 +1,112 @@
+{
+	"name": "New Table DW Smart",
+	"properties": {
+		"activities": [
+			{
+				"name": "Clone Stg to DW OSM",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "WITH REF AS(\nSELECT\n    A.*\n    ,ROW_NUMBER() OVER(PARTITION BY A.OSM_NUM, A.OSM_SERIE, A.ESTABELECIMENTO ORDER BY A.osm_dthr DESC) ID_LINHA\nFROM STG.TBL_OSM A\n)\n\nSELECT\nestabelecimento\n,osm_num\n,osm_pac\n,osm_dthr\n,osm_cnv\n,osm_proc\n,osm_mreq\n,osm_str\n,osm_status\n,osm_ind_urg\n,osm_serie\n,osm_hsp_num\n,osm_tipo\n,osm_dt_result\n,osm_atend\n,osm_obs_coleta\n,osm_lta_cod\n,osm_ctle_cnv\n,osm_nota_sala\n,osm_cid_cod\n,osm_obs\n,osm_mcnv\n,OSM_PADRAO_PRECO\n,OSM_DT_SOLIC\n,OSM_HORA_ESP\n,OSM_SUS_GRUPO_ATENDE\n,OSM_SUS_TIPO_ATENDE\n,OSM_CNPJ_SOLIC\n,OSM_SAP_COD\n,OSM_LIB_PAG\n,OSM_LIB_PAG_DTHR\n,OSM_LIB_PAG_USR\n,OSM_MTE_SERIE_BENEF\n,OSM_MTE_SEQ_BENEF\n,OSM_OSM_SERIE_BENEF\n,OSM_OSM_NUM_BENEF\n,OSM_LIB_PAG_SERIE\n,OSM_LIB_PAG_NUM\n,OSM_ASO_MES_REF\n,OSM_NUM_EXTERNO\n,OSM_CML_CNV_COD\n,OSM_LEG_COD\n,OSM_CML_CONV_COD\n,OSM_CML_CONV_NOME\n,OSM_LIB_PAG_NFL_NUM\n,OSM_LIB_PAG_NFL_SERIE\n,OSM_IND_COLETA_DOM\n,OSM_MREQ_IND_SLINE\n,osm_usr_login_cad\n,osm_mreq_2\n,osm_mreq_3\n,osm_dt_solic_2\n,osm_dt_solic_3\n,osm_nota_sala_cobranca_mat\n,OSM_MCNV_PROTOCOLO\n,osm_tipo_acidente\n,osm_tipo_doenca\n,osm_tempo_doenca\n,osm_escala_doenca\n,osm_tiss_indic_clinica\n,osm_tiss_tipo_atende\n,OSM_TISS_TIPO_SAIDA\n,osm_sus_idade\n,osm_sus_sexo\n,osm_dthr_saida\n,osm_empnome_solic\n,osm_tiss_guia_principal\n,osm_cnes_solic\n,osm_w_login\n,osm_w_senha\n,osm_num_externo_alfa\n,osm_pln_cod\n,osm_obs_tiss\n,osm_psv_indic\n,osm_imp_etiq\n,osm_ind_web\n,osm_etiqueta_cip_lsf\n,osm_tipo_audit\n,OSM_PAC_ETIQUETA_CIP_LSF\n,osm_planserv_rat_empresa\n,osm_cod_cebim\n,osm_email_result\n,osm_cr_cor\n,osm_planserv_bm_mot_tipo\n,osm_planserv_bm_mot_cod\n,OSM_COD_CEBIM_2\n,OSM_COD_CEBIM_3\n,osm_obs_extenso\n,osm_trak_passagem\n,osm_id_alvaro\n,osm_obs_pend_b2b\n,osm_ind_vacina\n,osm_lib_pag_prt\n,osm_tiss_guia_operadora\n,osm_planserv_rat_dt_emis\n,osm_dthr_biometria_unimed\n,osm_resultado_biometria_unimed\n,OSM_IND_ANTECIPADA\n,OSM_ORI_SOL\n,osm_click_protocolo\n,osm_click_requisicao\n,osm_click_ind_integracao\n,osm_dthr_exp\n,osm_orp_num\n,osm_sus_ind_prog_transp\n,osm_mcnv_protocolo_v2\n,osm_token\n,osm_cod_justificativa\n,osm_status_confirmacao\n,osm_id_integra\n,osm_tp_ident_benef\nFROM REF\nWHERE ID_LINHA =1",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate dw.tbl_osm",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SQL_CLONE_DW",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_CLONE_DW_OSM",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Clone Stg to DW PAC",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Clone Stg to DW OSM",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "WITH REF AS(\nSELECT\n    A.*\n    ,ROW_NUMBER() OVER(PARTITION BY A.PAC_REG, A.ESTABELECIMENTO ORDER BY A.pac_dreg DESC) ID_LINHA\nFROM STG.TBL_PAC A\n)\n\nSELECT\nestabelecimento\n,pac_reg\n,pac_dreg\n,pac_pront\n,pac_nome\n,pac_sexo\n,pac_nasc\n,pac_fone\n,pac_cnv\n,pac_mcnv\n,pac_tit\n,pac_peso\n,pac_alt\n,pac_dult\n,pac_falta\n,pac_end\n,pac_comp\n,pac_cep\n,pac_cid\n,pac_uf\n,pac_cnv_cod\n,pac_pln_cod\n,pac_dt_ult_falta\n,pac_est_civil\n,pac_nome_mae\n,pac_aborh\n,pac_pac_reg\n,pac_lotacao\n,pac_dtcnv_pag\n,pac_dtcnv_val\n,pac_cod_depcnv\n,pac_cnv2\n,pac_mcnv2\n,pac_cnv2_cod\n,pac_pln2_cod\n,pac_pro_cod\n,pac_numrg\n,pac_numcpf\n,pac_cod_fon\n,pac_dt_valid\n,pac_valid\n,pac_cde_cod\n,pac_fone2\n,pac_ramal\n,pac_medico\n,pac_diag_cid\n,pac_diag_tpcid\n,pac_pessoa\n,pac_pront_status\n,pac_matr_emp\n,pac_lixo\n,pac_tit2\n,pac_lta_cod\n,pac_pro_cod_ocup\n,pac_numrg_org\n,pac_numrg_uf\n,pac_end_num\n,pac_zona\n,pac_email\n,pac_usr_login_cad\n,pac_cod_fon_b\n,pac_pront_loc\n,PAC_CLE_COD\n,PAC_DT_OBITO\n,PAC_TRAT\n,PAC_CELULAR\n,PAC_SO_CRIT_CONV\n,PAC_SO_DT_ADM\n,PAC_SO_DT_INI_FUNC\n,PAC_SO_MES_PER\n,PAC_CCE_NUM\n,PAC_GFC_NUM\n,PAC_SO_CNV_COD\n,PAC_SO_STATUS\n,PAC_DT_VALID2\n,PAC_CIMP_PRIORIDADE\n,PAC_REG_EXTERNO1\n,PAC_REG_EXTERNO2\n,PAC_REG_EXTERNO3\n,PAC_PRONT_EXTERNO\n,PAC_CTPS\n,PAC_NIT\n,PAC_REG_EXTERNO4\n,PAC_W_LOGIN\n,PAC_W_SENHA\n,PAC_COD_DEPCNV2\n,PAC_MATR_EMP2\n,PAC_CONTATO_DIA\n,PAC_CONTATO_OBS\n,PAC_CONTATO_TURNO\n,PAC_SO_STATUS_MOTIVO\n,PAC_OBS\n,PAC_PRONT_DTHR\n,PAC_PRONT_USR_LOGIN\n,PAC_PRONT_IND_GERA\n,PAC_SO_BRPDH\n,PAC_OBS2\n,pac_cartao_sus\n,pac_numrg_dtexp\n,pac_alerta\n,pac_alerta_dthr\n,pac_alerta_usr_login\n,PAC_IMG_COD_FOTO\n,PAC_SUS_SISCEL\n,PAC_CNES_ORIGEM\n,pac_ocup_vinc\n,PAC_LGR_COD\n,PAC_COMP_EXTRA\n,pac_lta_cod2\n,pac_quimio_presc_acesso\n,pac_ind_sigiloso\n,pac_ind_cpf_proprio\n,pac_ind_aceita_sms\n,PAC_BLANK_CPF_JUSTIFIC\n,PAC_CARTAO_MAGNETICO\n,PAC_CARTAO_MAGNETICO_DTHR\n,pac_cargo\n,pac_cnv_cartao_trilha1\n,pac_cnv_cartao_trilha2\n,pac_ctps_serie\n,pac_ctps_uf\n,pac_ctps_dt_emissao\n,pac_end_cep_tit\n,pac_alt_unid\n,pac_peso_unid\n,pac_reg_str_cod\n,pac_ind_cns_proprio\n,pac_ind_vip\n,pac_num_dnv\n,pac_bloq_fms\n,pac_dayh_freq_escola\n,pac_dayh_renda_familiar\n,pac_id_anom\n,pac_cep_ind_generico\n,pac_cnv_cartao_trilha_unica\n,pac_ind_whatsapp\n,pac_mcnv_antiga\n,pac_nome_social\n,pac_flag_social\n,pac_dthr_social\n,pac_reg_xclinic\n,pac_categ\n,pac_insc_est\n,pac_prod_rural\n,pac_reg_korus\n,pac_dthr_clariped\n,pac_ind_aceite_termo\nFROM REF\nWHERE ID_LINHA =1",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "truncate dw.tbl_pac",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SQL_CLONE_DW",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_CLONE_DW_PAC",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Data Warehouse"
+		},
+		"annotations": []
+	}
+}
