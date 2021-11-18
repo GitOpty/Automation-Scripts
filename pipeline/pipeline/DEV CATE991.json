@@ -1,0 +1,295 @@
+{
+	"name": "DEV CATE991",
+	"properties": {
+		"activities": [
+			{
+				"name": "CATE991",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "WITH REF AS(\n\nSELECT\nEMP.CD_EMPRESA,\nemp.ds_nome_curto  AS NM_EMPRESA,\nB.CD_ESTABELECIMENTO,\nestb.nm_fantasia_estab AS NM_ESTABELECIMENTO,\nsubstr(A.nm_paciente,1,255) PESSOA,\nA.NR_ATENDIMENTO,\nobter_prontuario_pf(1,A.CD_PESSOA_FISICA) nr_prontuario,\nsubstr(obter_nome_pf(a.CD_MEDICO_REQ),1,150) medico,\na.cd_medico,\nObter_Telefone_PF(A.CD_PESSOA_FISICA,12) nr_telefone_celular,\na.dt_agenda,\nCASE \n    WHEN obter_desc_agenda(a.cd_agenda) IS NULL THEN B.DS_CURTA \n        ELSE obter_desc_agenda(a.cd_agenda) \nEND AS ds_agenda,\nObter_Descricao_Dominio(83,IE_STATUS_AGENDA) status,\nobter_motivo_canc_agecons(a.cd_motivo_cancelamento,'D') motivo,\nA.DS_MOTIVO_STATUS motivo_status,\na.dt_agendamento,\nobter_desc_classif_agenda(a.cd_agenda,a.IE_CLASSIF_AGENDA) classif,\nsubstr(obter_nome_convenio(a.cd_convenio),1,150) cd_convenio,\na.nm_usuario,\na.NM_USUARIO_ORIGEM nm_usuario_orig,\na.nm_usuario_confirm,\nsubstr(obter_nome_estab(obter_estab_agenda(a.cd_agenda)),1,150) estabelecimento,\nObter_Desc_Procedencia(a.cd_procedencia) procedencia,\nA.NR_SEQUENCIA,\n'Consulta ' DS_PROCEDIMENTO,\nCASE \n    WHEN B.DS_CURTA LIKE 'LENTES DE CONTATO' THEN 'Lente de Contato' \n        ELSE 'Consulta' \n    END AS tipo\nFROM AGENDA_CONSULTA A \nINNER JOIN AGENDA B ON A.CD_AGENDA = B.CD_AGENDA\nINNER JOIN ESTABELECIMENTO ESTB ON ESTB.CD_ESTABELECIMENTO = B.CD_ESTABELECIMENTO\nINNER JOIN EMPRESA EMP ON EMP.CD_EMPRESA = ESTB.CD_EMPRESA\nWHERE \nTO_CHAR(A.DT_AGENDA,'DD/MM/YYYY') BETWEEN '01/10/2021' AND '30/11/2021'\n--a.dt_agenda between\t:dt_inicial AND :dt_final\n--AND\ta.ie_status_agenda in( 'A','AA','AC','AD','AE','AG','AN','AP','C','AR','AT','CN','CR','E','EC','EE','EN','EO','EP','ER','ET','EX','F','FE','FI','H','I','II','IN','IP','IT','KP','M','N','O','P','PC','PF','PH','PO','PR','PS','RE','RG','RN','RV','S','__') \n--AND obter_estab_agenda(A.CD_AGENDA) IN (71,73,74,75,76,66,55,63,64,67,80,82,83,68,84,85,86,88,89,69,90,91,142)\n--and ((a.CD_MEDICO_REQ = :medico) or (:medico = '0'))\n\nUNION ALL\n\nSELECT\n    EMP.CD_EMPRESA,\n    emp.ds_nome_curto  AS NM_EMPRESA,\n    B.CD_ESTABELECIMENTO,\n    estb.nm_fantasia_estab AS NM_ESTABELECIMENTO,\n    substr(A.nm_paciente,1,255) PESSOA,\n    A.NR_ATENDIMENTO,\n    obter_prontuario_pf(1,A.CD_PESSOA_FISICA) nr_prontuario,\n    substr(obter_nome_pf(a.cd_medico),1,150) medico,\n    a.cd_medico,\n    Obter_Telefone_PF(A.CD_PESSOA_FISICA,12) nr_telefone_celular,\n    a.dt_agenda,\n    obter_desc_agenda(a.cd_agenda) ds_agenda,\n    substr(obter_status_agenda_paciente(a.nr_sequencia),1,150) status,\n    obter_motivo_canc_agecir(a.cd_motivo_cancelamento,'D') motivo,\n    A.DS_MOTIVO_STATUS motivo_status,\n    a.dt_agendamento,\n    substr((select x.ds_classificacao from agenda_paciente_classif x where x.nr_sequencia = A.nr_seq_classif_agenda),1,150) classif,\n    substr(obter_nome_convenio(a.cd_convenio),1,150) cd_convenio,\n    A.nm_usuario,\n    A.nm_usuario_orig,\n    A.nm_usuario_confirm,\n    substr(obter_nome_estab(obter_estab_agenda(a.cd_agenda)),1,150) estabelecimento,\n    Obter_Desc_Procedencia(a.cd_procedencia) procedencia,\n    A.NR_SEQUENCIA,\n    Obter_Descricao_Procedimento(A.CD_PROCEDIMENTO,IE_ORIGEM_PROCED) DS_PROCEDIMENTO,\n    obter_valor_dominio(34, obter_tipo_agenda(A.CD_AGENDA)) tipo\nFROM agenda_paciente A \nINNER JOIN AGENDA B ON A.CD_AGENDA = B.CD_AGENDA\nINNER JOIN ESTABELECIMENTO ESTB ON ESTB.CD_ESTABELECIMENTO = B.CD_ESTABELECIMENTO\nINNER JOIN EMPRESA EMP ON EMP.CD_EMPRESA = ESTB.CD_EMPRESA\nWHERE \nTO_CHAR(A.DT_AGENDA,'DD/MM/YYYY') BETWEEN '01/10/2021' AND '30/11/2021'\n--a.dt_agenda between :dt_inicial AND :dt_final\n--AND a.ie_status_agenda in( 'A','AA','AC','AD','AE','AG','AN','AP','AR','AT','C','CN','CR','E','EC','EE','EN','EO','EP','ER','ET','EX','F','FE','FI','H','I','II','IN','IP','IT','KP','M','N','O','P','PC','PF','PH','PO','PR','PS','RE','RG','RN','RV','S','__') \n--AND obter_estab_agenda(A.CD_AGENDA) IN (71,73,74,75,76,66,55,63,64,67,80,82,83,68,84,85,86,88,89,69,90,91,142)\n--and ((a.cd_medico = :medico) or (:medico = '0'))\n)\n\nSELECT *\nFROM REF A\nWHERE A.CD_EMPRESA IN (9,10,1)",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "CD_EMPRESA"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 1
+								}
+							},
+							{
+								"source": {
+									"name": "NM_EMPRESA"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 2
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 3
+								}
+							},
+							{
+								"source": {
+									"name": "NM_ESTABELECIMENTO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 4
+								}
+							},
+							{
+								"source": {
+									"name": "PESSOA"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 5
+								}
+							},
+							{
+								"source": {
+									"name": "NR_ATENDIMENTO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 6
+								}
+							},
+							{
+								"source": {
+									"name": "NR_PRONTUARIO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 7
+								}
+							},
+							{
+								"source": {
+									"name": "MEDICO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 8
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MEDICO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 9
+								}
+							},
+							{
+								"source": {
+									"name": "NR_TELEFONE_CELULAR"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 10
+								}
+							},
+							{
+								"source": {
+									"name": "DT_AGENDA"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 11
+								}
+							},
+							{
+								"source": {
+									"name": "DS_AGENDA"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 12
+								}
+							},
+							{
+								"source": {
+									"name": "STATUS"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 13
+								}
+							},
+							{
+								"source": {
+									"name": "MOTIVO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 14
+								}
+							},
+							{
+								"source": {
+									"name": "MOTIVO_STATUS"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 15
+								}
+							},
+							{
+								"source": {
+									"name": "DT_AGENDAMENTO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 16
+								}
+							},
+							{
+								"source": {
+									"name": "CLASSIF"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 17
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CONVENIO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 18
+								}
+							},
+							{
+								"source": {
+									"name": "NM_USUARIO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 19
+								}
+							},
+							{
+								"source": {
+									"name": "NM_USUARIO_ORIG"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 20
+								}
+							},
+							{
+								"source": {
+									"name": "NM_USUARIO_CONFIRM"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 21
+								}
+							},
+							{
+								"source": {
+									"name": "ESTABELECIMENTO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 22
+								}
+							},
+							{
+								"source": {
+									"name": "PROCEDENCIA"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 23
+								}
+							},
+							{
+								"source": {
+									"name": "NR_SEQUENCIA"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 24
+								}
+							},
+							{
+								"source": {
+									"name": "DS_PROCEDIMENTO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 25
+								}
+							},
+							{
+								"source": {
+									"name": "TIPO"
+								},
+								"sink": {
+									"type": "String",
+									"ordinal": 26
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_CATE991",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Call Center"
+		},
+		"annotations": []
+	}
+}
