@@ -7,6 +7,14 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		},
+		"CloudTasyProd_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'CloudTasyProd'"
+		},
+		"CloudTasyProd_NEW_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'CloudTasyProd_NEW'"
+		},
 		"Con_Files_VM_password": {
 			"type": "secureString",
 			"metadata": "Secure string for 'password' of 'Con_Files_VM'"
@@ -74,18 +82,6 @@
 		"Historicos_AgentesPorHora_HOSL_password": {
 			"type": "secureString",
 			"metadata": "Secure string for 'password' of 'Historicos_AgentesPorHora_HOSL'"
-		},
-		"Historicos_AgentesPorHora_INOB_password": {
-			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'Historicos_AgentesPorHora_INOB'"
-		},
-		"Historicos_AgentesPorHora_SADALLA_password": {
-			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'Historicos_AgentesPorHora_SADALLA'"
-		},
-		"Historicos_Bilhetes_CSI_password": {
-			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'Historicos_Bilhetes_CSI'"
 		},
 		"Con_Files_VM_properties_typeProperties_host": {
 			"type": "string",
@@ -214,36 +210,95 @@
 		"Historicos_AgentesPorHora_HOSL_properties_typeProperties_userId": {
 			"type": "string",
 			"defaultValue": "hobrasil\\sa.automation"
-		},
-		"Historicos_AgentesPorHora_INOB_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Historicos NEXCORE\\INOB\\AgentesPorHora"
-		},
-		"Historicos_AgentesPorHora_INOB_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\sa.automation"
-		},
-		"Historicos_AgentesPorHora_SADALLA_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Historicos NEXCORE\\SADALLA\\AgentesPorHora"
-		},
-		"Historicos_AgentesPorHora_SADALLA_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\sa.automation"
-		},
-		"Historicos_Bilhetes_CSI_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Historicos NEXCORE\\CSI\\BilheteLigacoes\\Novo"
-		},
-		"Historicos_Bilhetes_CSI_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\sa.automation"
 		}
 	},
 	"variables": {
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/stage_udp')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "udp_mte_serie_quita",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "udp_mte_seq_quita",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "udp_mte_serie_dep",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "udp_mte_seq_dep",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "udp_valor",
+						"type": "decimal",
+						"precision": 12,
+						"scale": 2
+					}
+				],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "bi_stg_udp"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CloudTasyProd')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": "[parameters('CloudTasyProd_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CloudTasyProd_NEW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": "[parameters('CloudTasyProd_NEW_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Con_Files_VM')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -615,75 +670,6 @@
 					"password": {
 						"type": "SecureString",
 						"value": "[parameters('Historicos_AgentesPorHora_HOSL_password')]"
-					}
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Historicos_AgentesPorHora_INOB')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Historicos_AgentesPorHora_INOB",
-				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('Historicos_AgentesPorHora_INOB_properties_typeProperties_host')]",
-					"userId": "[parameters('Historicos_AgentesPorHora_INOB_properties_typeProperties_userId')]",
-					"password": {
-						"type": "SecureString",
-						"value": "[parameters('Historicos_AgentesPorHora_INOB_password')]"
-					}
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Historicos_AgentesPorHora_SADALLA')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Historicos_AgentesPorHora_SADALLA",
-				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('Historicos_AgentesPorHora_SADALLA_properties_typeProperties_host')]",
-					"userId": "[parameters('Historicos_AgentesPorHora_SADALLA_properties_typeProperties_userId')]",
-					"password": {
-						"type": "SecureString",
-						"value": "[parameters('Historicos_AgentesPorHora_SADALLA_password')]"
-					}
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Historicos_Bilhetes_CSI')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Historicos_Bilhetes_CSI",
-				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('Historicos_Bilhetes_CSI_properties_typeProperties_host')]",
-					"userId": "[parameters('Historicos_Bilhetes_CSI_properties_typeProperties_userId')]",
-					"password": {
-						"type": "SecureString",
-						"value": "[parameters('Historicos_Bilhetes_CSI_password')]"
 					}
 				},
 				"connectVia": {
