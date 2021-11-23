@@ -1,0 +1,59 @@
+{
+	"name": "Extracao Dados Salesforce CSV",
+	"properties": {
+		"activities": [
+			{
+				"name": "Atendimento Paciente",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Listar o Destino",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT  \nAP.CD_ESTABELECIMENTO\n,AP.NR_ATENDIMENTO\n,AP.CD_PESSOA_FISICA\n,TO_CHAR(AP.DT_ENTRADA,'YYYY-MM-DD') AS DT_ENTRADA\n,AP.DS_OBSERVACAO\nFROM ATENDIMENTO_PACIENTE AP\nWHERE TO_CHAR(AP.DT_ENTRADA,'YYYY-MM-DD') BETWEEN '2021-09-01' AND TO_CHAR(SYSDATE,'YYYY-MM-DD')",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Listar o Destino",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": []
+			}
+		],
+		"folder": {
+			"name": "Salesforce"
+		},
+		"annotations": []
+	}
+}
