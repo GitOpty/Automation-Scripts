@@ -5,14 +5,7 @@
 			{
 				"name": "Atendimento Paciente",
 				"type": "Copy",
-				"dependsOn": [
-					{
-						"activity": "Listar o Destino",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
+				"dependsOn": [],
 				"policy": {
 					"timeout": "7.00:00:00",
 					"retry": 0,
@@ -28,6 +21,17 @@
 						"partitionOption": "None",
 						"queryTimeout": "02:00:00"
 					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
 					"enableStaging": false
 				},
 				"inputs": [
@@ -35,11 +39,17 @@
 						"referenceName": "CloudTasyPrdDataSet",
 						"type": "DatasetReference"
 					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_Salesforce_Dinamico",
+						"type": "DatasetReference"
+					}
 				]
 			},
 			{
-				"name": "Listar o Destino",
-				"type": "Lookup",
+				"name": "Laudo",
+				"type": "Copy",
 				"dependsOn": [],
 				"policy": {
 					"timeout": "7.00:00:00",
@@ -48,9 +58,91 @@
 					"secureOutput": false,
 					"secureInput": false
 				},
-				"userProperties": []
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT \t\nLP.NR_ATENDIMENTO\n,LP.CD_PESSOA_FISICA\n,TO_CHAR(LP.DT_LAUDO,'YYYY-MM-DD') DT_LAUDO\n,LP.DS_TITULO_LAUDO\n,LP.NR_PRESCRICAO\n,PP.IE_STATUS_EXECUCAO\n,LP.NR_LAUDO\n,LP.NR_SEQUENCIA\n,C.CD_PESSOA_FISICA AS CD_MEDICO\n,med_resp.cd_pessoa_fisica AS CD_MEDICO_RESP\n,LP.DS_LAUDO\n,PP.NR_SEQ_PROC_INTERNO\n--,PP.CD_PROCEDIMENTO\n--,PROC_INTERNO\tDS_PROC_EXAME\n,TO_CHAR(PP.DT_BAIXA,'YYYY-MM-DD') AS DT_BAIXA\nFROM LAUDO_PACIENTE LP\nLEFT JOIN PRESCR_MEDICA C ON LP.NR_PRESCRICAO = C.NR_PRESCRICAO \nLEFT JOIN PRESCR_PROCEDIMENTO PP ON PP.NR_PRESCRICAO = LP.NR_PRESCRICAO\nLEFT JOIN MEDICO MED_RESP ON med_resp.cd_pessoa_fisica = LP.CD_MEDICO_RESP\nLEFT JOIN MEDICO MED ON MED.CD_PESSOA_FISICA = C.CD_MEDICO\nWHERE TO_CHAR(LP.DT_LAUDO,'YYYY-MM-DD') BETWEEN '2021-09-01' AND TO_CHAR(SYSDATE,'YYYY-MM-DD')",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_Salesforce_Laudo",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Pedido Exame Externo",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT \nA.NR_SEQUENCIA\n,B.NR_ATENDIMENTO\n,B.CD_PROFISSIONAL\n--,B.CD_DOENCA\n,A.NR_PROC_INTERNO\n,A.QT_EXAME\n--,A.NR_SEQ_APRESENT\n,A.IE_LADO\n,A.DS_JUSTIFICATIVA\n,TO_CHAR(B.DT_SOLICITACAO,'YYYY-MM-DD') DT_SOLICITACAO\nFROM pedido_exame_externo_item A\nINNER JOIN PEDIDO_EXAME_EXTERNO B ON A.NR_SEQ_PEDIDO = B.NR_SEQUENCIA \n--WHERE A.NR_SEQ_PEDIDO = 169\nWHERE TO_CHAR(B.DT_SOLICITACAO,'YYYY-MM-DD') BETWEEN '2021-09-01' AND TO_CHAR(SYSDATE,'YYYY-MM-DD')",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_Salesforce_PedidoExameExterno",
+						"type": "DatasetReference"
+					}
+				]
 			}
 		],
+		"variables": {
+			"Filename": {
+				"type": "String"
+			}
+		},
 		"folder": {
 			"name": "Salesforce"
 		},
