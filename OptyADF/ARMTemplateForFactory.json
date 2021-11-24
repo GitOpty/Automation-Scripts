@@ -31,10 +31,6 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'DEV_SMART_ITAIGARA'"
 		},
-		"FILDER_STORAGE_VM_password": {
-			"type": "secureString",
-			"metadata": "Secure string for 'password' of 'FILDER_STORAGE_VM'"
-		},
 		"Folder_Nexcore_Consolidado_password": {
 			"type": "secureString",
 			"metadata": "Secure string for 'password' of 'Folder_Nexcore_Consolidado'"
@@ -215,19 +211,15 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'SadallaTasyTeste'"
 		},
+		"Folder_Salesforce_Sharepoint_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'Folder_Salesforce_Sharepoint'"
+		},
 		"Con_Files_VM_properties_typeProperties_host": {
 			"type": "string",
 			"defaultValue": "C:\\Pasta repositório BI\\"
 		},
 		"Con_Files_VM_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\sa.automation"
-		},
-		"FILDER_STORAGE_VM_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "c:\\StorageVM"
-		},
-		"FILDER_STORAGE_VM_properties_typeProperties_userId": {
 			"type": "string",
 			"defaultValue": "hobrasil\\sa.automation"
 		},
@@ -249,7 +241,7 @@
 		},
 		"Folder_StorageVM_properties_typeProperties_host": {
 			"type": "string",
-			"defaultValue": "c:\\StorageVM"
+			"defaultValue": "c:\\Storage\\StorageVM"
 		},
 		"Folder_StorageVM_properties_typeProperties_userId": {
 			"type": "string",
@@ -474,6 +466,14 @@
 		"Tasy_Connections_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
 			"defaultValue": "@linkedService().NOME_KEYVAULT_SECRET"
+		},
+		"Folder_Salesforce_Sharepoint_properties_typeProperties_host": {
+			"type": "string",
+			"defaultValue": "C:\\\\Users\\\\sa.automation\\\\Opty\\\\Salesforce Health Cloud - General\\\\Arquivos Carga Health Cloud"
+		},
+		"Folder_Salesforce_Sharepoint_properties_typeProperties_userId": {
+			"type": "string",
+			"defaultValue": "hobrasil\\sa.automation"
 		}
 	},
 	"variables": {
@@ -11923,11 +11923,11 @@
 								"storedProcedureParameters": {
 									"Dt_inicio_manual": {
 										"type": "DateTime",
-										"value": null
+										"value": "2000-01-01"
 									},
 									"manual": {
 										"type": "String",
-										"value": "N"
+										"value": "S"
 									},
 									"plataforma": {
 										"type": "String",
@@ -25132,6 +25132,299 @@
 				"[concat(variables('factoryId'), '/datasets/SMART_ITABUNA_PrdDataSet')]",
 				"[concat(variables('factoryId'), '/datasets/SMART_IOF_PrdDataSet')]",
 				"[concat(variables('factoryId'), '/datasets/SMART_Oftalmoclin_Prd_DataSet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Extracao Dados Salesforce CSV')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Atendimento Paciente",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "SELECT  \nAP.CD_ESTABELECIMENTO\n,AP.NR_ATENDIMENTO\n,AP.CD_PESSOA_FISICA\n,TO_CHAR(AP.DT_ENTRADA,'YYYY-MM-DD') AS DT_ENTRADA\n,AP.DS_OBSERVACAO\nFROM ATENDIMENTO_PACIENTE AP\nWHERE TO_CHAR(AP.DT_ENTRADA,'YYYY-MM-DD') BETWEEN '2021-09-01' AND TO_CHAR(SYSDATE,'YYYY-MM-DD')",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "FileServerWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "CSV_Salesforce_Dinamico",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Laudo",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Atendimento Paciente",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "SELECT \t\nLP.NR_ATENDIMENTO\n,LP.CD_PESSOA_FISICA\n,TO_CHAR(LP.DT_LAUDO,'YYYY-MM-DD') DT_LAUDO\n,LP.DS_TITULO_LAUDO\n,LP.NR_PRESCRICAO\n,PP.IE_STATUS_EXECUCAO\n,LP.NR_LAUDO\n,LP.NR_SEQUENCIA\n,C.CD_PESSOA_FISICA AS CD_MEDICO\n,med_resp.cd_pessoa_fisica AS CD_MEDICO_RESP\n,LP.DS_LAUDO\n,PP.NR_SEQ_PROC_INTERNO\n--,PP.CD_PROCEDIMENTO\n--,PROC_INTERNO\tDS_PROC_EXAME\n,TO_CHAR(PP.DT_BAIXA,'YYYY-MM-DD') AS DT_BAIXA\nFROM LAUDO_PACIENTE LP\nLEFT JOIN PRESCR_MEDICA C ON LP.NR_PRESCRICAO = C.NR_PRESCRICAO \nLEFT JOIN PRESCR_PROCEDIMENTO PP ON PP.NR_PRESCRICAO = LP.NR_PRESCRICAO\nLEFT JOIN MEDICO MED_RESP ON med_resp.cd_pessoa_fisica = LP.CD_MEDICO_RESP\nLEFT JOIN MEDICO MED ON MED.CD_PESSOA_FISICA = C.CD_MEDICO\nWHERE TO_CHAR(LP.DT_LAUDO,'YYYY-MM-DD') BETWEEN '2021-09-01' AND TO_CHAR(SYSDATE,'YYYY-MM-DD')",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "FileServerWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "CSV_Salesforce_Laudo",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Pedido Exame Externo",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Laudo",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "SELECT \nA.NR_SEQUENCIA\n,B.NR_ATENDIMENTO\n,B.CD_PROFISSIONAL\n--,B.CD_DOENCA\n,A.NR_PROC_INTERNO\n,A.QT_EXAME\n--,A.NR_SEQ_APRESENT\n,A.IE_LADO\n,A.DS_JUSTIFICATIVA\n,TO_CHAR(B.DT_SOLICITACAO,'YYYY-MM-DD') DT_SOLICITACAO\nFROM pedido_exame_externo_item A\nINNER JOIN PEDIDO_EXAME_EXTERNO B ON A.NR_SEQ_PEDIDO = B.NR_SEQUENCIA \n--WHERE A.NR_SEQ_PEDIDO = 169\nWHERE TO_CHAR(B.DT_SOLICITACAO,'YYYY-MM-DD') BETWEEN '2021-09-01' AND TO_CHAR(SYSDATE,'YYYY-MM-DD')",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "FileServerWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "CSV_Salesforce_PedidoExameExterno",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Material",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Pedido Exame Externo",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "SELECT \n    MAT.CD_MATERIAL\n    ,MAT.DS_MATERIAL\n    ,MAT.DS_REDUZIDA\n    ,'TRUE' AS IE_SITUACAO\nFROM MATERIAL MAT\nWHERE MAT.IE_SITUACAO = 'A'",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "FileServerWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "CSV_Salesforce_Material",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Alergia",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Material",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "SELECT \n    PA.NR_SEQUENCIA\n   ,PA.CD_PESSOA_FISICA\n   ,PA.NR_ATENDIMENTO\n    ,PA.DS_MEDIC_NAO_CAD\n--    ,PA.IE_INTENSIDADE\n    ,PA.CD_MATERIAL\n    ,PA.IE_CONFIRMACAO\n    ,CASE\n        WHEN PA.IE_NEGA_ALERGIAS = 'N' THEN 'FALSE'\n        WHEN PA.IE_NEGA_ALERGIAS = 'S' THEN 'TRUE'\n     END IE_NEGA_ALERGIAS       \n    ,TO_CHAR(PA.DT_REGISTRO,'YYYY-MM-DD') DT_REGISTRO\nFROM paciente_alergia PA\n--WHERE PA.DS_MEDIC_NAO_CAD IS NOT NULL",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "FileServerWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "CSV_Salesforce_Alergia",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"variables": {
+					"Filename": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "Salesforce"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/CloudTasyPrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/CSV_Salesforce_Dinamico')]",
+				"[concat(variables('factoryId'), '/datasets/CSV_Salesforce_Laudo')]",
+				"[concat(variables('factoryId'), '/datasets/CSV_Salesforce_PedidoExameExterno')]",
+				"[concat(variables('factoryId'), '/datasets/CSV_Salesforce_Material')]",
+				"[concat(variables('factoryId'), '/datasets/CSV_Salesforce_Alergia')]"
 			]
 		},
 		{
@@ -59748,7 +60041,7 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "FILDER_STORAGE_VM",
+					"referenceName": "Folder_StorageVM",
 					"type": "LinkedServiceReference"
 				},
 				"folder": {
@@ -59791,7 +60084,7 @@
 				]
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/FILDER_STORAGE_VM')]"
+				"[concat(variables('factoryId'), '/linkedServices/Folder_StorageVM')]"
 			]
 		},
 		{
@@ -59800,7 +60093,7 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "FILDER_STORAGE_VM",
+					"referenceName": "Folder_StorageVM",
 					"type": "LinkedServiceReference"
 				},
 				"folder": {
@@ -59822,7 +60115,7 @@
 				"schema": []
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/FILDER_STORAGE_VM')]"
+				"[concat(variables('factoryId'), '/linkedServices/Folder_StorageVM')]"
 			]
 		},
 		{
@@ -68093,30 +68386,6 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/FILDER_STORAGE_VM')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('FILDER_STORAGE_VM_properties_typeProperties_host')]",
-					"userId": "[parameters('FILDER_STORAGE_VM_properties_typeProperties_userId')]",
-					"password": {
-						"type": "SecureString",
-						"value": "[parameters('FILDER_STORAGE_VM_password')]"
-					}
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/integrationRuntimes/ServidorArquivosBI')]"
-			]
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/Folder_Nexcore_Consolidado')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
@@ -69267,6 +69536,13 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "CARGA_DINAMICA_ADF_SMART",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -69288,7 +69564,8 @@
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Agendas Projesi Testes')]"
+				"[concat(variables('factoryId'), '/pipelines/Agendas Projesi Testes')]",
+				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_SMART')]"
 			]
 		},
 		{
@@ -69433,6 +69710,220 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/File_Salesforce')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Folder_StorageVM",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Salesforce"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "FileServerLocation",
+						"fileName": "Lista_SF.csv",
+						"folderPath": "Salesforce"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Folder_StorageVM')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Folder_Salesforce_Sharepoint')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "FileServer",
+				"typeProperties": {
+					"host": "[parameters('Folder_Salesforce_Sharepoint_properties_typeProperties_host')]",
+					"userId": "[parameters('Folder_Salesforce_Sharepoint_properties_typeProperties_userId')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('Folder_Salesforce_Sharepoint_password')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/ServidorArquivosBI')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CSV_Salesforce_Dinamico')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Folder_Salesforce_Sharepoint",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Salesforce"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "FileServerLocation",
+						"fileName": "AtendimentoPaciente.csv"
+					},
+					"columnDelimiter": ",",
+					"rowDelimiter": "\n",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Folder_Salesforce_Sharepoint')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CSV_Salesforce_Laudo')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Folder_Salesforce_Sharepoint",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Salesforce"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "FileServerLocation",
+						"fileName": "Laudo.csv"
+					},
+					"columnDelimiter": ",",
+					"rowDelimiter": "\n",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Folder_Salesforce_Sharepoint')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CSV_Salesforce_PedidoExameExterno')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Folder_Salesforce_Sharepoint",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Salesforce"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "FileServerLocation",
+						"fileName": "PedidoExameExterno.csv"
+					},
+					"columnDelimiter": ",",
+					"rowDelimiter": "\n",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Folder_Salesforce_Sharepoint')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CSV_Salesforce_Material')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Folder_Salesforce_Sharepoint",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Salesforce"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "FileServerLocation",
+						"fileName": "Material.csv"
+					},
+					"columnDelimiter": ",",
+					"rowDelimiter": "\n",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Folder_Salesforce_Sharepoint')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CSV_Salesforce_Alergia')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Folder_Salesforce_Sharepoint",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Salesforce"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "FileServerLocation",
+						"fileName": "Alergia.csv"
+					},
+					"columnDelimiter": ",",
+					"rowDelimiter": "\n",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Folder_Salesforce_Sharepoint')]"
+			]
 		}
 	]
 }
