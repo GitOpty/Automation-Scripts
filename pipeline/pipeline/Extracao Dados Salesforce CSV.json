@@ -247,6 +247,162 @@
 						"type": "DatasetReference"
 					}
 				]
+			},
+			{
+				"name": "CadastroPessoa",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Alergia",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "WITH COMPL_PESSOA AS (\nSELECT \nCPF.*\nFROM COMPL_PESSOA_FISICA CPF\nWHERE CPF.CD_CEP IS NOT NULL\n\n)\n,TRATADO_COMPL AS(\n\nSELECT\n    TMP.*\nFROM(\n    SELECT\n    ROW_NUMBER() OVER(PARTITION BY A.CD_PESSOA_FISICA ORDER BY A.NR_SEQUENCIA DESC) ID_LINHA\n    ,A.*\n    FROM COMPL_PESSOA A\n)TMP\nWHERE TMP.ID_LINHA = 1\n)\n\nSELECT\nTC.NM_CONTATO \n,TC.DS_COMPLEMENTO \n,TC.NR_ENDERECO \n,PF.DS_CATEGORIA_CNH \n,TC.CD_MUNICIPIO_IBGE \n,PF.NR_SEQ_COR_PELE \n,TC.NR_TELEFONE \n--,TC.NR_SEQ_PAIS\n,CASE\n    WHEN UPPER(P.NM_PAIS) = 'BRASIL' THEN 'BRAZIL'\n        ELSE UPPER(P.NM_PAIS)\n END NM_PAIS   \n,PF.NR_REG_GERAL_ESTRANG \n,PF.NR_CPF \n,PF.IE_ESTADO_CIVIL \n,OBTER_NOME_SOBRENOME_PESSOA(PF.CD_PESSOA_FISICA,'SC') LASTNAME \n,TC.SG_ESTADO \n,PF.CD_ESTABELECIMENTO \n,TC.DS_ENDERECO \n,PF.NR_PRONTUARIO \n,PF.IE_SEXO \n,TC.DS_EMAIL \n,TO_CHAR(PF.DT_REVISAO,'YYYY-MM-DD')    AS DT_REVISAO \n,TC.NR_TELEFONE_CELULAR \n,PF.CD_PESSOA_FISICA \n,CASE\n    WHEN TC.IE_OBRIGA_EMAIL = 'N' THEN 'FALSE'\n    WHEN TC.IE_OBRIGA_EMAIL = 'S' THEN 'TRUE'\nEND IE_OBRIGA_EMAIL\n,TC.DS_BAIRRO \n,CASE\n   WHEN TC.DS_EMAIL = NULL THEN 'TRUE'   \nEND IE_NAO_POSSUI_EMAIL\n,SUBSTR(PF.NM_PESSOA_FISICA,1,(INSTR(PF.NM_PESSOA_FISICA, ' ' , 1 , 1 ) -1 )) FIRSTNAME\n,TC.DS_FONE_ADIC \n,PF.NM_USUARIO_REVISAO \n,TC.CD_PROFISSAO \n,REPLACE(OBTER_CEP_MASCARA(TC.CD_CEP),'.','')   as CD_CEP \n,PF.NR_MATRICULA_NASC\n,TO_CHAR(PF.DT_NASCIMENTO,'YYYY-MM-DD') AS DT_NASCIMENTO\n,PF.CD_NACIONALIDADE \nFROM PESSOA_FISICA PF\nLEFT JOIN TRATADO_COMPL TC ON TC.CD_PESSOA_FISICA = PF.CD_PESSOA_FISICA\nLEFT JOIN PAIS P ON P.NR_SEQUENCIA = TC.nr_seq_pais\nWHERE ROWNUM < 5001",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_SF_PESSOA_FISICA",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "CadastroMedico",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "CadastroPessoa",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT\nUF_CRM \n,NR_CRM \n,NM_GUERRA \n,cd_pessoa_fisica\n\n,CASE\n    WHEN IE_SITUACAO = 'A' THEN 'TRUE'\n    --WHEN IE_SITUACAO = 'I' THEN 'FALSE'\n END IE_SITUACAO   \nFROM MEDICO\nWHERE IE_SITUACAO = 'A'",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_SF_CAD_MEDICO",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "MedicoEspecialidade",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "CadastroMedico",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT\ncd_pessoa_fisica\n,CD_ESPECIALIDADE\n,NR_SEQ_PRIORIDADE\n,NR_RQE\nFROM MEDICO_ESPECIALIDADE ME",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "FileServerWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "CloudTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_SF_MEDICO_ESPECIALIDADE",
+						"type": "DatasetReference"
+					}
+				]
 			}
 		],
 		"variables": {
