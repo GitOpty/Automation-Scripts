@@ -10885,11 +10885,11 @@
 								"storedProcedureParameters": {
 									"Dt_inicio_manual": {
 										"type": "DateTime",
-										"value": null
+										"value": "1990-01-01"
 									},
 									"manual": {
 										"type": "String",
-										"value": "N"
+										"value": "S"
 									},
 									"plataforma": {
 										"type": "String",
@@ -11923,11 +11923,11 @@
 								"storedProcedureParameters": {
 									"Dt_inicio_manual": {
 										"type": "DateTime",
-										"value": "2000-01-01"
+										"value": null
 									},
 									"manual": {
 										"type": "String",
-										"value": "S"
+										"value": "N"
 									},
 									"plataforma": {
 										"type": "String",
@@ -18422,6 +18422,199 @@
 				"[concat(variables('factoryId'), '/datasets/SMART_Oftalmoclin_Prd_DataSet')]",
 				"[concat(variables('factoryId'), '/datasets/SMART_INOB_PrdDataSet')]",
 				"[concat(variables('factoryId'), '/datasets/SMART_IOF_PrdDataSet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DEPARA')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Depara Procedimento",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "FileServerReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "truncate table dbo.depara_sys",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "CSV_PROCEDIMENTO_DEPARA",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_CSV_DEPARA_PROCEDIMENTO",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Depara Convenio",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Depara Procedimento",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "FileServerReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "truncate table dbo.depara_sys_convenio",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "CSV_CONVENIO_DEPARA",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_CSV_CONVENIO_DEPARA",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Engenharia Reversa Convenio",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Depara Convenio",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.SP_CONVENIO_PROD_DIARIA_AJ"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Engenharia Reversa Procedimento Smart Tasy",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Engenharia Reversa Convenio",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.SP_ENGENHARIA_REVERSA_PROCEDIMENTO_SMART_TASY"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/CSV_PROCEDIMENTO_DEPARA')]",
+				"[concat(variables('factoryId'), '/datasets/AZ_CSV_DEPARA_PROCEDIMENTO')]",
+				"[concat(variables('factoryId'), '/datasets/CSV_CONVENIO_DEPARA')]",
+				"[concat(variables('factoryId'), '/datasets/AZ_CSV_CONVENIO_DEPARA')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
 			]
 		},
 		{
@@ -56787,6 +56980,116 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/AZ_CSV_CONVENIO_DEPARA')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Data Warehouse/DEPARA"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CONVENIO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CONVENIO_DEPARA",
+						"type": "nvarchar"
+					},
+					{
+						"name": "MODALIDADE",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TP_CONVENIO",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "depara_sys_convenio"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AZ_CSV_DEPARA_PROCEDIMENTO')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Data Warehouse/DEPARA"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "cod_sys",
+						"type": "varchar"
+					},
+					{
+						"name": "nm_sys",
+						"type": "varchar"
+					},
+					{
+						"name": "Codigo",
+						"type": "varchar"
+					},
+					{
+						"name": "Descricao",
+						"type": "varchar"
+					},
+					{
+						"name": "Categoria",
+						"type": "varchar"
+					},
+					{
+						"name": "Categoria_Aux",
+						"type": "nvarchar"
+					},
+					{
+						"name": "Classe",
+						"type": "varchar"
+					},
+					{
+						"name": "Especialidade",
+						"type": "varchar"
+					},
+					{
+						"name": "Procedimento",
+						"type": "varchar"
+					},
+					{
+						"name": "Patologia",
+						"type": "varchar"
+					},
+					{
+						"name": "DT_ATUALIZACAO",
+						"type": "nvarchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "depara_sys"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/AZ_DIM_CNPJ')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -60298,6 +60601,78 @@
 					"quoteChar": "\""
 				},
 				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Folder_StorageVM')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CSV_CONVENIO_DEPARA')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Folder_StorageVM",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Data Warehouse/DEPARA"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "FileServerLocation",
+						"fileName": "depara_sys_regra_convenio.csv",
+						"folderPath": "Depara"
+					},
+					"columnDelimiter": ";",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "CONVENIO;CONVENIO_DEPARA;MODALIDADE;TP_CONVENIO",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Folder_StorageVM')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CSV_PROCEDIMENTO_DEPARA')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Folder_StorageVM",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Data Warehouse/DEPARA"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "FileServerLocation",
+						"fileName": "depara_sys_regra.csv",
+						"folderPath": "Depara"
+					},
+					"columnDelimiter": ";",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "cod_sys;nm_sys;Codigo;Descricao;Categoria;Categoria_Aux;Classe;Especialidade;Procedimento;Patologia;DT_ATUALIZACAO",
+						"type": "String"
+					}
+				]
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/Folder_StorageVM')]"
@@ -70491,378 +70866,41 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/DEPARA')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
+			"name": "[concat(parameters('factoryName'), '/Daily 03h30')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"activities": [
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
 					{
-						"name": "Depara Procedimento",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
+						"pipelineReference": {
+							"referenceName": "CARGA_DINAMICA_ADF_TASY",
+							"type": "PipelineReference"
 						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "DelimitedTextSource",
-								"storeSettings": {
-									"type": "FileServerReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								},
-								"formatSettings": {
-									"type": "DelimitedTextReadSettings"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table dbo.depara_sys",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "CSV_PROCEDIMENTO_DEPARA",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_CSV_DEPARA_PROCEDIMENTO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Depara Convenio",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Depara Procedimento",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "DelimitedTextSource",
-								"storeSettings": {
-									"type": "FileServerReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								},
-								"formatSettings": {
-									"type": "DelimitedTextReadSettings"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table dbo.depara_sys_convenio",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "CSV_CONVENIO_DEPARA",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_CSV_CONVENIO_DEPARA",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Engenharia Reversa Convenio",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [
-							{
-								"activity": "Depara Convenio",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "dbo.SP_CONVENIO_PROD_DIARIA_AJ"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						}
-					},
-					{
-						"name": "Engenharia Reversa Procedimento Smart Tasy",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [
-							{
-								"activity": "Engenharia Reversa Convenio",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "dbo.SP_ENGENHARIA_REVERSA_PROCEDIMENTO_SMART_TASY"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						}
+						"parameters": {}
 					}
 				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse"
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/CSV_PROCEDIMENTO_DEPARA')]",
-				"[concat(variables('factoryId'), '/datasets/AZ_CSV_DEPARA_PROCEDIMENTO')]",
-				"[concat(variables('factoryId'), '/datasets/CSV_CONVENIO_DEPARA')]",
-				"[concat(variables('factoryId'), '/datasets/AZ_CSV_CONVENIO_DEPARA')]",
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_PROCEDIMENTO_DEPARA')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_StorageVM",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse/DEPARA"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
+				"type": "ScheduleTrigger",
 				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "depara_sys_regra.csv",
-						"folderPath": "Depara"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"name": "cod_sys;nm_sys;Codigo;Descricao;Categoria;Categoria_Aux;Classe;Especialidade;Procedimento;Patologia;DT_ATUALIZACAO",
-						"type": "String"
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2021-12-01T20:41:00",
+						"timeZone": "E. South America Standard Time",
+						"schedule": {
+							"minutes": [
+								30
+							],
+							"hours": [
+								3
+							]
+						}
 					}
-				]
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/Folder_StorageVM')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_CONVENIO_DEPARA')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_StorageVM",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse/DEPARA"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "depara_sys_regra_convenio.csv",
-						"folderPath": "Depara"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"name": "CONVENIO;CONVENIO_DEPARA;MODALIDADE;TP_CONVENIO",
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/Folder_StorageVM')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZ_CSV_DEPARA_PROCEDIMENTO')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse/DEPARA"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "cod_sys",
-						"type": "varchar"
-					},
-					{
-						"name": "nm_sys",
-						"type": "varchar"
-					},
-					{
-						"name": "Codigo",
-						"type": "varchar"
-					},
-					{
-						"name": "Descricao",
-						"type": "varchar"
-					},
-					{
-						"name": "Categoria",
-						"type": "varchar"
-					},
-					{
-						"name": "Categoria_Aux",
-						"type": "nvarchar"
-					},
-					{
-						"name": "Classe",
-						"type": "varchar"
-					},
-					{
-						"name": "Especialidade",
-						"type": "varchar"
-					},
-					{
-						"name": "Procedimento",
-						"type": "varchar"
-					},
-					{
-						"name": "Patologia",
-						"type": "varchar"
-					},
-					{
-						"name": "DT_ATUALIZACAO",
-						"type": "nvarchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "depara_sys"
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZ_CSV_CONVENIO_DEPARA')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse/DEPARA"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "CONVENIO",
-						"type": "nvarchar"
-					},
-					{
-						"name": "CONVENIO_DEPARA",
-						"type": "nvarchar"
-					},
-					{
-						"name": "MODALIDADE",
-						"type": "nvarchar"
-					},
-					{
-						"name": "TP_CONVENIO",
-						"type": "nvarchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "depara_sys_convenio"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_TASY')]"
 			]
 		}
 	]
