@@ -1,0 +1,948 @@
+{
+	"name": "DataMart Faturamento",
+	"properties": {
+		"activities": [
+			{
+				"name": "DM Fat Smart stg",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT \n    SMM.ESTABELECIMENTO\n    ,CAST(SMM.ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(SMM.SMM_OSM_SERIE AS VARCHAR(5)) + CAST(SMM.SMM_OSM AS VARCHAR(20)) + CAST(SMM.SMM_NUM AS VARCHAR(10)) + CAST(OSM.OSM_PAC AS VARCHAR(20)) AS FK_SMM\n    ,CAST(SMM.ESTABELECIMENTO AS VARCHAR(5)) \n                + '|' + CAST(SMM.SMM_OSM_SERIE AS VARCHAR(5)) + CAST(SMM.SMM_OSM AS VARCHAR(20)) \n                + '|' + CAST(SMM.SMM_NUM AS VARCHAR(10)) \n                + '|' + CAST(FAT.fat_nfs_tipo AS VARCHAR(20)) + CAST(FAT.fat_nfs_serie AS VARCHAR(10)) + CAST(fat.fat_nfs_numero AS VARCHAR(50)) AS FK_DM_REC\n    ,CAST(FAT.ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(FAT.fat_serie AS VARCHAR(5)) + CAST(FAT.fat_num AS VARCHAR(20)) AS FK_FAT                 \n    ,OSM.OSM_PAC\n    ,SMM.smm_canc_mot_cod                                                                   as cod_motivo_cancel_item\n    ,SMM.smm_rpi_serie                                                                      as nr_serie_repasse\n    ,SMM.smm_rpi_num                                                                        as nr_repasse\n    ,SMM.smm_pacote                                                                         as ie_pacote\n    ,SMM.smm_fat_serie\n    ,SMM.smm_fat\n    ,SMM.smm_tipo_fatura\n    ,SMM.smm_sfat\n    ,SMM.smm_mns_serie\n    ,SMM.smm_mns_num\n,fat.fat_num\n,fat.fat_cnv\n,fat.fat_dini\n,fat.fat_dfin\n,fat.fat_demi\n,fat.fat_venc\n,fat.fat_val\n,fat.fat_sld\n,fat.fat_stat\n,fat.fat_lote\n,fat.fat_serie\n,fat.fat_hsp_pac\n,fat.fat_hsp_num\n,fat.fat_mcc_serie\n,fat.fat_mcc_lote\n,fat.fat_mcc_seq\n,fat.fat_int_amb\n,fat.fat_nfs_old\n,fat.fat_nfs_numero\n,fat.fat_nfs_tipo\n,fat.fat_ctf_tipo\n,fat.fat_ctf_cod\n,fat.fat_str_cod_sol\n,fat.fat_str_cod_exe\n,fat.fat_usr_login\n,fat.fat_dthr_proc\n,fat.fat_lta_cod\n,fat.fat_nfs_serie\n,fat.fat_cth_num\n,fat.FAT_TIPO_FATURA\n,fat.FAT_LOTE_PETRO\n,fat.FAT_IND_TAM\n,fat.FAT_IND_IH\n,fat.FAT_IND_AMB\n,fat.FAT_LPF_SERIE\n,fat.FAT_LPF_NUM\n,fat.FAT_IND_NFS_PROC\n,fat.FAT_IND_LAUDO\n,fat.FAT_IND_LAB\n,fat.FAT_IND_EXPORTA\n,fat.FAT_PSV_COD\n,fat.fat_ind_zerados\n,fat.fat_osm_atend\n,fat.fat_ind_previsao\n,fat.FAT_MSG_ERRO\n,fat.fat_usr_lib_conta\n,fat.fat_ctf_categ\n,fat.fat_sap_cod\n,fat.fat_pln_cod\n,fat.fat_emp_cod\n,fat.fat_fpc_serie\n,fat.fat_fpc_num\n,fat.fat_ind_fpc\n,fat.fat_sus_bpa_cobranca\n,fat.fat_gsv_regra\n,fat.fat_gsv_cod\n,fat.fat_ind_apac\n,fat.fat_ind_coleta_dom\n,fat.fat_cod_oper\nFROM DW.TBL_SMM SMM                WITH   (NOLOCK)\nleft join dw.tbl_osm osm           WITH   (nolock)        on osm.osm_serie = smm.SMM_OSM_SERIE and osm.osm_num = smm.smm_osm and osm.estabelecimento = smm.estabelecimento\nleft join DW.TBL_fat fat           WITH   (NOLOCK)        on fat.fat_num = SMM.smm_fat and fat.fat_serie = SMM.smm_fat_serie and osm.osm_cnv  = fat.fat_cnv and fat.estabelecimento = smm.estabelecimento \ninner join dw.tbl_smk smk          WITH   (NOLOCK)        on smk.smk_cod = smm.smm_cod and smk.smk_tipo = smm.smm_tpcod\ninner join dw.tbl_ctf   c          WITH   (NOLOCK)        on c.ctf_cod = smk.smk_ctf  and c.ctf_tipo = smk.smk_tipo\n\nWHERE\n       SMM.smm_canc_mot_cod is null \n       and smm.smm_sfat <> 'C' \n       and smm.smm_exec <> 'C'\n       and smm.smm_str like '%'\n       and smk.smk_ctf LIKE '%'\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FK_SMM",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "FK_SMM",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FK_DM_REC",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "FK_DM_REC",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FK_FAT",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "FK_FAT",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "OSM_PAC",
+									"type": "Int64",
+									"physicalType": "bigint"
+								},
+								"sink": {
+									"name": "OSM_PAC",
+									"type": "Int64",
+									"physicalType": "Int64"
+								}
+							},
+							{
+								"source": {
+									"name": "cod_motivo_cancel_item",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "cod_motivo_cancel_item",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "nr_serie_repasse",
+									"type": "Int64",
+									"physicalType": "bigint"
+								},
+								"sink": {
+									"name": "nr_serie_repasse",
+									"type": "Int64",
+									"physicalType": "Int64"
+								}
+							},
+							{
+								"source": {
+									"name": "nr_repasse",
+									"type": "Int64",
+									"physicalType": "bigint"
+								},
+								"sink": {
+									"name": "nr_repasse",
+									"type": "Int64",
+									"physicalType": "Int64"
+								}
+							},
+							{
+								"source": {
+									"name": "ie_pacote",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "ie_pacote",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "smm_fat_serie",
+									"type": "Int64",
+									"physicalType": "bigint"
+								},
+								"sink": {
+									"name": "smm_fat_serie",
+									"type": "Int64",
+									"physicalType": "Int64"
+								}
+							},
+							{
+								"source": {
+									"name": "smm_fat",
+									"type": "Int64",
+									"physicalType": "bigint"
+								},
+								"sink": {
+									"name": "smm_fat",
+									"type": "Int64",
+									"physicalType": "Int64"
+								}
+							},
+							{
+								"source": {
+									"name": "smm_tipo_fatura",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "smm_tipo_fatura",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "smm_sfat",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "smm_sfat",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "smm_mns_serie",
+									"type": "Int64",
+									"physicalType": "bigint"
+								},
+								"sink": {
+									"name": "smm_mns_serie",
+									"type": "Int64",
+									"physicalType": "Int64"
+								}
+							},
+							{
+								"source": {
+									"name": "smm_mns_num",
+									"type": "Int64",
+									"physicalType": "bigint"
+								},
+								"sink": {
+									"name": "smm_mns_num",
+									"type": "Int64",
+									"physicalType": "Int64"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_num",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "fat_num",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_cnv",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_cnv",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_dini",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "fat_dini",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_dfin",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "fat_dfin",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_demi",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "fat_demi",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_venc",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "fat_venc",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_val",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "fat_val",
+									"type": "Double",
+									"physicalType": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_sld",
+									"type": "Double",
+									"physicalType": "float"
+								},
+								"sink": {
+									"name": "fat_sld",
+									"type": "Double",
+									"physicalType": "Double"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_stat",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_stat",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_lote",
+									"type": "Int16",
+									"physicalType": "smallint"
+								},
+								"sink": {
+									"name": "fat_lote",
+									"type": "Int16",
+									"physicalType": "Int16"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_serie",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "fat_serie",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_hsp_pac",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "fat_hsp_pac",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_hsp_num",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "fat_hsp_num",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_mcc_serie",
+									"type": "Int16",
+									"physicalType": "smallint"
+								},
+								"sink": {
+									"name": "fat_mcc_serie",
+									"type": "Int16",
+									"physicalType": "Int16"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_mcc_lote",
+									"type": "Int16",
+									"physicalType": "smallint"
+								},
+								"sink": {
+									"name": "fat_mcc_lote",
+									"type": "Int16",
+									"physicalType": "Int16"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_mcc_seq",
+									"type": "Int16",
+									"physicalType": "smallint"
+								},
+								"sink": {
+									"name": "fat_mcc_seq",
+									"type": "Int16",
+									"physicalType": "Int16"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_int_amb",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_int_amb",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_nfs_old",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_nfs_old",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_nfs_numero",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "fat_nfs_numero",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_nfs_tipo",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_nfs_tipo",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_ctf_tipo",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_ctf_tipo",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_ctf_cod",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_ctf_cod",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_str_cod_sol",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_str_cod_sol",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_str_cod_exe",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_str_cod_exe",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_usr_login",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_usr_login",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_dthr_proc",
+									"type": "DateTime",
+									"physicalType": "datetime"
+								},
+								"sink": {
+									"name": "fat_dthr_proc",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_lta_cod",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_lta_cod",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_nfs_serie",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_nfs_serie",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_cth_num",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "fat_cth_num",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_TIPO_FATURA",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "FAT_TIPO_FATURA",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_LOTE_PETRO",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "FAT_LOTE_PETRO",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_IND_TAM",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "FAT_IND_TAM",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_IND_IH",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "FAT_IND_IH",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_IND_AMB",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "FAT_IND_AMB",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_LPF_SERIE",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "FAT_LPF_SERIE",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_LPF_NUM",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "FAT_LPF_NUM",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_IND_NFS_PROC",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "FAT_IND_NFS_PROC",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_IND_LAUDO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "FAT_IND_LAUDO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_IND_LAB",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "FAT_IND_LAB",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_IND_EXPORTA",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "FAT_IND_EXPORTA",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_PSV_COD",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "FAT_PSV_COD",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_ind_zerados",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_ind_zerados",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_osm_atend",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_osm_atend",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_ind_previsao",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_ind_previsao",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "FAT_MSG_ERRO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "FAT_MSG_ERRO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_usr_lib_conta",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_usr_lib_conta",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_ctf_categ",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_ctf_categ",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_sap_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "fat_sap_cod",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_pln_cod",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_pln_cod",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_emp_cod",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "fat_emp_cod",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_fpc_serie",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "fat_fpc_serie",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_fpc_num",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "fat_fpc_num",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_ind_fpc",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_ind_fpc",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_sus_bpa_cobranca",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_sus_bpa_cobranca",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_gsv_regra",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_gsv_regra",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_gsv_cod",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_gsv_cod",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_ind_apac",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_ind_apac",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_ind_coleta_dom",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "fat_ind_coleta_dom",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "fat_cod_oper",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "fat_cod_oper",
+									"type": "String",
+									"physicalType": "String"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DM_FAT",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_DM_FAT_SMART",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Ciclo Receita/Teste Data Mart"
+		},
+		"annotations": []
+	}
+}
