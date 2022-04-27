@@ -19640,6 +19640,61 @@
 							"referenceName": "AzureSQL_DB_Procedimentos",
 							"type": "LinkedServiceReference"
 						}
+					},
+					{
+						"name": "CIDs GRUPOS",
+						"description": "CIDs classificados pelo Dr Jhonatan Lake",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ExcelSource",
+								"storeSettings": {
+									"type": "FileServerReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "truncate table dw.TBL_CIDs_GRUPO",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "CIDs_Grupo",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_EXCEL_CIDS_GRUPO",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
 					}
 				],
 				"policy": {
@@ -19656,7 +19711,9 @@
 				"[concat(variables('factoryId'), '/datasets/AZ_CSV_DEPARA_PROCEDIMENTO')]",
 				"[concat(variables('factoryId'), '/datasets/CSV_CONVENIO_DEPARA')]",
 				"[concat(variables('factoryId'), '/datasets/AZ_CSV_CONVENIO_DEPARA')]",
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/datasets/CIDs_Grupo')]",
+				"[concat(variables('factoryId'), '/datasets/AZ_EXCEL_CIDS_GRUPO')]"
 			]
 		},
 		{
@@ -71984,6 +72041,66 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CIDs_Grupo')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Folder_StorageVM",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Excel",
+				"typeProperties": {
+					"sheetName": "Planilha1",
+					"location": {
+						"type": "FileServerLocation",
+						"fileName": "CIDs AGRUPADOS.xlsx",
+						"folderPath": "Depara"
+					},
+					"firstRowAsHeader": true
+				},
+				"schema": [
+					{
+						"name": "CD_CATEGORIA_CID",
+						"type": "String"
+					},
+					{
+						"name": "DS_CATEGORIA_CID",
+						"type": "String"
+					},
+					{
+						"name": "GRUPO CIDs",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Folder_StorageVM')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AZ_EXCEL_CIDS_GRUPO')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dw",
+					"table": "TBL_CIDs_GRUPO"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
 		}
 	]
 }
