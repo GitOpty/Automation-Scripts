@@ -13665,6 +13665,34 @@
 											}
 										]
 									}
+								},
+								{
+									"name": "Envio Erro ADF",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "SE CARGA COMPLETA",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "rodrigo.clima@opty.com.br",
+											"Subject": "Falha ADF Tasy",
+											"ErrorMessage": {
+												"value": "@activity('LIMPA TABELA DESTINO').output",
+												"type": "Expression"
+											}
+										}
+									}
 								}
 							]
 						}
@@ -13891,6 +13919,7 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/LISTA_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/pipelines/Send email')]",
 				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/datasets/ORACLE_DINAMICO')]"
 			]
@@ -58277,6 +58306,27 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/AZ_EXCEL_CIDS_GRUPO')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dw",
+					"table": "TBL_CIDs_GRUPO"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/AZ_MOVIMENTO_ESTOQUE')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -61392,6 +61442,45 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CIDs_Grupo')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Folder_StorageVM",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Excel",
+				"typeProperties": {
+					"sheetName": "Planilha1",
+					"location": {
+						"type": "FileServerLocation",
+						"fileName": "CIDs AGRUPADOS.xlsx",
+						"folderPath": "Depara"
+					},
+					"firstRowAsHeader": true
+				},
+				"schema": [
+					{
+						"name": "CD_CATEGORIA_CID",
+						"type": "String"
+					},
+					{
+						"name": "DS_CATEGORIA_CID",
+						"type": "String"
+					},
+					{
+						"name": "GRUPO CIDs",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Folder_StorageVM')]"
 			]
 		},
 		{
@@ -72041,66 +72130,6 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CIDs_Grupo')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_StorageVM",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "Excel",
-				"typeProperties": {
-					"sheetName": "Planilha1",
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "CIDs AGRUPADOS.xlsx",
-						"folderPath": "Depara"
-					},
-					"firstRowAsHeader": true
-				},
-				"schema": [
-					{
-						"name": "CD_CATEGORIA_CID",
-						"type": "String"
-					},
-					{
-						"name": "DS_CATEGORIA_CID",
-						"type": "String"
-					},
-					{
-						"name": "GRUPO CIDs",
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/Folder_StorageVM')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZ_EXCEL_CIDS_GRUPO')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [],
-				"typeProperties": {
-					"schema": "dw",
-					"table": "TBL_CIDs_GRUPO"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
 		}
 	]
 }
