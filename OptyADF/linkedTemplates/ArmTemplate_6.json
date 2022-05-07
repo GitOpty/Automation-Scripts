@@ -359,167 +359,523 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/CIDs_Grupo')]",
+			"name": "[concat(parameters('factoryName'), '/AZ_SQL')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "Folder_StorageVM",
+					"referenceName": "AzureSQL_DB_Procedimentos",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],
-				"type": "Excel",
-				"typeProperties": {
-					"sheetName": "Planilha1",
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "CIDs AGRUPADOS.xlsx",
-						"folderPath": "Depara"
-					},
-					"firstRowAsHeader": true
-				},
-				"schema": [
-					{
-						"name": "CD_CATEGORIA_CID",
-						"type": "String"
-					},
-					{
-						"name": "DS_CATEGORIA_CID",
-						"type": "String"
-					},
-					{
-						"name": "GRUPO CIDs",
-						"type": "String"
-					}
-				]
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
 			},
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/CSI_CSV_NC_AgentesPorDia')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
+			"name": "[concat(parameters('factoryName'), '/DM_Recebimento')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Nexcore_Consolidado",
-					"type": "LinkedServiceReference"
+				"activities": [
+					{
+						"name": "Processa Datamart Recebimento",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_PROCESSA_RECEBIMENTO_SYS_LEG"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "Nexcore/CSI"
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_Recebimento"
 				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "AgentesPorDiaCSI.csv"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "",
-					"firstRowAsHeader": true,
-					"quoteChar": ""
-				},
-				"schema": [
-					{
-						"type": "String"
-					}
-				]
+				"annotations": []
 			},
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/CSI_CSV_NC_AgentesPorDia_Temp')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_TASY')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Historicos_AgentesPorDia_CSI",
-					"type": "LinkedServiceReference"
+				"activities": [
+					{
+						"name": "TASY PRODUCAO DIARIA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.05:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": {
+								"value": "DBO.SP_TASY_PRODUCAO_DIARIA",
+								"type": "Expression"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "TASY ODS PRODUCAO DIARIA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "TASY PRODUCAO DIARIA",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.09:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": {
+								"value": "DBO.SP_TASY_ODS_PRODUCAO_DIARIA",
+								"type": "Expression"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "MERGE DW PROD FINAL",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "TASY ODS PRODUCAO DIARIA",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.sp_dw_prod_diaria_TASY"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "AJUSTE DATAMART",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "MERGE DW PROD FINAL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.SP_DW_PROD_DIARIA_BUSCA_LIMPA"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "Nexcore/CSI/Históricos"
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
 				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "",
-					"firstRowAsHeader": true,
-					"quoteChar": ""
-				},
-				"schema": [
-					{
-						"type": "String"
-					}
-				]
+				"annotations": []
 			},
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/CSI_CSV_NC_AgentesPorHora')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_SMART')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Nexcore_Consolidado",
-					"type": "LinkedServiceReference"
+				"activities": [
+					{
+						"name": "Producao Diaria         RAW Data",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.07:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_SMART_PRODUCAO_DIARIA]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Producao Diaria         ODS",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Producao Diaria         RAW Data",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.07:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_SMART_ODS_PRODUCAO_DIARIA]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Producao Diaria DW",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Producao Diaria         ODS",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.sp_dw_prod_diaria"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "REPROCESSA_PROD_DIARIA_SMART",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Producao Diaria DW",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_REPROCESSA_PROD_DIARIA_SMART"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "Nexcore/CSI"
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
 				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "AgentesPorHoraCSI.csv"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "",
-					"firstRowAsHeader": true,
-					"quoteChar": ""
-				},
-				"schema": [
-					{
-						"type": "String"
-					}
-				]
+				"annotations": []
 			},
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/CSI_CSV_NC_AgentesPorHora_Temp')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
+			"name": "[concat(parameters('factoryName'), '/2_Processa_DataMart')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Historicos_AgentesPorHora_CSI",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/CSI/Históricos"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "",
-					"firstRowAsHeader": true,
-					"quoteChar": ""
-				},
-				"schema": [
+				"activities": [
 					{
+						"name": "Verifica Start Datamart",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT\n    COUNT(1) as QT_REGISTRO \nFROM(\n    SELECT \n        A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n        ,MAX(A.DT_INICIO_PROCESS) DT_INICIO_PROCESS \n        ,CAST(MAX(A.DT_FIM_PROCESS) AS DATE) DT_FIM_PROCESS         \n    FROM DBO.LOG_PROCESSAMENTO_DW A\n    INNER JOIN DBO.cfg_plataforma_dw B ON B.ID_PLATAFORMA = A.ID_PLATAFORMA\n    WHERE UPPER(A.NOME_PROCESSO) LIKE '%CARGA_DW'\n    GROUP BY A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n)TMP    \nWHERE TMP.DT_FIM_PROCESS = CAST(GETDATE() AS DATE)\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Processo",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Verifica Start Datamart",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Verifica Start Datamart').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Inicia Atualizacao Datamart",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@greaterOrEquals(item().QT_REGISTRO,2 )",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "Busca Email",
+												"type": "Lookup",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "7.00:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "AzureSqlSource",
+														"sqlReaderQuery": "SELECT * FROM ADF.OWNER",
+														"queryTimeout": "02:00:00",
+														"partitionOption": "None"
+													},
+													"dataset": {
+														"referenceName": "AZ_SQL",
+														"type": "DatasetReference",
+														"parameters": {}
+													}
+												}
+											},
+											{
+												"name": "Variable Email",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "Busca Email",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "email",
+													"value": {
+														"value": "@activity('Busca Email').output.firstRow['Email']",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "Disparado de Erro Datamart Receb",
+												"type": "ExecutePipeline",
+												"dependsOn": [
+													{
+														"activity": "Variable Email",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "Send email",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true,
+													"parameters": {
+														"EmailTo": {
+															"value": "@variables('email')",
+															"type": "Expression"
+														},
+														"Subject": {
+															"value": "@pipeline().Pipeline",
+															"type": "Expression"
+														},
+														"ErrorMessage": "Falha na atualização do Datamart "
+													}
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "Execute Datamart Recebimento",
+												"type": "ExecutePipeline",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "DM_Recebimento",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true,
+													"parameters": {}
+												}
+											},
+											{
+												"name": "Execute Datamart Prod Diaria Tasy",
+												"type": "ExecutePipeline",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "DM_ProdDiaria_TASY",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true,
+													"parameters": {}
+												}
+											},
+											{
+												"name": "Execute Datamart Prod Diaria Smart",
+												"type": "ExecutePipeline",
+												"dependsOn": [
+													{
+														"activity": "Execute Datamart Prod Diaria Tasy",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "DM_ProdDiaria_SMART",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true,
+													"parameters": {}
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"variables": {
+					"email": {
+						"type": "String"
+					},
+					"qt_registro": {
 						"type": "String"
 					}
-				]
+				},
+				"folder": {
+					"name": "Data Warehouse/1_Inicializador"
+				},
+				"annotations": []
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AZ_SQL')]",
+				"[concat(variables('factoryId'), '/pipelines/DM_Recebimento')]",
+				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_TASY')]",
+				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_SMART')]"
+			]
 		}
 	]
 }
