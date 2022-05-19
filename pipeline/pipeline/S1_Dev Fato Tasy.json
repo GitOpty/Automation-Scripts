@@ -18,14 +18,15 @@
 				"typeProperties": {
 					"source": {
 						"type": "OracleSource",
-						"oracleReaderQuery": "SELECT \nCPR.NR_SEQUENCIA\n,AP.CD_PESSOA_FISICA\n,CP.NR_ATENDIMENTO\n,CPR.NR_INTERNO_CONTA\n,0                                                          AS CD_CARTERINHA_PAC\n,CP.CD_AUTORIZACAO                                          AS NR_GUIA\n,SENHA.CD_SENHA                                             AS SENHA_CONV\n,CONV.CD_CGC                                                AS CGC_CONVENIO\n,CONV.CD_CONVENIO\n,CONV.DS_CONVENIO\n,AP.DT_ENTRADA\n,SA.CD_ESTABELECIMENTO\n,EST.NM_FANTASIA_ESTAB                  \n,SA.DS_SETOR_ATENDIMENTO\n,CP.NR_SEQ_PROTOCOLO\n,NF.NR_NOTA_FISCAL\n,CASE\n   WHEN CP.NR_SEQ_PROTOCOLO IS NOT NULL OR NF.NR_NOTA_FISCAL IS NOT NULL  THEN 'FATURADO'\n   ELSE 'ABERTO'\n END                                                         STATUS_FATURAMENTO\n,PC.DT_PERIODO_INICIAL                                      AS DT_INICIO_PRE_FAT\n,PC.DT_ENVIO \n,NVL(NF.DT_EMISSAO,PC.DT_MESANO_REFERENCIA)                 AS DT_EMISSAO_NF\n,NVL(CPR.CD_MATERIAL,CPR.CD_PROCEDIMENTO)                   AS CD_ITEM\n,NVL(MAT.DS_MATERIAL,PROC.DS_PROCEDIMENTO)                  AS DS_ITEM\n,CPR.QT_RESUMO                                              AS QT_ITEM        \n,CPR.VL_PROCEDIMENTO + CPR.VL_MATERIAL                      AS VL_ITEM\n--,CPR.VL_MATERIAL\n,CPR.VL_GLOSA\n,CPR.VL_IMPOSTO\nFROM CONTA_PACIENTE_RESUMO          CPR\nINNER JOIN CONTA_PACIENTE           CP          ON CP.NR_INTERNO_CONTA = CPR.NR_INTERNO_CONTA\nINNER JOIN ATENDIMENTO_PACIENTE     AP          ON AP.NR_ATENDIMENTO = CP.NR_ATENDIMENTO\nLEFT JOIN SETOR_ATENDIMENTO         SA          ON SA.CD_SETOR_ATENDIMENTO = CPR.CD_SETOR_ATENDIMENTO\nLEFT JOIN ESTABELECIMENTO           EST         ON EST.CD_ESTABELECIMENTO = SA.CD_ESTABELECIMENTO\nINNER JOIN CONVENIO                 CONV        ON CONV.CD_CONVENIO = CP.CD_CONVENIO_PARAMETRO\nLEFT JOIN MATERIAL                  MAT         ON MAT.CD_MATERIAL = CPR.CD_MATERIAL\nLEFT JOIN PROTOCOLO_CONVENIO        PC          ON PC.NR_SEQ_PROTOCOLO = CP.NR_SEQ_PROTOCOLO\nOUTER APPLY (\n        SELECT\n            A.DS_PROCEDIMENTO\n        FROM PROCEDIMENTO A\n        WHERE A.CD_PROCEDIMENTO = CPR.CD_PROCEDIMENTO AND ROWNUM = 1\n)PROC\nOUTER APPLY(\n    SELECT\n        TMP.*\n    FROM(\n        SELECT\n            AC.NR_SEQUENCIA\n            ,AC.NR_ATENDIMENTO\n            ,AC.CD_SENHA\n        FROM AUTORIZACAO_CONVENIO AC\n        WHERE AC.NR_ATENDIMENTO = AP.NR_ATENDIMENTO\n        ORDER BY AC.NR_SEQUENCIA DESC\n    )TMP\n    WHERE ROWNUM = 1\n) SENHA\n\nOUTER APPLY(\n    SELECT\n            Z.NR_NOTA_FISCAL\n            ,Z.NR_INTERNO_CONTA\n            ,MAX(Z.DT_EMISSAO) DT_EMISSAO\n            ,MAX(Z.NR_SEQUENCIA) NR_SEQ\n    FROM NOTA_FISCAL Z\n    WHERE Z.nr_interno_conta = CPR.NR_INTERNO_CONTA\n    GROUP BY \n            Z.NR_NOTA_FISCAL\n            ,Z.NR_INTERNO_CONTA\n            ,Z.DT_EMISSAO\n)NF\n\n--WHERE CPR.NR_INTERNO_CONTA = 84726\n",
+						"oracleReaderQuery": "SELECT \nCPR.NR_SEQUENCIA\n,AP.CD_PESSOA_FISICA\n,CP.NR_ATENDIMENTO\n,CPR.NR_INTERNO_CONTA\n,0                                                          AS CD_CARTERINHA_PAC\n,CP.CD_AUTORIZACAO                                          AS NR_GUIA\n,SENHA.CD_SENHA                                             AS SENHA_CONV\n,CONV.CD_CGC                                                AS CGC_CONVENIO\n,CONV.CD_CONVENIO\n,CONV.DS_CONVENIO\n,AP.DT_ENTRADA\n,SA.CD_ESTABELECIMENTO\n,EST.NM_FANTASIA_ESTAB\n,PC.CD_ESTABELECIMENTO                                      AS CD_ESTABELECIMENTO_FAT\n,SA.DS_SETOR_ATENDIMENTO\n,CP.NR_SEQ_PROTOCOLO\n,NF.NR_NOTA_FISCAL\n,CASE\n   WHEN CP.NR_SEQ_PROTOCOLO IS NOT NULL OR NF.NR_NOTA_FISCAL IS NOT NULL  THEN 'FATURADO'\n   ELSE 'ABERTO'\n END                                                         STATUS_FATURAMENTO\n,PC.DT_PERIODO_INICIAL                                      AS DT_INICIO_PRE_FAT\n,PC.DT_ENVIO \n,NVL(NF.DT_EMISSAO,PC.DT_MESANO_REFERENCIA)                 AS DT_EMISSAO_NF\n,NVL(CPR.CD_MATERIAL,CPR.CD_PROCEDIMENTO)                   AS CD_ITEM\n,NVL(MAT.DS_MATERIAL,PROC.DS_PROCEDIMENTO)                  AS DS_ITEM\n,CPR.QT_RESUMO                                              AS QT_ITEM        \n,CPR.VL_PROCEDIMENTO + CPR.VL_MATERIAL                      AS VL_ITEM\n--,CPR.VL_MATERIAL\n,CPR.VL_GLOSA\n,CPR.VL_IMPOSTO\nFROM CONTA_PACIENTE_RESUMO          CPR\nINNER JOIN CONTA_PACIENTE           CP          ON CP.NR_INTERNO_CONTA = CPR.NR_INTERNO_CONTA\nINNER JOIN ATENDIMENTO_PACIENTE     AP          ON AP.NR_ATENDIMENTO = CP.NR_ATENDIMENTO\nLEFT JOIN SETOR_ATENDIMENTO         SA          ON SA.CD_SETOR_ATENDIMENTO = CPR.CD_SETOR_ATENDIMENTO\nLEFT JOIN ESTABELECIMENTO           EST         ON EST.CD_ESTABELECIMENTO = SA.CD_ESTABELECIMENTO\nINNER JOIN CONVENIO                 CONV        ON CONV.CD_CONVENIO = CP.CD_CONVENIO_PARAMETRO\nLEFT JOIN MATERIAL                  MAT         ON MAT.CD_MATERIAL = CPR.CD_MATERIAL\nLEFT JOIN PROTOCOLO_CONVENIO        PC          ON PC.NR_SEQ_PROTOCOLO = CP.NR_SEQ_PROTOCOLO\nOUTER APPLY (\n        SELECT\n            A.DS_PROCEDIMENTO\n        FROM PROCEDIMENTO A\n        WHERE A.CD_PROCEDIMENTO = CPR.CD_PROCEDIMENTO AND ROWNUM = 1\n)PROC\nOUTER APPLY(\n    SELECT\n        TMP.*\n    FROM(\n        SELECT\n            AC.NR_SEQUENCIA\n            ,AC.NR_ATENDIMENTO\n            ,AC.CD_SENHA\n        FROM AUTORIZACAO_CONVENIO AC\n        WHERE AC.NR_ATENDIMENTO = AP.NR_ATENDIMENTO\n        ORDER BY AC.NR_SEQUENCIA DESC\n    )TMP\n    WHERE ROWNUM = 1\n) SENHA\n\nOUTER APPLY(\n    SELECT\n            Z.NR_NOTA_FISCAL\n            ,Z.NR_INTERNO_CONTA\n            ,MAX(Z.DT_EMISSAO) DT_EMISSAO\n            ,MAX(Z.NR_SEQUENCIA) NR_SEQ\n    FROM NOTA_FISCAL Z\n    WHERE Z.nr_interno_conta = CPR.NR_INTERNO_CONTA\n    GROUP BY \n            Z.NR_NOTA_FISCAL\n            ,Z.NR_INTERNO_CONTA\n            ,Z.DT_EMISSAO\n)NF\n\n",
 						"partitionOption": "None",
 						"queryTimeout": "02:00:00"
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"preCopyScript": "TRUNCATE TABLE stg.dev_ciclo_tasy",
+						"preCopyScript": "--TRUNCATE TABLE stg.dev_ciclo_tasy",
 						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
 						"tableOption": "autoCreate",
 						"disableMetricsCollection": false
 					},
@@ -41,9 +42,7 @@
 								"sink": {
 									"name": "NR_SEQUENCIA",
 									"type": "Decimal",
-									"physicalType": "decimal",
-									"scale": 0,
-									"precision": 6
+									"physicalType": "Decimal"
 								}
 							},
 							{
@@ -54,7 +53,7 @@
 								"sink": {
 									"name": "CD_PESSOA_FISICA",
 									"type": "String",
-									"physicalType": "nvarchar"
+									"physicalType": "String"
 								}
 							},
 							{
@@ -65,9 +64,7 @@
 								"sink": {
 									"name": "NR_ATENDIMENTO",
 									"type": "Decimal",
-									"physicalType": "decimal",
-									"scale": 0,
-									"precision": 10
+									"physicalType": "Decimal"
 								}
 							},
 							{
@@ -78,9 +75,7 @@
 								"sink": {
 									"name": "NR_INTERNO_CONTA",
 									"type": "Decimal",
-									"physicalType": "decimal",
-									"scale": 0,
-									"precision": 10
+									"physicalType": "Decimal"
 								}
 							},
 							{
@@ -91,7 +86,7 @@
 								"sink": {
 									"name": "CD_CARTERINHA_PAC",
 									"type": "Double",
-									"physicalType": "float"
+									"physicalType": "Double"
 								}
 							},
 							{
@@ -102,7 +97,7 @@
 								"sink": {
 									"name": "NR_GUIA",
 									"type": "String",
-									"physicalType": "nvarchar"
+									"physicalType": "String"
 								}
 							},
 							{
@@ -113,7 +108,7 @@
 								"sink": {
 									"name": "SENHA_CONV",
 									"type": "String",
-									"physicalType": "nvarchar"
+									"physicalType": "String"
 								}
 							},
 							{
@@ -124,7 +119,7 @@
 								"sink": {
 									"name": "CGC_CONVENIO",
 									"type": "String",
-									"physicalType": "nvarchar"
+									"physicalType": "String"
 								}
 							},
 							{
@@ -135,9 +130,7 @@
 								"sink": {
 									"name": "CD_CONVENIO",
 									"type": "Decimal",
-									"physicalType": "decimal",
-									"scale": 0,
-									"precision": 5
+									"physicalType": "Decimal"
 								}
 							},
 							{
@@ -148,7 +141,7 @@
 								"sink": {
 									"name": "DS_CONVENIO",
 									"type": "String",
-									"physicalType": "nvarchar"
+									"physicalType": "String"
 								}
 							},
 							{
@@ -159,7 +152,7 @@
 								"sink": {
 									"name": "DT_ENTRADA",
 									"type": "DateTime",
-									"physicalType": "datetime2"
+									"physicalType": "DateTime"
 								}
 							},
 							{
@@ -170,9 +163,7 @@
 								"sink": {
 									"name": "CD_ESTABELECIMENTO",
 									"type": "Decimal",
-									"physicalType": "decimal",
-									"scale": 0,
-									"precision": 4
+									"physicalType": "Decimal"
 								}
 							},
 							{
@@ -183,7 +174,18 @@
 								"sink": {
 									"name": "NM_FANTASIA_ESTAB",
 									"type": "String",
-									"physicalType": "nvarchar"
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO_FAT",
+									"type": "Decimal"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO_FAT",
+									"type": "Decimal",
+									"physicalType": "Decimal"
 								}
 							},
 							{
@@ -194,7 +196,7 @@
 								"sink": {
 									"name": "DS_SETOR_ATENDIMENTO",
 									"type": "String",
-									"physicalType": "nvarchar"
+									"physicalType": "String"
 								}
 							},
 							{
@@ -205,9 +207,7 @@
 								"sink": {
 									"name": "NR_SEQ_PROTOCOLO",
 									"type": "Decimal",
-									"physicalType": "decimal",
-									"scale": 0,
-									"precision": 10
+									"physicalType": "Decimal"
 								}
 							},
 							{
@@ -218,7 +218,7 @@
 								"sink": {
 									"name": "NR_NOTA_FISCAL",
 									"type": "String",
-									"physicalType": "nvarchar"
+									"physicalType": "String"
 								}
 							},
 							{
@@ -229,7 +229,7 @@
 								"sink": {
 									"name": "STATUS_FATURAMENTO",
 									"type": "String",
-									"physicalType": "nvarchar"
+									"physicalType": "String"
 								}
 							},
 							{
@@ -240,7 +240,7 @@
 								"sink": {
 									"name": "DT_INICIO_PRE_FAT",
 									"type": "DateTime",
-									"physicalType": "datetime2"
+									"physicalType": "DateTime"
 								}
 							},
 							{
@@ -251,7 +251,7 @@
 								"sink": {
 									"name": "DT_ENVIO",
 									"type": "DateTime",
-									"physicalType": "datetime2"
+									"physicalType": "DateTime"
 								}
 							},
 							{
@@ -262,7 +262,7 @@
 								"sink": {
 									"name": "DT_EMISSAO_NF",
 									"type": "DateTime",
-									"physicalType": "datetime2"
+									"physicalType": "DateTime"
 								}
 							},
 							{
@@ -273,7 +273,7 @@
 								"sink": {
 									"name": "CD_ITEM",
 									"type": "Double",
-									"physicalType": "float"
+									"physicalType": "Double"
 								}
 							},
 							{
@@ -284,7 +284,7 @@
 								"sink": {
 									"name": "DS_ITEM",
 									"type": "String",
-									"physicalType": "nvarchar"
+									"physicalType": "String"
 								}
 							},
 							{
@@ -295,9 +295,7 @@
 								"sink": {
 									"name": "QT_ITEM",
 									"type": "Decimal",
-									"physicalType": "decimal",
-									"scale": 4,
-									"precision": 15
+									"physicalType": "Decimal"
 								}
 							},
 							{
@@ -308,7 +306,7 @@
 								"sink": {
 									"name": "VL_ITEM",
 									"type": "Double",
-									"physicalType": "float"
+									"physicalType": "Double"
 								}
 							},
 							{
@@ -319,9 +317,7 @@
 								"sink": {
 									"name": "VL_GLOSA",
 									"type": "Decimal",
-									"physicalType": "decimal",
-									"scale": 2,
-									"precision": 15
+									"physicalType": "Decimal"
 								}
 							},
 							{
@@ -332,9 +328,7 @@
 								"sink": {
 									"name": "VL_IMPOSTO",
 									"type": "Decimal",
-									"physicalType": "decimal",
-									"scale": 2,
-									"precision": 15
+									"physicalType": "Decimal"
 								}
 							}
 						],
