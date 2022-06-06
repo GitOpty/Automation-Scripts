@@ -208,6 +208,294 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_SMART')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Producao Diaria         RAW Data",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.07:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_SMART_PRODUCAO_DIARIA]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Producao Diaria         ODS",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Producao Diaria         RAW Data",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.07:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_SMART_ODS_PRODUCAO_DIARIA]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Producao Diaria DW",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Producao Diaria         ODS",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.sp_dw_prod_diaria"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "REPROCESSA_PROD_DIARIA_SMART",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Producao Diaria DW",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_REPROCESSA_PROD_DIARIA_SMART"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_TASY')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "TASY PRODUCAO DIARIA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.05:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": {
+								"value": "DBO.SP_TASY_PRODUCAO_DIARIA",
+								"type": "Expression"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "TASY ODS PRODUCAO DIARIA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "TASY PRODUCAO DIARIA",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.09:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": {
+								"value": "DBO.SP_TASY_ODS_PRODUCAO_DIARIA",
+								"type": "Expression"
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "MERGE DW PROD FINAL",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "TASY ODS PRODUCAO DIARIA",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.sp_dw_prod_diaria_TASY"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "AJUSTE DATAMART",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "MERGE DW PROD FINAL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.SP_DW_PROD_DIARIA_BUSCA_LIMPA"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DM_Recebimento')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Processa Datamart Recebimento",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_PROCESSA_RECEBIMENTO_SYS_LEG"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_Recebimento"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Procedure_Marca')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -1038,400 +1326,6 @@
 				],
 				"typeProperties": {
 					"tableName": "[[dbo].[Nexcore_AgentesPorHora_temp]"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_NC_BilheteLigacoes')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Tabela Azure SQL Server Procedimentos.dbo.BilheteLigacoes",
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/Azure"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "DATA",
-						"type": "date"
-					},
-					{
-						"name": "HORA",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "USUARIO",
-						"type": "varchar"
-					},
-					{
-						"name": "TIPO",
-						"type": "varchar"
-					},
-					{
-						"name": "ORIGEM",
-						"type": "varchar"
-					},
-					{
-						"name": "DESTINO",
-						"type": "varchar"
-					},
-					{
-						"name": "STATUS",
-						"type": "varchar"
-					},
-					{
-						"name": "CENTRO_DE_CUSTO",
-						"type": "varchar"
-					},
-					{
-						"name": "TEMPO_TARIFADO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "TEMPO_DECORRIDO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CAMPANHA",
-						"type": "varchar"
-					},
-					{
-						"name": "FILA",
-						"type": "varchar"
-					},
-					{
-						"name": "UNIQUE_ID",
-						"type": "float",
-						"precision": 15
-					},
-					{
-						"name": "LINKED_ID",
-						"type": "float",
-						"precision": 15
-					},
-					{
-						"name": "MARCA",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"tableName": "[[dbo].[Nexcore_BilheteLigacoes]"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_NC_BilheteLigacoes_Temp')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Tabela Azure SQL Server Procedimentos.dbo.BilheteLigacoes",
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/Azure"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "DATA",
-						"type": "date"
-					},
-					{
-						"name": "HORA",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "USUARIO",
-						"type": "varchar"
-					},
-					{
-						"name": "TIPO",
-						"type": "varchar"
-					},
-					{
-						"name": "ORIGEM",
-						"type": "varchar"
-					},
-					{
-						"name": "DESTINO",
-						"type": "varchar"
-					},
-					{
-						"name": "STATUS",
-						"type": "varchar"
-					},
-					{
-						"name": "CENTRO_DE_CUSTO",
-						"type": "varchar"
-					},
-					{
-						"name": "TEMPO_TARIFADO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "TEMPO_DECORRIDO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CAMPANHA",
-						"type": "varchar"
-					},
-					{
-						"name": "FILA",
-						"type": "varchar"
-					},
-					{
-						"name": "UNIQUE_ID",
-						"type": "float",
-						"precision": 15
-					},
-					{
-						"name": "LINKED_ID",
-						"type": "float",
-						"precision": 15
-					}
-				],
-				"typeProperties": {
-					"tableName": "[[dbo].[Nexcore_BilheteLigacoes_temp]"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_NC_FilasPorHoras')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/Azure"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "Fila",
-						"type": "varchar"
-					},
-					{
-						"name": "Intervalo",
-						"type": "varchar"
-					},
-					{
-						"name": "Atendidas_Ate_NS",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Atendidas_Apos_NS",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Atendidas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Abandonos_Ate_NS",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Abandonos_Apos_NS",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Abandonos_Anuncio_Inicial",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Abandonos",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Roteamentos_Timeout",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Roteamentos_Fila_Cheia",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Roteamentos_Fila_Vazia",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Roteamentos_Fila_Sem_Ags_Disp",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Roteamentos_Caixa_Postal",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Roteamentos",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Fora_Horario_Antes",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Fora_Horario_Intervalo",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Fora_Horario_Depois",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Fora_Horario",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Total_Recebidas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Callback_Tratados",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Callback_Nao_Tratados",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Callback",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Tempo_Toque",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Falado",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Medio_Falado",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Medio_Pausa_ACW",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Medio_Produtivo_AHT",
-						"type": "varchar"
-					},
-					{
-						"name": "Nivel_Servico",
-						"type": "varchar"
-					},
-					{
-						"name": "Taxa_Atendimento",
-						"type": "varchar"
-					},
-					{
-						"name": "Taxa_Abandono",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Medio_Espera",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Medio_para_Atender",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Total_para_Atender",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Medio_para_Abandono",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Total_para_Abandono",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Total_Espera",
-						"type": "varchar"
-					},
-					{
-						"name": "Agentes_Logados_Minimo",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Agentes_Logados_Maximo",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Chamadas_em_Espera_Minimo",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Chamadas_em_Espera_Medio",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Chamadas_em_Espera_Maximo",
-						"type": "int",
-						"precision": 10
-					}
-				],
-				"typeProperties": {
-					"tableName": "[[dbo].[Nexcore_FilasPorHoras]"
 				}
 			},
 			"dependsOn": [
