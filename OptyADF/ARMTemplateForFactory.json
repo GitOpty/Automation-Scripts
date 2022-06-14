@@ -657,6 +657,27 @@
 													"waitOnCompletion": true,
 													"parameters": {}
 												}
+											},
+											{
+												"name": "Execute Datamart Prod Diaria Naja",
+												"type": "ExecutePipeline",
+												"dependsOn": [
+													{
+														"activity": "Execute Datamart Prod Diaria Smart",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "DM_ProdDiaria_NAJA",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true,
+													"parameters": {}
+												}
 											}
 										]
 									}
@@ -687,7 +708,8 @@
 				"[concat(variables('factoryId'), '/pipelines/Send email')]",
 				"[concat(variables('factoryId'), '/pipelines/DM_Recebimento')]",
 				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_TASY')]",
-				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_SMART')]"
+				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_SMART')]",
+				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_NAJA')]"
 			]
 		},
 		{
@@ -73658,6 +73680,73 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_NAJA')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "RAW DATA NAJA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.SP_NAJA_RAW_DATA_PROD_DIARIA"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "ODS NAJA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "RAW DATA NAJA",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.SP_NAJA_ODS_PROD_DIARIA"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
 		}
 	]
 }
