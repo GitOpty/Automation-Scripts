@@ -4,14 +4,73 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Data Factory name",
+			"metadata": "Nome do Data Factory",
 			"defaultValue": "OptyADF"
+		},
+		"Tasy_Connections_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "@linkedService().NOME_KEYVAULT_SECRET"
 		}
 	},
 	"variables": {
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Tasy_Connections')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"NOME_KEYVAULT_SECRET": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": {
+							"value": "[parameters('Tasy_Connections_properties_typeProperties_connectionString_secretName')]",
+							"type": "Expression"
+						},
+						"secretVersion": ""
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DESTINO_ADF')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "A",
+					"table": "DESTINO_X"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/2_Processa_DataMart')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
@@ -1196,64 +1255,6 @@
 						"type": "String"
 					}
 				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_Salesforce_Alergia')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Salesforce_Sharepoint",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Salesforce"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "Alergia.csv"
-					},
-					"columnDelimiter": ",",
-					"rowDelimiter": "\n",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_Salesforce_Dinamico')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Salesforce_Sharepoint",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Salesforce"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "AtendimentoPaciente.csv"
-					},
-					"columnDelimiter": ",",
-					"rowDelimiter": "\n",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": ""
-				},
-				"schema": []
 			},
 			"dependsOn": []
 		}

@@ -4,7 +4,7 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Data Factory name",
+			"metadata": "Nome do Data Factory",
 			"defaultValue": "OptyADF"
 		}
 	},
@@ -12,6 +12,1446 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Contas a receber Sadalla')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline desenvolvido para alimentar as tableas:\n\nTitulos_receber e Baixa_Titulos_Receber\n\nIniciado conferencia pelo setor de Contas a Receber das informações alimentadas por Tasy e Smart.",
+				"activities": [
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					},
+					{
+						"name": "Baixa Titulo Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "select '' nr_tipo_titulo,\nobter_cgc_estabelecimento(R.CD_ESTABELECIMENTO) AS CNPJ, \n'' AS NR_SERIE_TITULO,\nl.nr_titulo, \nl.dt_recebimento, \nl.vl_recebido, \nl.vl_descontos, \nl.vl_juros, \nl.vl_multa, \nl.dt_atualizacao, \nt.ds_tipo_recebimento,\nx.DS_TRANSACAO,\n'TASY Delphi' AS BASE,\n SYSDATE AS DT_CARGA\nfrom titulo_receber r,\n     TITULO_RECEBER_LIQ L,\n     tipo_recebimento t,\n     TRANSACAO_FINANCEIRA X\nwhere r.nr_titulo = l.nr_titulo \nand l.cd_tipo_recebimento = t.cd_tipo_recebimento\nAND l.nr_seq_trans_fin = X.NR_SEQUENCIA",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"enableSkipIncompatibleRow": true
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Titulos Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "SELECT  \n        a.ie_tipo_titulo as NR_TIPO_TITULO,\n        '' as NR_SERIE_TITULO,\n        A.NR_TITULO,\n        A.DT_EMISSAO as DT_EMISSAO_TITULO,\n        A.DT_VENCIMENTO DT_VENCIMENTO_TITULO,\n        A.VL_TITULO VL_TITULO,\n        A.VL_MULTA_FIXO AS VL_MULTA,\n        C.DS_CONVENIO,\n        B.DS_RAZAO_SOCIAL as DS_EMPRESA_CONVENIO,\n        B.CD_CGC AS CONV_CNPJ,\n        0 AS VL_ISS,\n        0 AS VL_IR,\n        0 AS VL_FILME,\n        0 AS VL_PERC_ISS,\n        0 AS VL_PER_IR,\n        A.TX_MULTA AS VL_PERC_MULTA,\n        A.TX_JUROS AS VL_PERC_JURO,\n        A.VL_OUTRAS_DESPESAS AS VL_OUTROS_IMP,\n        0 AS NR_REMESSA,\n        EM.NM_RAZAO_SOCIAL MARCA,\n        E.NM_FANTASIA_ESTAB AS DS_UNIDADE,\n        E.CD_CGC AS CNPJ,\n'TASY Delphi' AS BASE,\n SYSDATE AS DT_CARGA\nFROM    TITULO_RECEBER A, \n        PESSOA_JURIDICA B,\n        ESTABELECIMENTO E,\n        EMPRESA EM,\n        CONVENIO C\nwhere   b.cd_cgc = a.cd_cgc\nAND     a.CD_ESTABELECIMENTO = E.CD_ESTABELECIMENTO\nAND     E.CD_EMPRESA = EM.CD_EMPRESA\nAND     B.CD_CGC = C.CD_CGC\nAND     C.DT_CANCELAMENTO IS NULL",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Titulos_Receber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Contas a receber"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:25Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Convenios')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Alimenta tabela:\n\nConvenio_Unidade para o cadastro da tabela unica.",
+				"activities": [
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					},
+					{
+						"name": "Convenio Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "SELECT OBTER_CGC_ESTABELECIMENTO(E.CD_ESTABELECIMENTO)AS CNPJ,\n       C.DS_CONVENIO,\n       C.CD_CONVENIO\nFROM CONVENIO_ESTABELECIMENTO E,\n     CONVENIO C\nWHERE E.CD_CONVENIO = C.CD_CONVENIO",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Convenio",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Convenio HOB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "SELECT OBTER_CGC_ESTABELECIMENTO(E.CD_ESTABELECIMENTO)AS CNPJ,\n       C.DS_CONVENIO,\n       C.CD_CONVENIO\nFROM CONVENIO_ESTABELECIMENTO E,\n     CONVENIO C\nWHERE E.CD_CONVENIO = C.CD_CONVENIO",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Convenio",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Convenio HOSL",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "select cnv_cod AS CD_CONVENIO, cnv.cnv_nome AS DS_CONVENIO, emp.emp_cgc AS CNPJ\nfrom cnv,\n     gcc,\n     str,\n     emp\nwhere gcc.gcc_str_cod = str_cod\nand str_emp_cod = emp_cod\nand emp_cgc <> '-'\nand cnv_cod <> '999'\nand cnv_stat = 'A'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_HOSL_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Convenio",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Convenio Itaigara",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "select cnv_cod AS CD_CONVENIO, cnv.cnv_nome AS DS_CONVENIO, emp.emp_cgc AS CNPJ\nfrom cnv,\n     gcc,\n     str,\n     emp\nwhere gcc.gcc_str_cod = str_cod\nand str_emp_cod = emp_cod\nand emp_cgc <> '-'\nand cnv_cod <> '999'\nand cnv_stat = 'A'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITAIGARA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Convenio",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Convenio Itabuna",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "select cnv_cod AS CD_CONVENIO, cnv.cnv_nome AS DS_CONVENIO, emp.emp_cgc AS CNPJ\nfrom cnv,\n     gcc,\n     str,\n     emp\nwhere gcc.gcc_str_cod = str_cod\nand str_emp_cod = emp_cod\nand emp_cgc <> '-'\nand cnv_cod <> '999'\nand cnv_stat = 'A'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Convenio",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Convenio Oftalmoclin",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "select cnv_cod AS CD_CONVENIO, cnv.cnv_nome AS DS_CONVENIO, emp.emp_cgc AS CNPJ\nfrom cnv,\n     gcc,\n     str,\n     emp\nwhere gcc.gcc_str_cod = str_cod\nand str_emp_cod = emp_cod\nand emp_cgc <> '-'\nand cnv_cod <> '999'\nand cnv_stat = 'A'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Convenio",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Convenio INOB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "select cnv_cod AS CD_CONVENIO, cnv.cnv_nome AS DS_CONVENIO, emp.emp_cgc AS CNPJ\nfrom cnv,\n     gcc,\n     str,\n     emp\nwhere gcc.gcc_str_cod = str_cod\nand str_emp_cod = emp_cod\nand emp_cgc <> '-'\nand cnv_cod <> '999'\nand cnv_stat = 'A'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_INOB_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Convenio",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Convenio IOF",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "select cnv_cod AS CD_CONVENIO, cnv.cnv_nome AS DS_CONVENIO, emp.emp_cgc AS CNPJ\nfrom cnv,\n     gcc,\n     str,\n     emp\nwhere gcc.gcc_str_cod = str_cod\nand str_emp_cod = emp_cod\nand emp_cgc <> '-'\nand cnv_cod <> '999'\nand cnv_stat = 'A'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_IOF_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Convenio",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Cadastros Gerais"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:25Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DEPARA')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Depara Procedimento",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "FileServerReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "truncate table dbo.depara_sys",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "CSV_PROCEDIMENTO_DEPARA",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_CSV_DEPARA_PROCEDIMENTO",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Depara Convenio",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Depara Procedimento",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "FileServerReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "truncate table dbo.depara_sys_convenio",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "CSV_CONVENIO_DEPARA",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_CSV_CONVENIO_DEPARA",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Engenharia Reversa Convenio",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Depara Convenio",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.SP_CONVENIO_PROD_DIARIA_AJ"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Engenharia Reversa Procedimento Smart Tasy",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Engenharia Reversa Convenio",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.SP_ENGENHARIA_REVERSA_PROCEDIMENTO_SMART_TASY"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "CIDs GRUPOS",
+						"description": "CIDs classificados pelo Dr Jhonatan Lake",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ExcelSource",
+								"storeSettings": {
+									"type": "FileServerReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "truncate table dw.TBL_CIDs_GRUPO",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "CIDs_Grupo",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_EXCEL_CIDS_GRUPO",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Desen_HTML5_Pipeline')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipelines desenvolvidos em conjunto com a empresa Class para a extração das informações de produção. Atualmente desativado.",
+				"activities": [
+					{
+						"name": "Processa Itens",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Copy_Materials",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Copy_Procedures",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[ProcessTempItems]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Tabela Final",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Processa Itens",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select * from TEMPTASY\nWhere Processed = 'Sim'",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBatchSize": 10000,
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "NR_REGISTRO_UNICO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_REGISTRO_UNICO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "MARCA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MARCA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_ATENDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_ATENDIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CPF",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CPF",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_SEXO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "IE_SEXO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CEP",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CEP",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_CONVENIO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_ORIGEM_PROCED",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "IE_ORIGEM_PROCED",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PROCED_PRINCIPAL",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_PROCEDIMENTO_PRINCIPAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PROCED_PRINCIPAL",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PROCEDIMENTO_PRINCIPAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PROCEDIMENTO_PRINCIPAL_FINAL",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PROCEDIMENTO_PRINCIPAL_FINAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CATEGORIA_AUXILIAR",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_CATEGORIA_AUXILIAR",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CATEGORIA_AUXILIAR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CATEGORIA_AUXILIAR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CATEGORIA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_CATEGORIA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CATEGORIA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CATEGORIA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_CLASSE",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSIF_LIO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_CLASSIF_LIO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_AJUSTADA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "QT_AJUSTADA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_CONTA",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_CONTA",
+											"type": "Single"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Single"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_STATUS_CONTA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_STATUS_CONTA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_TUSS",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_TUSS",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "TIPO_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "TIPO_CONVENIO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CRM",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CRM_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "MPE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MPE_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "INTERCOMPANY",
+											"type": "String"
+										},
+										"sink": {
+											"name": "INTERCOMPANY_EXECUTOR",
+											"type": "String"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "AzureSqlTEMPTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSqlProcedimentosTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Truncate Temp Table",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Tabela Final",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[TRUNCATETEMPTABLE]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Copy_Procedures",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "select \n\n'HTML5' as BASE,\n'' as cd_marca,\n'' as marca,\n'' as cd_estabelecimento,\np.nr_atendimento,\np.nr_atendimento as nr_registro_unico,\np.dt_atualizacao,\nat.dt_entrada,\np.nr_interno_conta,\nobter_nome_estab(c.cd_estabelecimento) as ds_estabelecimento,\npf.cd_pessoa_fisica,\npf.dt_nascimento,\npf.nr_cpf,\npf.ie_sexo,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CEP') as nr_cep,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CI') as ds_cidade,\nobter_nome_pf(at.cd_pessoa_fisica) as ds_pessoa_fisica,\np.cd_convenio as cd_convenio,\nobter_nome_convenio(c.cd_convenio_parametro) as ds_convenio,\np.cd_medico_executor,\nobter_nome_pf(p.cd_medico_executor) as ds_medico_executor,\np.cd_medico_req as cd_medico_requisitante,\nobter_nome_pf(p.cd_medico_req) as ds_medico_requisitante,\np.ie_origem_proced,\np.cd_procedimento,\nobter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced) as ds_procedimento, \nobter_valor_dominio(19,pr.ie_classificacao) as ds_classificacao,\n'' as ds_classif_procedimento,\n0 as cd_proced_principal,\n'' ds_proced_principal,\np.qt_procedimento,\nc.vl_conta,\np.vl_procedimento,\nc.ie_status_acerto,\ndecode(c.ie_status_acerto, 1,'Provisorio' , 2 ,'Definitivo') as status_conta,\n'' as cd_tuss,\n'' as ds_classif_lio\nfrom procedimento_paciente p,\natendimento_paciente at,\npessoa_fisica pf,\nprocedimento pr,\nconta_paciente c\nwhere p.nr_atendimento = at.nr_atendimento\nand at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand p.cd_procedimento = pr.cd_procedimento\nand p.ie_origem_proced = pr.ie_origem_proced\nand p.nr_interno_conta = c.nr_interno_conta\nand p.cd_motivo_exc_conta is null\nand c.ie_cancelamento is null\nand at.dt_entrada between sysdate - 1 and sysdate",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSqlTEMPTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Copy_Materials",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "select \n\n'HTML5' as BASE,\n'' as cd_marca,\n'' as marca,\n'' as cd_estabelecimento,\np.nr_atendimento,\n'' as nr_registro_unico,\np.dt_atualizacao,\nat.dt_entrada,\np.nr_interno_conta,\nobter_nome_estab(c.cd_estabelecimento) as ds_estabelecimento,\npf.cd_pessoa_fisica,\npf.dt_nascimento,\npf.nr_cpf,\npf.ie_sexo,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CEP') as nr_cep,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CI') as ds_cidade,\nobter_nome_pf(at.cd_pessoa_fisica) as ds_pessoa_fisica,\np.cd_convenio as cd_convenio,\nobter_nome_convenio(c.cd_convenio_parametro) as ds_convenio,\nci.cd_medico_cirurgiao as cd_medico_executor,\nobter_nome_pf(ci.cd_medico_cirurgiao) as ds_medico_executor,\nci.cd_medico_cirurgiao as cd_medico_requisitante,\nobter_nome_pf(ci.cd_medico_cirurgiao) as ds_medico_requisitante,\n'' as ie_origem_proced,\np.cd_material as cd_procedimento,\npr.ds_material as ds_procedimento, \n'Material' as ds_classificacao,\n'' as ds_classif_procedimento,\n0 as cd_proced_principal,\n'' ds_proced_principal,\np.qt_material as qt_procedimento,\nc.vl_conta,\np.vl_material as vl_procedimento,\nc.ie_status_acerto,\ndecode(c.ie_status_acerto, 1,'Provisorio' , 2 ,'Definitivo') as status_conta,\n0 as cd_tuss,\n'' as ds_classif_lio\nfrom material_atend_paciente p,\natendimento_paciente at,\npessoa_fisica pf,\nmaterial pr,\nconta_paciente c,\ncirurgia ci\nwhere p.nr_atendimento = at.nr_atendimento\nand at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand p.cd_material = pr.cd_material\nand p.nr_interno_conta = c.nr_interno_conta\nand p.nr_cirurgia = ci.nr_cirurgia\nand p.nr_atendimento = ci.nr_atendimento\nand p.cd_motivo_exc_conta is null\nand c.ie_cancelamento is null\nand at.dt_entrada between sysdate - 2 and sysdate - 1",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSqlTEMPTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Producao Medica/Desenvolvimento"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:26Z"
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Desenvolvimento')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
@@ -19051,2387 +20491,6 @@
 				},
 				"annotations": [],
 				"lastPublishTime": "2019-11-14T21:24:27Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Importa CSV Py to AZ')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "CSV to AZ",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "DelimitedTextSource",
-								"storeSettings": {
-									"type": "FileServerReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								},
-								"formatSettings": {
-									"type": "DelimitedTextReadSettings"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "CSV_CNPJ_PY_AZ_FINAL",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_DIM_CNPJ",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "CNPJ"
-				},
-				"annotations": [],
-				"lastPublishTime": "2021-07-20T18:04:45Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Movimento_Estoque')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Mov Estoque HTML",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "WITH AUX AS(\nselect operacao_estoque.cd_operacao_estoque,\n    dt_movimento_estoque,\n    movimento_estoque.cd_local_estoque,\n    ds_local_estoque,\n    movimento_estoque.cd_estabelecimento,\n    nm_fantasia_estab,\n    movimento_estoque.nr_documento,\n    movimento_estoque.cd_material,\n    /*case \n        when ds_familia is null then 'Sem classificação'\n        else ds_familia\n        end familia_padrao,*/\n    MATERIAL.CD_CLASSE_MATERIAL,   \n    ds_classe_material classe_material,\n    ds_subgrupo_material Subgrupo,\n    ds_grupo_material Grupo,\n    ds_fabricante Fabricante,\n    ds_reduzida,\n    ds_operacao,\n    ie_entrada_saida,\n    cd_acao,\n    case \n        when ds_operacao in ('Consumo', 'Execução Prescrição', 'Consumo da Produção')\n        then sum(qt_movimento)/(avg(QT_CONV_ESTOQUE_CONSUMO))\n        else sum(qt_movimento)\n        end qt_movimento,\n    sum(case when movimento_estoque_valor.cd_tipo_valor = 5 then - movimento_estoque_valor.vl_movimento else + movimento_estoque_valor.vl_movimento end ) valor_movimento\n    \n    from movimento_estoque\n    left join operacao_estoque\n    on movimento_estoque.cd_operacao_estoque = operacao_estoque.cd_operacao_estoque\n    \n    left join estabelecimento\n    on (movimento_estoque.cd_estabelecimento = estabelecimento.cd_estabelecimento)\n    \n    left join local_estoque\n    on (local_estoque.cd_estabelecimento = movimento_estoque.cd_estabelecimento AND\n        local_estoque.cd_local_estoque = movimento_estoque.cd_local_estoque)\n        \n    left join material\n    on (movimento_estoque.cd_material = material.cd_material) \n    \n    left join material_familia\n    on (material.nr_seq_familia = material_familia.nr_sequencia)\n    \n    left join classe_material\n    on (material.cd_classe_material = classe_material.cd_classe_material)\n    \n    left join subgrupo_material\n    on (classe_material.cd_subgrupo_material = subgrupo_material.cd_subgrupo_material)\n    \n    left join grupo_material\n    on (subgrupo_material.cd_grupo_material = grupo_material.cd_grupo_material)\n    \n    left join mat_fabricante\n    on material.nr_seq_fabric =  mat_fabricante.nr_sequencia\n    \n    left join movimento_estoque_valor\n    on movimento_estoque_valor.nr_movimento_estoque = movimento_estoque.nr_movimento_estoque\n\n    --where dt_movimento_estoque >= '01/01/2020' \n\n    GROUP BY operacao_estoque.cd_operacao_estoque,\n        dt_movimento_estoque,\n        movimento_estoque.cd_local_estoque,\n        ds_local_estoque,\n        movimento_estoque.cd_estabelecimento,\n        nm_fantasia_estab,\n        movimento_estoque.nr_documento,\n        movimento_estoque.cd_material,\n        --case when ds_familia is null then 'Sem classificação' else ds_familia end,\n        material.cd_classe_material,\n        ds_classe_material,\n        ds_subgrupo_material,\n        ds_grupo_material,\n        ds_fabricante,\n        ds_reduzida,\n        ds_operacao,\n        ie_entrada_saida,\n        cd_acao\n)\nSELECT \n    TO_CHAR(A.DT_MOVIMENTO_ESTOQUE,'YYYY-MM-DD') AS DATA_MOVIMENTO\n    ,A.CD_LOCAL_ESTOQUE\n    ,A.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,A.nm_fantasia_estab                         AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_REDUZIDA                                AS DS_MATERIAL_SHORT\n    ,A.CD_CLASSE_MATERIAL\n    ,A.CLASSE_MATERIAL                           AS DS_CLASSE_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_MOVIMENTO\n    ,CASE \n        WHEN A.CD_ACAO = 2 THEN A.VALOR_MOVIMENTO * -1\n        ELSE A.VALOR_MOVIMENTO\n     END VL_MOVIMENTO   \nFROM AUX A\nWHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,'MM'),'YYYY-MM-DD') = TO_CHAR(TRUNC(SYSDATE,'MM'),'YYYY-MM-DD')",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "DECLARE @MES INT\nDECLARE @ANO INT\n\nSET @MES = MONTH(GETDATE())\nSET @ANO = YEAR(GETDATE())\n\nDELETE FROM MOVIMENTO_ESTOQUE\nWHERE MONTH(DATA_MOVIMENTO) = @MES\n    AND YEAR(DATA_MOVIMENTO) = @ANO",
-								"writeBehavior": "insert",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "DATA_MOVIMENTO"
-										},
-										"sink": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_LOCAL_ESTOQUE"
-										},
-										"sink": {
-											"name": "CD_LOCAL_ESTOQUE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_LOCAL_ESTOQUE"
-										},
-										"sink": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_ESTABELECIMENTO"
-										},
-										"sink": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_ESTABELECIMENTO"
-										},
-										"sink": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_MATERIAL"
-										},
-										"sink": {
-											"name": "CD_MATERIAL",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_MATERIAL_SHORT"
-										},
-										"sink": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CLASSE_MATERIAL"
-										},
-										"sink": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CLASSE_MATERIAL"
-										},
-										"sink": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_OPERACAO_ESTOQUE"
-										},
-										"sink": {
-											"name": "CD_OPERACAO_ESTOQUE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_OPERACAO"
-										},
-										"sink": {
-											"name": "DS_OPERACAO_ESTOQUE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "QT_MOVIMENTO"
-										},
-										"sink": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal"
-										}
-									},
-									{
-										"source": {
-											"name": "VL_MOVIMENTO"
-										},
-										"sink": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal"
-										}
-									}
-								]
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Mov Estoque Delphi",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Mov Estoque HTML",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "WITH AUX AS(\nselect operacao_estoque.cd_operacao_estoque,\n    dt_movimento_estoque,\n    movimento_estoque.cd_local_estoque,\n    ds_local_estoque,\n    movimento_estoque.cd_estabelecimento,\n    nm_fantasia_estab,\n    movimento_estoque.nr_documento,\n    movimento_estoque.cd_material,\n    /*case \n        when ds_familia is null then 'Sem classificação'\n        else ds_familia\n        end familia_padrao,*/\n    MATERIAL.CD_CLASSE_MATERIAL,   \n    ds_classe_material classe_material,\n    ds_subgrupo_material Subgrupo,\n    ds_grupo_material Grupo,\n    ds_fabricante Fabricante,\n    ds_reduzida,\n    ds_operacao,\n    ie_entrada_saida,\n    cd_acao,\n    case \n        when ds_operacao in ('Consumo', 'Execução Prescrição', 'Consumo da Produção')\n        then sum(qt_movimento)/(avg(QT_CONV_ESTOQUE_CONSUMO))\n        else sum(qt_movimento)\n        end qt_movimento,\n    sum(case when movimento_estoque_valor.cd_tipo_valor = 5 then - movimento_estoque_valor.vl_movimento else + movimento_estoque_valor.vl_movimento end ) valor_movimento\n    \n    from movimento_estoque\n    left join operacao_estoque\n    on movimento_estoque.cd_operacao_estoque = operacao_estoque.cd_operacao_estoque\n    \n    left join estabelecimento\n    on (movimento_estoque.cd_estabelecimento = estabelecimento.cd_estabelecimento)\n    \n    left join local_estoque\n    on (local_estoque.cd_estabelecimento = movimento_estoque.cd_estabelecimento AND\n        local_estoque.cd_local_estoque = movimento_estoque.cd_local_estoque)\n        \n    left join material\n    on (movimento_estoque.cd_material = material.cd_material) \n    \n    left join material_familia\n    on (material.nr_seq_familia = material_familia.nr_sequencia)\n    \n    left join classe_material\n    on (material.cd_classe_material = classe_material.cd_classe_material)\n    \n    left join subgrupo_material\n    on (classe_material.cd_subgrupo_material = subgrupo_material.cd_subgrupo_material)\n    \n    left join grupo_material\n    on (subgrupo_material.cd_grupo_material = grupo_material.cd_grupo_material)\n    \n    left join mat_fabricante\n    on material.nr_seq_fabric =  mat_fabricante.nr_sequencia\n    \n    left join movimento_estoque_valor\n    on movimento_estoque_valor.nr_movimento_estoque = movimento_estoque.nr_movimento_estoque\n\n    --where dt_movimento_estoque >= '01/01/2020' \n\n    GROUP BY operacao_estoque.cd_operacao_estoque,\n        dt_movimento_estoque,\n        movimento_estoque.cd_local_estoque,\n        ds_local_estoque,\n        movimento_estoque.cd_estabelecimento,\n        nm_fantasia_estab,\n        movimento_estoque.nr_documento,\n        movimento_estoque.cd_material,\n        --case when ds_familia is null then 'Sem classificação' else ds_familia end,\n        material.cd_classe_material,\n        ds_classe_material,\n        ds_subgrupo_material,\n        ds_grupo_material,\n        ds_fabricante,\n        ds_reduzida,\n        ds_operacao,\n        ie_entrada_saida,\n        cd_acao\n)\nSELECT \n    TO_CHAR(A.DT_MOVIMENTO_ESTOQUE,'YYYY-MM-DD') AS DATA_MOVIMENTO\n    ,A.CD_LOCAL_ESTOQUE\n    ,A.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,A.nm_fantasia_estab                         AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_REDUZIDA                                AS DS_MATERIAL_SHORT\n    ,A.CD_CLASSE_MATERIAL\n    ,A.CLASSE_MATERIAL                           AS DS_CLASSE_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_MOVIMENTO\n    ,CASE \n        WHEN A.CD_ACAO = 2 THEN A.VALOR_MOVIMENTO * -1\n        ELSE A.VALOR_MOVIMENTO\n     END VL_MOVIMENTO   \nFROM AUX A\nWHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,'MM'),'YYYY-MM-DD') = TO_CHAR(TRUNC(SYSDATE,'MM'),'YYYY-MM-DD')",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "DATA_MOVIMENTO"
-										},
-										"sink": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_LOCAL_ESTOQUE"
-										},
-										"sink": {
-											"name": "CD_LOCAL_ESTOQUE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_LOCAL_ESTOQUE"
-										},
-										"sink": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_ESTABELECIMENTO"
-										},
-										"sink": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_ESTABELECIMENTO"
-										},
-										"sink": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_MATERIAL"
-										},
-										"sink": {
-											"name": "CD_MATERIAL",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_MATERIAL_SHORT"
-										},
-										"sink": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CLASSE_MATERIAL"
-										},
-										"sink": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CLASSE_MATERIAL"
-										},
-										"sink": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_OPERACAO_ESTOQUE"
-										},
-										"sink": {
-											"name": "CD_OPERACAO_ESTOQUE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_OPERACAO"
-										},
-										"sink": {
-											"name": "DS_OPERACAO_ESTOQUE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "QT_MOVIMENTO"
-										},
-										"sink": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal"
-										}
-									},
-									{
-										"source": {
-											"name": "VL_MOVIMENTO"
-										},
-										"sink": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal"
-										}
-									}
-								]
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "SadallaTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Mov Estoque ITG - Smart",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Mov Estoque Delphi",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime",
-											"physicalType": "date"
-										},
-										"sink": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime",
-											"physicalType": "date"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_LOCAL_ESTOOUE",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_MATERIAL",
-											"type": "Int32",
-											"physicalType": "int"
-										},
-										"sink": {
-											"name": "CD_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_OPERACAO",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_OPERACAO_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_OPERACAO",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_OPERACAO_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 14
-										},
-										"sink": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										}
-									},
-									{
-										"source": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										},
-										"sink": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										}
-									},
-									{
-										"source": {
-											"name": "DS_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_ITAIGARA_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Mov Estoque ITB - Smart",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Mov Estoque ITG - Smart",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime",
-											"physicalType": "date"
-										},
-										"sink": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime",
-											"physicalType": "date"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_LOCAL_ESTOOUE",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_MATERIAL",
-											"type": "Int32",
-											"physicalType": "int"
-										},
-										"sink": {
-											"name": "CD_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_OPERACAO",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_OPERACAO_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_OPERACAO",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_OPERACAO_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 14
-										},
-										"sink": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										}
-									},
-									{
-										"source": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										},
-										"sink": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										}
-									},
-									{
-										"source": {
-											"name": "DS_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_ITABUNA_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Mov Estoque IOF - Smart",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Mov Estoque ITB - Smart",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime",
-											"physicalType": "date"
-										},
-										"sink": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime",
-											"physicalType": "date"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_LOCAL_ESTOOUE",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_MATERIAL",
-											"type": "Int32",
-											"physicalType": "int"
-										},
-										"sink": {
-											"name": "CD_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_OPERACAO",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_OPERACAO_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_OPERACAO",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_OPERACAO_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 14
-										},
-										"sink": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										}
-									},
-									{
-										"source": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										},
-										"sink": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										}
-									},
-									{
-										"source": {
-											"name": "DS_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_IOF_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Mov Estoque OFTALMOCLIN - Smart",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Mov Estoque IOF - Smart",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime",
-											"physicalType": "date"
-										},
-										"sink": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime",
-											"physicalType": "date"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_LOCAL_ESTOOUE",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_MATERIAL",
-											"type": "Int32",
-											"physicalType": "int"
-										},
-										"sink": {
-											"name": "CD_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_OPERACAO",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_OPERACAO_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_OPERACAO",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_OPERACAO_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 14
-										},
-										"sink": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										}
-									},
-									{
-										"source": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										},
-										"sink": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										}
-									},
-									{
-										"source": {
-											"name": "DS_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Mov Estoque HOSL - Smart",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Mov Estoque OFTALMOCLIN - Smart",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) = @MES_REF\n",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime",
-											"physicalType": "date"
-										},
-										"sink": {
-											"name": "DATA_MOVIMENTO",
-											"type": "DateTime",
-											"physicalType": "date"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_LOCAL_ESTOOUE",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_LOCAL_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_MATERIAL",
-											"type": "Int32",
-											"physicalType": "int"
-										},
-										"sink": {
-											"name": "CD_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_MATERIAL_SHORT",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "DS_CLASSE_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_OPERACAO",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_OPERACAO_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_OPERACAO",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_OPERACAO_ESTOQUE",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 14
-										},
-										"sink": {
-											"name": "QT_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										}
-									},
-									{
-										"source": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										},
-										"sink": {
-											"name": "VL_MOVIMENTO",
-											"type": "Decimal",
-											"physicalType": "decimal",
-											"scale": 0,
-											"precision": 18
-										}
-									},
-									{
-										"source": {
-											"name": "DS_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										},
-										"sink": {
-											"name": "DS_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "char"
-										},
-										"sink": {
-											"name": "CD_GRUPO_MATERIAL",
-											"type": "String",
-											"physicalType": "varchar"
-										}
-									}
-								],
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_HOSL_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"variables": {
-					"DATA": {
-						"type": "String",
-						"defaultValue": "2021-05-01"
-					}
-				},
-				"folder": {
-					"name": "Estoque"
-				},
-				"annotations": [],
-				"lastPublishTime": "2021-07-20T18:04:45Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Nota Fiscal')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Pipeline que extrai informações de notas fiscais das unidades para compor relatório ao setor de FP&A.",
-				"activities": [
-					{
-						"name": "Nota Fiscal Sadalla",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select obter_cgc_estabelecimento(n.cd_estabelecimento) as CNPJ,\nobter_nome_estab(n.cd_estabelecimento) as DS_UNIDADE ,\nn.DT_EMISSAO,\ndt_entrada_saida as dt_entrada_saida,\nn.nr_sequencia, \nn.nr_nota_fiscal, \ni.cd_conta_contabil, \nc.ds_conta_contabil, \nobter_nome_pj(n.cd_cgc) as fornecedor,\t\nsum(i.vl_total_item_nf) as vl_total_item_nf,\nSUBSTR(n.ds_observacao,1,100) AS ds_observacao\nfrom nota_fiscal n,\nnota_fiscal_item i,\nconta_contabil c,\noperacao_nota a\nwhere n.nr_sequencia = i.nr_sequencia\nand i.cd_conta_contabil = c.cd_conta_contabil (+)\nand n.cd_operacao_nf = a.cd_operacao_nf (+)\nand a.ie_operacao_fiscal = 'E'\nand n.ie_situacao = 1\ngroup by n.cd_estabelecimento,\nn.cd_estabelecimento ,\nn.DT_EMISSAO,\ndt_entrada_saida,\nn.nr_sequencia, \nn.nr_nota_fiscal, \ni.cd_conta_contabil, \nc.ds_conta_contabil, \nn.cd_cgc,\t\nn.ds_observacao\norder by 5",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SadallaTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Nota Fiscal HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select obter_cgc_estabelecimento(n.cd_estabelecimento) as CNPJ,\nobter_nome_estab(n.cd_estabelecimento) as DS_UNIDADE ,\nn.DT_EMISSAO,\ndt_entrada_saida as dt_entrada_saida,\nn.nr_sequencia, \nn.nr_nota_fiscal, \ni.cd_conta_contabil, \nc.ds_conta_contabil, \nobter_nome_pj(n.cd_cgc) as fornecedor,\t\nsum(i.vl_total_item_nf) as vl_total_item_nf,\nSUBSTR(n.ds_observacao,1,100) AS ds_observacao\nfrom nota_fiscal n,\nnota_fiscal_item i,\nconta_contabil c,\noperacao_nota a\nwhere n.nr_sequencia = i.nr_sequencia\nand i.cd_conta_contabil = c.cd_conta_contabil (+)\nand n.cd_operacao_nf = a.cd_operacao_nf (+)\nand a.ie_operacao_fiscal = 'E'\nand n.ie_situacao = 1\ngroup by n.cd_estabelecimento,\nn.cd_estabelecimento ,\nn.DT_EMISSAO,\ndt_entrada_saida,\nn.nr_sequencia, \nn.nr_nota_fiscal, \ni.cd_conta_contabil, \nc.ds_conta_contabil, \nn.cd_cgc,\t\nn.ds_observacao\norder by 5",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Nota Fiscal Itaigara",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_ITAIGARA_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Nota Fiscal HOSL",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_HOSL_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Nota Fiscal Itabuna",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_ITABUNA_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Nota Fiscal INOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_INOB_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Nota Fiscal IOF",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_IOF_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Nota Fiscal Oftalmoclin",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "  select emp_1.emp_cgc as CNPJ,\n  gcc_descr as DS_UNIDADE,\n  nfe.nfe_dt_entrada as DT_ENTRADA_SAIDA,\n  nfe_dt_emissao AS DT_EMISSAO, \n  convert(varchar,(nfe_serie)) + convert(varchar,(nfe.nfe_num)) as NR_SEQUENCIA,\n  nfe.nfe_num AS NR_NOTA_FISCAL,\n  mcc.mcc_cfo_cod AS CD_CONTA_CONTABIL,\n  cfo_nome AS DS_CONTA_CONTABIL,\n  EMP.EMP_NOME_FANTASIA AS FORNECEDOR,\n  mcc_deb AS VL_TOTAL_ITEM_NF,\n  nfe_obs AS DS_OBSERVACAO\n  from nfe \n\n  LEFT OUTER JOIN CPG ON NFE.NFE_SERIE = CPG.CPG_NFE_SERIE \n  AND NFE.NFE_NUM = CPG.CPG_NFE_NUM \n  AND NFE.NFE_FNE_COD = CPG.CPG_NFE_FNE_COD \n  AND NFE.NFE_TIPO = CPG.CPG_NFE_TIPO \n\n  inner join mcc on mcc_cpg_num = cpg_num and mcc_cpg_serie = cpg_serie\n  inner join cfo on mcc_cfo_cod = cfo_cod\n  inner join emp on emp_cod = cpg_emp_cod\n  inner join ipg on cpg_num = ipg_cpg_num and cpg_serie = ipg_cpg_serie\n  inner join gcc on gcc_cod = IPG_GCC_COD_COLIG\n  inner join str on gcc_str_cod = str_cod\n  inner join emp emp_1 on emp_1.emp_cod = str_emp_cod\n\n  where MCC.MCC_IPG_PARC = 1 \n  and MCC.MCC_TIPO = 'P' \n  and MCC.MCC_IND_CPG_GERACAO IS not NULL ",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Notas_Fiscais",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Wait1",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Fiscal"
-				},
-				"annotations": [],
-				"lastPublishTime": "2020-02-10T20:56:25Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Orientacao e Conversao Cirurgicas')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Pipeline utilizado para alimentar tabelas do SMC:\n\n",
-				"activities": [
-					{
-						"name": "Wait1",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					},
-					{
-						"name": "Orientacoes Cirurgicas Sadalla",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "-- ORIENTAÇÃO\n\nSELECT Z.DT_AGENDA, Z.CD_AGENDA, Z.CD_PESSOA_FISICA, Z.NM_PESSOA_FISICA,Z.IE_LADO,Z.AUTORIZACAO AS DS_AUTORIZACAO,Z.PROCEDIMENTO, Z.CNPJ, Z.DS_UNIDADE, Z.BASE, Z.NR_SEQ_PROC_INTERNO,\n\n(SELECT COUNT(*)\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AB.CD_AGENDA NOT IN (4442,4443,4444,4445,4513,4563,4553,5273,4464,4465,4466,4467,4552,3043,11)\nAND AB.CD_PESSOA_FISICA = Z.CD_PESSOA_FISICA\nAND AG_1.CD_TIPO_AGENDA = 1\nAND AB.DT_AGENDA > Z.DT_AGENDA) AS INDICADOR_CIRURGIA\n\nFROM\n\n(SELECT MAX(A.DT_AGENDA) AS DT_AGENDA, A.CD_AGENDA, A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO) AS AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\n\nA.IE_LADO,\nES.CD_CGC AS CNPJ,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\n'Tasy Delphi' as BASE,\nA.NR_SEQ_PROC_INTERNO\n\nFROM AGENDA_PACIENTE A,\n     PESSOA_FISICA PF,\n     AGENDA AG,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE A.CD_PESSOA_FISICA = PF.CD_PESSOA_FISICA\nAND A.CD_AGENDA = AG.CD_AGENDA\nAND AG.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND ES.CD_EMPRESA = ES.CD_EMPRESA\nAND A.CD_AGENDA IN (4442,4443,4444,4445,4513,4563,4553,5273,4464,4465,4466,4467,4552,3043,11)\nAND AG.CD_TIPO_AGENDA = 1\nGROUP BY A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA,A.IE_LADO, OBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO), OBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED),\nES.CD_CGC, ES.NM_FANTASIA_ESTAB, A.CD_AGENDA, A.NR_SEQ_PROC_INTERNO\nORDER BY 1 desc) Z \nWHERE Z.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "DT_AGENDA"
-										},
-										"sink": {
-											"name": "DT_AGENDA",
-											"type": "DateTime"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_AGENDA"
-										},
-										"sink": {
-											"name": "CD_AGENDA",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_PESSOA_FISICA"
-										},
-										"sink": {
-											"name": "CD_PESSOA_FISICA",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "NM_PESSOA_FISICA"
-										},
-										"sink": {
-											"name": "NM_PESSOA_FISICA",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_AUTORIZACAO"
-										},
-										"sink": {
-											"name": "DS_AUTORIZACAO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "IE_LADO"
-										},
-										"sink": {
-											"name": "IE_LADO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "PROCEDIMENTO"
-										},
-										"sink": {
-											"name": "PROCEDIMENTO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CNPJ"
-										},
-										"sink": {
-											"name": "CNPJ",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_UNIDADE"
-										},
-										"sink": {
-											"name": "DS_UNIDADE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "BASE"
-										},
-										"sink": {
-											"name": "BASE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "INDICADOR_CIRURGIA"
-										},
-										"sink": {
-											"name": "INDICADOR_CIRURGIA",
-											"type": "Int32"
-										}
-									}
-								]
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "SadallaTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Orientacao_Cirurgia_Unidade",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Agendamento Cirurgico Sadalla",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "-- AGENDA CIRURGICA\n\nSELECT\nAB.DT_AGENDA, AB.CD_AGENDA,\nAB.CD_PESSOA_FISICA, \nPF_1.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,AB.IE_AUTORIZACAO) AS DS_AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(AB.CD_PROCEDIMENTO, AB.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\nAB.NR_CIRURGIA,\nAB.IE_LADO,\nAB.CD_CONVENIO,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\nES.CD_CGC AS CNPJ,\n'Tasy Delphi' as BASE,\nAB.NR_SEQ_PROC_INTERNO\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AG_1.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND AB.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365\nAND ES.CD_EMPRESA = EM.CD_EMPRESA\nAND AB.CD_AGENDA NOT IN (4442,4443,4444,4445,4513,4563,4553,5273,4464,4465,4466,4467,4552,3043,11)\nAND AG_1.CD_TIPO_AGENDA = 1\nORDER BY 1",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SadallaTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Agendamento_Cirurgia_Unidade",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Orientacoes Cirurgicas HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "-- ORIENTAÇÃO\n\nSELECT Z.DT_AGENDA, Z.CD_AGENDA, Z.CD_PESSOA_FISICA, Z.NM_PESSOA_FISICA,Z.IE_LADO,Z.AUTORIZACAO AS DS_AUTORIZACAO,Z.PROCEDIMENTO, Z.CNPJ, Z.DS_UNIDADE, Z.BASE, Z.NR_SEQ_PROC_INTERNO,\n\n(SELECT COUNT(*)\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AB.CD_AGENDA NOT IN (549,802,659,776,665,607,663,666,664,662,660,661,609)\nAND AB.CD_PESSOA_FISICA = Z.CD_PESSOA_FISICA\nAND AG_1.CD_TIPO_AGENDA = 1\nAND AB.DT_AGENDA > Z.DT_AGENDA) AS INDICADOR_CIRURGIA\n\nFROM\n\n(SELECT MAX(A.DT_AGENDAMENTO) AS DT_AGENDA, A.CD_AGENDA, A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO) AS AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\nA.IE_LADO,\nES.CD_CGC AS CNPJ,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\n'Tasy HTML' as BASE,\nA.NR_SEQ_PROC_INTERNO\n\nFROM AGENDA_PACIENTE A,\n     PESSOA_FISICA PF,\n     AGENDA AG,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE A.CD_PESSOA_FISICA = PF.CD_PESSOA_FISICA\nAND A.CD_AGENDA = AG.CD_AGENDA\nAND AG.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND ES.CD_EMPRESA = ES.CD_EMPRESA\nAND A.CD_AGENDA IN (549,802,659,776,665,607,663,666,664,662,660,661,609)\nAND AG.CD_TIPO_AGENDA = 1\nGROUP BY A.CD_PESSOA_FISICA, PF.NM_PESSOA_FISICA,A.IE_LADO, OBTER_VALOR_DOMINIO(1227,A.IE_AUTORIZACAO), OBTER_DESC_PROCEDIMENTO(A.CD_PROCEDIMENTO, A.IE_ORIGEM_PROCED),\nES.CD_CGC, ES.NM_FANTASIA_ESTAB, A.CD_AGENDA, A.NR_SEQ_PROC_INTERNO\nORDER BY 1 desc) Z \nWHERE Z.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Orientacao_Cirurgia_Unidade",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Agendamento Cirurgico HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "-- AGENDA CIRURGICA\n\nSELECT\nAB.DT_AGENDA, AB.CD_AGENDA,\nAB.CD_PESSOA_FISICA, \nPF_1.NM_PESSOA_FISICA, \nOBTER_VALOR_DOMINIO(1227,AB.IE_AUTORIZACAO) AS DS_AUTORIZACAO, \nOBTER_DESC_PROCEDIMENTO(AB.CD_PROCEDIMENTO, AB.IE_ORIGEM_PROCED) AS PROCEDIMENTO,\nAB.NR_CIRURGIA,\nAB.IE_LADO,\nAB.CD_CONVENIO,\nES.NM_FANTASIA_ESTAB AS DS_UNIDADE,\nES.CD_CGC AS CNPJ,\n'Tasy HTML' as BASE,\nAB.NR_SEQ_PROC_INTERNO\nFROM AGENDA_PACIENTE AB,\n     PESSOA_FISICA PF_1,\n     AGENDA AG_1,\n     ESTABELECIMENTO ES,\n     EMPRESA EM\nWHERE AB.CD_PESSOA_FISICA = PF_1.CD_PESSOA_FISICA\nAND AB.CD_AGENDA = AG_1.CD_AGENDA\nAND AG_1.CD_ESTABELECIMENTO = ES.CD_ESTABELECIMENTO\nAND AB.DT_AGENDA BETWEEN SYSDATE - 365 AND SYSDATE + 365\nAND ES.CD_EMPRESA = EM.CD_EMPRESA\nAND AB.CD_AGENDA NOT IN (549,802,659,776,665,607,663,666,664,662,660,661,609)\nAND AG_1.CD_TIPO_AGENDA = 1\nORDER BY 1",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Agendamento_Cirurgia_Unidade",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Cirurgias"
-				},
-				"annotations": [],
-				"lastPublishTime": "2020-02-12T14:12:16Z"
 			},
 			"dependsOn": []
 		}
