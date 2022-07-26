@@ -4,8 +4,24 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Data Factory name",
+			"metadata": "Nome do Data Factory",
 			"defaultValue": "OptyADF"
+		},
+		"SadallaSeniorTeste_connectionString": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SadallaSeniorTeste'"
+		},
+		"SadallaTasyProd_connectionString": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SadallaTasyProd'"
+		},
+		"SadallaTasyProd_NEW_connectionString": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SadallaTasyProd_NEW'"
+		},
+		"SadallaTasyTeste_connectionString": {
+			"type": "secureString",
+			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SadallaTasyTeste'"
 		},
 		"Smart_Connections_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
@@ -20,6 +36,74 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/SadallaSeniorTeste')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": "[parameters('SadallaSeniorTeste_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SadallaTasyProd')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": "[parameters('SadallaTasyProd_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SadallaTasyProd_NEW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": "[parameters('SadallaTasyProd_NEW_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SadallaTasyTeste')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": "[parameters('SadallaTasyTeste_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Smart_Connections')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -317,6 +401,86 @@
 				},
 				"folder": {
 					"name": "Data Warehouse/1_Inicializador"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CEOP')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copy data1",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ExcelSource",
+								"additionalColumns": [
+									{
+										"name": "Ultima_Coluna",
+										"value": {
+											"value": "VLR_TESTE",
+											"type": "Expression"
+										}
+									}
+								],
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "CEOP_DS_EXCEL",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "ceop"
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
 				},
 				"annotations": []
 			},
@@ -874,401 +1038,6 @@
 					"quoteChar": "\""
 				},
 				"schema": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_CONVENIO_DEPARA')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_StorageVM",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse/DEPARA"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "depara_sys_regra_convenio.csv",
-						"folderPath": "Depara"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"name": "CONVENIO;CONVENIO_DEPARA;MODALIDADE;TP_CONVENIO",
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_PROCEDIMENTO_DEPARA')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_StorageVM",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse/DEPARA"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "depara_sys_regra.csv",
-						"folderPath": "Depara"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"name": "cod_sys;nm_sys;Codigo;Descricao;Categoria;Categoria_Aux;Classe;Especialidade;Procedimento;Patologia;DT_ATUALIZACAO",
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_SF_CAD_MEDICO')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Salesforce_Sharepoint",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Salesforce"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "CadastroMedico.csv"
-					},
-					"columnDelimiter": ",",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"name": "NM_GUERRA",
-						"type": "String"
-					},
-					{
-						"name": "NR_CRM",
-						"type": "String"
-					},
-					{
-						"name": "UF_CRM",
-						"type": "String"
-					},
-					{
-						"name": "IE_SITUACAO",
-						"type": "String"
-					},
-					{
-						"name": "CD_EMPRESA",
-						"type": "String"
-					},
-					{
-						"name": "CD_ESTABELECIMENTO",
-						"type": "String"
-					},
-					{
-						"name": "IE_VINCULO_MEDICO",
-						"type": "String"
-					},
-					{
-						"name": "IE_SOCIO",
-						"type": "String"
-					},
-					{
-						"name": "CD_ESPECIALIDADE",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_PRIORIDADE",
-						"type": "String"
-					},
-					{
-						"name": "NR_RQE",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_AREA_ATUACAO",
-						"type": "String"
-					},
-					{
-						"name": "NR_RCE",
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_SF_MEDICO_ESPECIALIDADE')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Salesforce_Sharepoint",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Salesforce"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "MedicoEspecialidade.csv"
-					},
-					"columnDelimiter": ",",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_SF_PESSOA_FISICA')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Salesforce_Sharepoint",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Salesforce"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "CadastroPessoa.csv"
-					},
-					"columnDelimiter": ",",
-					"rowDelimiter": "\n",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"name": "CD_PESSOA_FISICA",
-						"type": "String"
-					},
-					{
-						"name": "NR_PRONTUARIO",
-						"type": "String"
-					},
-					{
-						"name": "CD_ESTABELECIMENTO",
-						"type": "String"
-					},
-					{
-						"name": "NM_PESSOA_FISICA",
-						"type": "String"
-					},
-					{
-						"name": "DT_NASCIMENTO",
-						"type": "String"
-					},
-					{
-						"name": "IE_SEXO",
-						"type": "String"
-					},
-					{
-						"name": "CD_NACIONALIDADE",
-						"type": "String"
-					},
-					{
-						"name": "NR_CPF",
-						"type": "String"
-					},
-					{
-						"name": "NR_MATRICULA_NASC",
-						"type": "String"
-					},
-					{
-						"name": "NR_REG_GERAL_ESTRANG",
-						"type": "String"
-					},
-					{
-						"name": "NR_TELEFONE_CELULAR",
-						"type": "String"
-					},
-					{
-						"name": "NR_TELEFONE",
-						"type": "String"
-					},
-					{
-						"name": "DS_FONE_ADIC",
-						"type": "String"
-					},
-					{
-						"name": "NM_CONTATO",
-						"type": "String"
-					},
-					{
-						"name": "CD_CEP",
-						"type": "String"
-					},
-					{
-						"name": "DS_ENDERECO",
-						"type": "String"
-					},
-					{
-						"name": "NR_ENDERECO",
-						"type": "String"
-					},
-					{
-						"name": "DS_COMPLEMENTO",
-						"type": "String"
-					},
-					{
-						"name": "DS_BAIRRO",
-						"type": "String"
-					},
-					{
-						"name": "CD_MUNICIPIO_IBGE",
-						"type": "String"
-					},
-					{
-						"name": "SG_ESTADO",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_PAIS",
-						"type": "String"
-					},
-					{
-						"name": "DS_EMAIL",
-						"type": "String"
-					},
-					{
-						"name": "IE_NAO_POSSUI_EMAIL",
-						"type": "String"
-					},
-					{
-						"name": "IE_OBRIGA_EMAIL",
-						"type": "String"
-					},
-					{
-						"name": "CD_CONVENIO",
-						"type": "String"
-					},
-					{
-						"name": "CD_CATEGORIA",
-						"type": "String"
-					},
-					{
-						"name": "CD_PLANO_CONVENIO",
-						"type": "String"
-					},
-					{
-						"name": "CD_USUARIO_CONVENIO",
-						"type": "String"
-					},
-					{
-						"name": "DT_VALIDADE_CARTEIRA",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_COR_PELE",
-						"type": "String"
-					},
-					{
-						"name": "CD_PROFISSAO",
-						"type": "String"
-					},
-					{
-						"name": "DS_CATEGORIA_CNH",
-						"type": "String"
-					},
-					{
-						"name": "DS_MEDIC_NAO_CAD",
-						"type": "String"
-					},
-					{
-						"name": "IE_INTENSIDADE",
-						"type": "String"
-					},
-					{
-						"name": "CD_MATERIAL",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_FICHA_TECNICA",
-						"type": "String"
-					},
-					{
-						"name": "IE_CONFIRMACAO",
-						"type": "String"
-					},
-					{
-						"name": "DT_REGISTRO",
-						"type": "String"
-					},
-					{
-						"name": "IE_NEGA_ALERGIAS",
-						"type": "String"
-					},
-					{
-						"name": "DT_REVISAO",
-						"type": "String"
-					},
-					{
-						"name": "NM_USUARIO_REVISAO",
-						"type": "String"
-					},
-					{
-						"name": "IE_ESTADO_CIVIL",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_TIPO_DEF",
-						"type": "String"
-					},
-					{
-						"name": "IE_NEGA_DEFICIENCIA",
-						"type": "String"
-					},
-					{
-						"name": "IE_ALERTA",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_PERFIL",
-						"type": "String"
-					}
-				]
 			},
 			"dependsOn": []
 		}

@@ -4,7 +4,7 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Data Factory name",
+			"metadata": "Nome do Data Factory",
 			"defaultValue": "OptyADF"
 		}
 	},
@@ -12,6 +12,181 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/AZ_PROD_DIARIA')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Producao Diaria"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "ID_SYSTEM",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "CD_ESTABELECIMENTO",
+						"type": "char"
+					},
+					{
+						"name": "DS_ESTABELECIMENTO",
+						"type": "varchar"
+					},
+					{
+						"name": "DT_ENTRADA",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "DT_LANCAMENTO",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "NR_ATENDIMENTO",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "NR_INTERNO_CONTA",
+						"type": "varchar"
+					},
+					{
+						"name": "CGC_CONVENIO",
+						"type": "varchar"
+					},
+					{
+						"name": "CD_CONVENIO",
+						"type": "char"
+					},
+					{
+						"name": "DS_CONVENIO",
+						"type": "varchar"
+					},
+					{
+						"name": "CD_PESSOA_FISICA",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "NM_PACIENTE",
+						"type": "char"
+					},
+					{
+						"name": "CD_MEDICO_SOL",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "MEDICO_SOLICITANTE",
+						"type": "char"
+					},
+					{
+						"name": "CD_MEDICO_EXECUTANTE",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "MEDICO_EXECUTANTE",
+						"type": "char"
+					},
+					{
+						"name": "MEDICO_RESPONSAVEL",
+						"type": "char"
+					},
+					{
+						"name": "MEDICO_ATENDIMENTO",
+						"type": "char"
+					},
+					{
+						"name": "CD_SETOR_ATENDIMENTO",
+						"type": "char"
+					},
+					{
+						"name": "DS_SETOR_ATENDIMENTO",
+						"type": "char"
+					},
+					{
+						"name": "NR_SEQUENCIA",
+						"type": "decimal",
+						"precision": 18,
+						"scale": 0
+					},
+					{
+						"name": "NR_PROC_INTERNO",
+						"type": "char"
+					},
+					{
+						"name": "DS_PROC_INTERNO",
+						"type": "char"
+					},
+					{
+						"name": "CD_PROCEDIMENTO",
+						"type": "char"
+					},
+					{
+						"name": "DS_PROCEDIMENTO",
+						"type": "char"
+					},
+					{
+						"name": "DS_CLASSIF_PROCEDIMENTO",
+						"type": "varchar"
+					},
+					{
+						"name": "CD_PROCEDENCIA",
+						"type": "char"
+					},
+					{
+						"name": "QTD_ITEM",
+						"type": "decimal",
+						"precision": 4,
+						"scale": 0
+					},
+					{
+						"name": "VL_ITEM_ORIGINAL",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "VL_ITEM",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "VL_HM",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "PERC_DESCONTO",
+						"type": "decimal",
+						"precision": 27,
+						"scale": 15
+					},
+					{
+						"name": "DT_ATUALIZACAO",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "aux_prod_diaria"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/AZ_SQL')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
@@ -25,6 +200,39 @@
 				"type": "AzureSqlTable",
 				"schema": [],
 				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AZ_SQL_STG')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"SCHEMA": {
+						"type": "string"
+					},
+					"TABELA": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().SCHEMA",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().TABELA",
+						"type": "Expression"
+					}
+				}
 			},
 			"dependsOn": []
 		},
@@ -1579,50 +1787,6 @@
 				"typeProperties": {
 					"schema": "dbo",
 					"table": "Nota_Fiscal_Unidade"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZ_SQL_TB_Ordens_Servico_Hist')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Ordens de Serviço"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "Ordem_Servico_Terc_Hist"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZ_SQL_TB_Ordens_Servico_Terceiro')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Ordens de Serviço"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "Ordem_Servico_Terceiros"
 				}
 			},
 			"dependsOn": []
