@@ -1,0 +1,56 @@
+{
+	"name": "DM_ProdDiaria_TasyV2",
+	"properties": {
+		"activities": [
+			{
+				"name": "SP_ODS_TASY_PROD_DIARIA_V2",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": []
+			},
+			{
+				"name": "Script1",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "SP_ODS_TASY_PROD_DIARIA_V2",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "BEGIN\n  DELETE FROM DM.tbl_fprodiaria \n  WHERE ESTABELECIMENTO IN (1,2)\nEND;\n\nBEGIN\n  INSERT INTO DM.tbl_fprodiaria\n  SELECT * FROM STG.TBL_ODS_TASY_PROD_DIARIA_TMP\nEND"
+						}
+					]
+				}
+			}
+		],
+		"folder": {
+			"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+		},
+		"annotations": []
+	}
+}
