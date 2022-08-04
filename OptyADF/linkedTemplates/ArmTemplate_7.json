@@ -4,48 +4,72 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Nome do Data Factory",
+			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
+		},
+		"SMART_HOSL_NEW_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SMART_HOSL_NEW'"
+		},
+		"SMART_INOB_NEW_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SMART_INOB_NEW'"
+		},
+		"SMART_IOF_NEW_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SMART_IOF_NEW'"
 		},
 		"SMART_ITABUNA_NEW_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SMART_ITABUNA_NEW'"
+			"metadata": "Secure string for 'connectionString' of 'SMART_ITABUNA_NEW'"
 		},
 		"SMART_ITAIGARA_HOM_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SMART_ITAIGARA_HOM'"
+			"metadata": "Secure string for 'connectionString' of 'SMART_ITAIGARA_HOM'"
 		},
 		"SMART_ITAIGARA_NEW_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SMART_ITAIGARA_NEW'"
+			"metadata": "Secure string for 'connectionString' of 'SMART_ITAIGARA_NEW'"
 		},
 		"SMART_Oftalmoclin_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SMART_Oftalmoclin'"
+			"metadata": "Secure string for 'connectionString' of 'SMART_Oftalmoclin'"
 		},
 		"SQL_ORIGEM_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SQL_ORIGEM'"
+			"metadata": "Secure string for 'connectionString' of 'SQL_ORIGEM'"
 		},
 		"SadallaSeniorProd_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SadallaSeniorProd'"
+			"metadata": "Secure string for 'connectionString' of 'SadallaSeniorProd'"
 		},
 		"SadallaSeniorTeste_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SadallaSeniorTeste'"
+			"metadata": "Secure string for 'connectionString' of 'SadallaSeniorTeste'"
 		},
 		"SadallaTasyProd_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SadallaTasyProd'"
+			"metadata": "Secure string for 'connectionString' of 'SadallaTasyProd'"
 		},
 		"SadallaTasyProd_NEW_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SadallaTasyProd_NEW'"
+			"metadata": "Secure string for 'connectionString' of 'SadallaTasyProd_NEW'"
 		},
 		"SadallaTasyTeste_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SadallaTasyTeste'"
+			"metadata": "Secure string for 'connectionString' of 'SadallaTasyTeste'"
+		},
+		"LINK_PASTA_BI_properties_typeProperties_host": {
+			"type": "string",
+			"defaultValue": "C:\\Power BI Gateway Files"
+		},
+		"LINK_PASTA_BI_properties_typeProperties_userId": {
+			"type": "string",
+			"defaultValue": "hobrasil\\serv.corp.sa"
+		},
+		"Naja Server_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "NajaPE"
 		},
 		"Smart_Connections_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
@@ -60,6 +84,107 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/LINK_PASTA_BI')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "FileServer",
+				"typeProperties": {
+					"host": "[parameters('LINK_PASTA_BI_properties_typeProperties_host')]",
+					"userId": "[parameters('LINK_PASTA_BI_properties_typeProperties_userId')]",
+					"password": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "vmSA"
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Naja Server')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "[parameters('Naja Server_properties_typeProperties_connectionString_secretName')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SMART_HOSL_NEW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SMART_HOSL_NEW_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SMART_INOB_NEW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SMART_INOB_NEW_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SMART_IOF_NEW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SMART_IOF_NEW_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/SMART_ITABUNA_NEW')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -292,177 +417,6 @@
 					"referenceName": "ServidorArquivosBI",
 					"type": "IntegrationRuntimeReference"
 				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Five9')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "STG DW FIVE9_ESP0001",
-						"type": "Script",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "SQL_DESTINO",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": "MERGE\t           \n\tdw.FIVE9_ESP0001 AS destino           \nUSING            \n\tstg.FIVE9_ESP0001 AS origem           \n           \n    ON(        \n        destino.id_ligacao = origem.id_ligacao        \n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.DATA\t\t\t\t\t=origem.DATA,\ndestino.REGISTRO_DATA_HORA\t\t=origem.REGISTRO_DATA_HORA,\ndestino.CAMPANHA\t\t\t\t=origem.CAMPANHA,\ndestino.COMPETENCIA\t\t\t\t=origem.COMPETENCIA,\ndestino.AGENTE\t\t\t\t\t=origem.AGENTE,\ndestino.NOME_AGENTE\t\t\t\t=origem.NOME_AGENTE,\ndestino.POSICAO\t\t\t\t\t=origem.POSICAO,\ndestino.ANI\t\t\t\t\t\t=origem.ANI,\ndestino.NOME_CLIENTE\t\t\t=origem.NOME_CLIENTE,\ndestino.DNIS\t\t\t\t\t=origem.DNIS,\ndestino.TEMPO_LIGACAO\t\t\t=origem.TEMPO_LIGACAO,\ndestino.TEMPO_FATURAMENTO_ARRED\t=origem.TEMPO_FATURAMENTO_ARRED,\ndestino.TEMPO_IVR\t\t\t\t=origem.TEMPO_IVR,\ndestino.CAMINHO_IVR\t\t\t\t=origem.CAMINHO_IVR,\ndestino.TEMPO_ESPERA_FILA\t\t=origem.TEMPO_ESPERA_FILA,\ndestino.TEMPO_TOQUE\t\t\t\t=origem.TEMPO_TOQUE,\ndestino.TEMPO_CONVERSA\t\t\t=origem.TEMPO_CONVERSA,\ndestino.TEMPO_RETENCAO\t\t\t=origem.TEMPO_RETENCAO,\ndestino.TEMPO_ESPERA\t\t\t=origem.TEMPO_ESPERA,\ndestino.TEMPO_ABANDONAR\t\t\t=origem.TEMPO_ABANDONAR,\ndestino.TEMPO_TOTAL_FILA\t\t\t=origem.TEMPO_TOTAL_FILA,\ndestino.AP_TEMPO_ATIVIDADE_LIGACAO\t=origem.AP_TEMPO_ATIVIDADE_LIGACAO,\ndestino.TRANSFERENCIAS\t\t\t\t=origem.TRANSFERENCIAS,\ndestino.CONFERENCIAS\t\t\t\t=origem.CONFERENCIAS,\ndestino.RETENCOES\t\t\t\t\t=origem.RETENCOES,\ndestino.ABANDONADA\t\t\t\t\t=origem.ABANDONADA,\ndestino.GRAVACOES\t\t\t\t\t=origem.GRAVACOES,\ndestino.TIPO_CAMPANHA\t\t\t\t=origem.TIPO_CAMPANHA,\ndestino.TIPO_LIGACAO\t\t\t\t=origem.TIPO_LIGACAO,\ndestino.GRUPO_AGENTES\t\t\t\t=origem.GRUPO_AGENTES\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.id_ligacao\t\n,origem.DATA\n,origem.REGISTRO_DATA_HORA\n,origem.CAMPANHA\n,origem.COMPETENCIA\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.POSICAO\n,origem.ANI\n,origem.NOME_CLIENTE\n,origem.DNIS\n,origem.TEMPO_LIGACAO\n,origem.TEMPO_FATURAMENTO_ARRED\n,origem.TEMPO_IVR\n,origem.CAMINHO_IVR\n,origem.TEMPO_ESPERA_FILA\n,origem.TEMPO_TOQUE\n,origem.TEMPO_CONVERSA\n,origem.TEMPO_RETENCAO\n,origem.TEMPO_ESPERA\n,origem.TEMPO_ABANDONAR\n,origem.TEMPO_TOTAL_FILA\n,origem.AP_TEMPO_ATIVIDADE_LIGACAO\n,origem.TRANSFERENCIAS\n,origem.CONFERENCIAS\n,origem.RETENCOES\n,origem.ABANDONADA\n,origem.GRAVACOES\n,origem.TIPO_CAMPANHA\n,origem.TIPO_LIGACAO\n,origem.GRUPO_AGENTES\n);        "
-								}
-							]
-						}
-					},
-					{
-						"name": "STG DW FIVE9_ESP0002",
-						"type": "Script",
-						"dependsOn": [
-							{
-								"activity": "STG DW FIVE9_ESP0001",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "SQL_DESTINO",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": "MERGE\t           \n\tdw.FIVE9_ESP0002 AS destino           \nUSING            \n\tstg.FIVE9_ESP0002 AS origem           \n           \n    ON(        \n        destino.agente = origem.agente AND\n\t\tdestino.REGISTRO_HORA_DATA_ACESSO = origem.REGISTRO_HORA_DATA_ACESSO\n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.DATA_HORA\t\t\t\t\t=origem.DATA_HORA,\ndestino.NOME_AGENTE\t\t\t\t\t=origem.NOME_AGENTE,\ndestino.GRUPO_AGENTES\t\t\t\t=origem.GRUPO_AGENTES,\ndestino.REGISTRO_HORA_DATA_SAIDA\t=origem.REGISTRO_HORA_DATA_SAIDA,\ndestino.TEMPO_LOGIN\t\t\t\t\t=origem.TEMPO_LOGIN,\ndestino.DATA\t\t\t\t\t\t=origem.DATA\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.DATA_HORA\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.GRUPO_AGENTES\n,origem.REGISTRO_HORA_DATA_ACESSO\n,origem.REGISTRO_HORA_DATA_SAIDA\n,origem.TEMPO_LOGIN\n,origem.DATA\n);        \n"
-								}
-							]
-						}
-					},
-					{
-						"name": "STG DW FIVE9_ESP0003",
-						"type": "Script",
-						"dependsOn": [
-							{
-								"activity": "STG DW FIVE9_ESP0002",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "SQL_DESTINO",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": "MERGE\t           \n\tdw.FIVE9_ESP0003 AS destino           \nUSING            \n\tstg.FIVE9_ESP0003 AS origem           \n           \n    ON(        \n        destino.id_ligacao = origem.id_ligacao \n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.ID_LIGACAO\t\t\t\t\t\t\t=origem.ID_LIGACAO,\ndestino.CAMPANHA\t\t\t\t\t\t\t=origem.CAMPANHA,\ndestino.TIPO_LIGACAO\t\t\t\t\t\t=origem.TIPO_LIGACAO,\ndestino.AGENTE\t\t\t\t\t\t\t\t=origem.AGENTE,\ndestino.NOME_AGENTE\t\t\t\t\t\t\t=origem.NOME_AGENTE,\ndestino.POSICAO\t\t\t\t\t\t\t\t=origem.POSICAO,\ndestino.ANI\t\t\t\t\t\t\t\t\t=origem.ANI,\ndestino.TEMPO_LIGACAO\t\t\t\t\t\t=origem.TEMPO_LIGACAO,\ndestino.TEMPO_FATURAMENTO_ARRENDONDADO\t\t=origem.TEMPO_FATURAMENTO_ARRENDONDADO,\ndestino.TEMPO_RETENCAO\t\t\t\t\t\t=origem.TEMPO_RETENCAO,\ndestino.TEMPO_ESPERA\t\t\t\t\t\t=origem.TEMPO_ESPERA,\ndestino.APÓS_TEMPO_ATIVIDADE_LIGACAO\t\t=origem.APÓS_TEMPO_ATIVIDADE_LIGACAO,\ndestino.TRANSFERENCIAS\t\t\t\t\t\t=origem.TRANSFERENCIAS,\ndestino.CONFERENCIAS\t\t\t\t\t\t=origem.CONFERENCIAS,\ndestino.ABANDONADA\t\t\t\t\t\t\t=origem.ABANDONADA,\ndestino.DATA\t\t\t\t\t\t\t\t=origem.DATA,\ndestino.HORA\t\t\t\t\t\t\t\t=origem.HORA,\ndestino.COMPETENCIA\t\t\t\t\t\t\t=origem.COMPETENCIA,\ndestino.TEMPO_CONVERSA\t\t\t\t\t\t=origem.TEMPO_CONVERSA\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.ID_LIGACAO\n,origem.CAMPANHA\n,origem.TIPO_LIGACAO\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.POSICAO\n,origem.ANI\n,origem.TEMPO_LIGACAO\n,origem.TEMPO_FATURAMENTO_ARRENDONDADO\n,origem.TEMPO_RETENCAO\n,origem.TEMPO_ESPERA\n,origem.APÓS_TEMPO_ATIVIDADE_LIGACAO\n,origem.TRANSFERENCIAS\n,origem.CONFERENCIAS\n,origem.ABANDONADA\n,origem.DATA\n,origem.HORA\n,origem.COMPETENCIA\n,origem.TEMPO_CONVERSA\n\n);        \n"
-								}
-							]
-						}
-					},
-					{
-						"name": "STG DW FIVE9_ESP0004",
-						"type": "Script",
-						"dependsOn": [
-							{
-								"activity": "STG DW FIVE9_ESP0003",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "SQL_DESTINO",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": "MERGE\t           \n\tdw.FIVE9_ESP0004 AS destino           \nUSING            \n\tstg.FIVE9_ESP0004 AS origem           \n           \n    ON(        \ndestino.CAMPANHA\t\t\t\t\t=origem.CAMPANHA\t\t\tAND\ndestino.TIPO_LIGACAO\t\t\t\t=origem.TIPO_LIGACAO\t\tAND\ndestino.AGENTE\t\t\t\t\t\t=origem.AGENTE\t\t\t\tAND\ndestino.NOME_AGENTE\t\t\t\t\t=origem.NOME_AGENTE\t\t\tAND\ndestino.POSICAO\t\t\t\t\t\t=origem.POSICAO\t\t\t\tAND\ndestino.ANI\t\t\t\t\t\t\t=origem.ANI\t\t\t\t\tAND\ndestino.DNIS\t\t\t\t\t\t=origem.DNIS\t\t\t\tAND\ndestino.TEMPO_LIGACAO\t\t\t\t=origem.TEMPO_LIGACAO\t\tAND\ndestino.TEMPO_ESPERA_FILA\t\t\t=origem.TEMPO_ESPERA_FILA\tAND\ndestino.TEMPO_CONVERSA\t\t\t\t=origem.TEMPO_CONVERSA\t\tAND\ndestino.TEMPO_ESPERA\t\t\t\t=origem.TEMPO_ESPERA\t\tAND\ndestino.ABANDONADA\t\t\t\t\t=origem.ABANDONADA\t\t\tAND\ndestino.DATA\t\t\t\t\t\t=origem.DATA\t\t\t\tAND\ndestino.HORA\t\t\t\t\t\t=origem.HORA\n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.CAMPANHA\t\t\t\t\t=origem.CAMPANHA,\ndestino.TIPO_LIGACAO\t\t\t\t=origem.TIPO_LIGACAO,\ndestino.AGENTE\t\t\t\t\t\t=origem.AGENTE,\ndestino.NOME_AGENTE\t\t\t\t\t=origem.NOME_AGENTE,\ndestino.POSICAO\t\t\t\t\t\t=origem.POSICAO,\ndestino.ANI\t\t\t\t\t\t\t=origem.ANI,\ndestino.DNIS\t\t\t\t\t\t=origem.DNIS,\ndestino.TEMPO_LIGACAO\t\t\t\t=origem.TEMPO_LIGACAO,\ndestino.TEMPO_ESPERA_FILA\t\t\t=origem.TEMPO_ESPERA_FILA,\ndestino.TEMPO_CONVERSA\t\t\t\t=origem.TEMPO_CONVERSA,\ndestino.TEMPO_ESPERA\t\t\t\t=origem.TEMPO_ESPERA,\ndestino.ABANDONADA\t\t\t\t\t=origem.ABANDONADA,\ndestino.DATA\t\t\t\t\t\t=origem.DATA,\ndestino.HORA\t\t\t\t\t\t=origem.HORA\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.CAMPANHA\n,origem.TIPO_LIGACAO\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.POSICAO\n,origem.ANI\n,origem.DNIS\n,origem.TEMPO_LIGACAO\n,origem.TEMPO_ESPERA_FILA\n,origem.TEMPO_CONVERSA\n,origem.TEMPO_ESPERA\n,origem.ABANDONADA\n,origem.DATA\n,origem.HORA\n);"
-								}
-							]
-						}
-					},
-					{
-						"name": "STG DW FIVE9_ESP0006",
-						"type": "Script",
-						"dependsOn": [
-							{
-								"activity": "STG DW FIVE9_ESP0004",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "SQL_DESTINO",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": "MERGE\t           \n\tdw.FIVE9_ESP0006 AS destino           \nUSING            \n\tstg.FIVE9_ESP0006 AS origem           \n           \n    ON(        \n       \n\t\tdestino.campanha\t\t\t\t\t\t= origem.campanha\t\tAND\t\n\t\tdestino.tipo_ligacao\t\t\t\t\t= origem.tipo_ligacao\tAND\t\n\t\tdestino.agente\t\t\t\t\t\t\t= origem.agente\t\t\tAND\n\t\tdestino.tempo_conversa\t\t\t\t\t= origem.tempo_conversa AND \n\t\tdestino.apos_tempo_atividade_ligacao\t= origem.apos_tempo_atividade_ligacao AND \t\n\t\tdestino.data\t\t\t\t\t\t\t= origem.data\n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.campanha\t\t\t\t\t=origem.campanha,\ndestino.tipo_ligacao\t\t\t\t=origem.tipo_ligacao,\ndestino.agente\t\t\t\t\t\t=origem.agente,\ndestino.tempo_conversa\t\t\t\t=origem.tempo_conversa,\ndestino.apos_tempo_atividade_ligacao=origem.apos_tempo_atividade_ligacao,\ndestino.data\t\t\t\t\t\t=origem.data\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.campanha\n,origem.tipo_ligacao\n,origem.agente\n,origem.tempo_conversa\n,origem.apos_tempo_atividade_ligacao\n,origem.data\n);        \n"
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/Five9"
-				},
-				"annotations": []
 			},
 			"dependsOn": []
 		},
@@ -710,6 +664,65 @@
 			"properties": {
 				"activities": [
 					{
+						"name": "Lista arquivos",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.02:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "ceop"
+								}
+							},
+							"fieldList": [
+								"childItems",
+								"itemType",
+								"itemName",
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filtro",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Lista arquivos",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista arquivos').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'xlsx')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
 						"name": "Copy data1",
 						"type": "Copy",
 						"dependsOn": [],
@@ -724,15 +737,6 @@
 						"typeProperties": {
 							"source": {
 								"type": "ExcelSource",
-								"additionalColumns": [
-									{
-										"name": "Ultima_Coluna",
-										"value": {
-											"value": "VLR_TESTE",
-											"type": "Expression"
-										}
-									}
-								],
 								"storeSettings": {
 									"type": "AzureBlobFSReadSettings",
 									"recursive": true,
@@ -787,17 +791,17 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/DataMart')]",
+			"name": "[concat(parameters('factoryName'), '/CEOP_CSV')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"activities": [
 					{
-						"name": "Verifica Start Datamart",
-						"type": "Lookup",
+						"name": "Lista arquivos",
+						"type": "GetMetadata",
 						"dependsOn": [],
 						"policy": {
-							"timeout": "7.00:00:00",
+							"timeout": "0.02:00:00",
 							"retry": 0,
 							"retryIntervalInSeconds": 30,
 							"secureOutput": false,
@@ -805,26 +809,35 @@
 						},
 						"userProperties": [],
 						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT\n    COUNT(1) as QT_REGISTRO \nFROM(\n    SELECT \n        A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n        ,MAX(A.DT_INICIO_PROCESS) DT_INICIO_PROCESS \n        ,CAST(MAX(A.DT_FIM_PROCESS) AS DATE) DT_FIM_PROCESS         \n    FROM DBO.LOG_PROCESSAMENTO_DW A\n    INNER JOIN DBO.cfg_plataforma_dw B ON B.ID_PLATAFORMA = A.ID_PLATAFORMA\n    WHERE UPPER(A.NOME_PROCESSO) LIKE '%CARGA_DW'\n    GROUP BY A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n)TMP    \nWHERE TMP.DT_FIM_PROCESS = CAST(GETDATE() AS DATE)\n",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
 							"dataset": {
-								"referenceName": "AZ_SQL",
+								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
 								"type": "DatasetReference",
-								"parameters": {}
+								"parameters": {
+									"FileSystem": "ceop"
+								}
 							},
-							"firstRowOnly": false
+							"fieldList": [
+								"childItems",
+								"itemType",
+								"itemName",
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
 						}
 					},
 					{
-						"name": "Processo",
-						"type": "ForEach",
+						"name": "Filtro",
+						"type": "Filter",
 						"dependsOn": [
 							{
-								"activity": "Verifica Start Datamart",
+								"activity": "Lista arquivos",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -833,121 +846,240 @@
 						"userProperties": [],
 						"typeProperties": {
 							"items": {
-								"value": "@activity('Verifica Start Datamart').output.value",
+								"value": "@activity('Lista arquivos').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'csv')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filtro",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filtro').output.value",
 								"type": "Expression"
 							},
 							"activities": [
 								{
-									"name": "Inicia Atualizacao Datamart",
-									"type": "IfCondition",
+									"name": "Copia dados para a STG",
+									"type": "Copy",
 									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
 									"userProperties": [],
 									"typeProperties": {
-										"expression": {
-											"value": "@greaterOrEquals(item().QT_REGISTRO,2 )",
-											"type": "Expression"
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
 										},
-										"ifFalseActivities": [
-											{
-												"name": "Busca Email",
-												"type": "Lookup",
-												"dependsOn": [],
-												"policy": {
-													"timeout": "7.00:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": {
+												"value": "@{concat('Truncate table stg.',activity('Lista arquivos').output.itemName)}",
+												"type": "Expression"
+											},
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
 												},
-												"userProperties": [],
-												"typeProperties": {
-													"source": {
-														"type": "AzureSqlSource",
-														"sqlReaderQuery": "SELECT * FROM ADF.OWNER",
-														"queryTimeout": "02:00:00",
-														"partitionOption": "None"
-													},
-													"dataset": {
-														"referenceName": "AZ_SQL",
-														"type": "DatasetReference",
-														"parameters": {}
-													}
-												}
-											},
-											{
-												"name": "Variable Email",
-												"type": "SetVariable",
-												"dependsOn": [
-													{
-														"activity": "Busca Email",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"userProperties": [],
-												"typeProperties": {
-													"variableName": "email",
-													"value": {
-														"value": "@activity('Busca Email').output.firstRow['Email']",
-														"type": "Expression"
-													}
-												}
-											},
-											{
-												"name": "Disparado de Erro Datamart Receb",
-												"type": "ExecutePipeline",
-												"dependsOn": [
-													{
-														"activity": "Variable Email",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "Send email",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {
-														"EmailTo": {
-															"value": "@variables('email')",
-															"type": "Expression"
-														},
-														"Subject": {
-															"value": "@pipeline().Pipeline",
-															"type": "Expression"
-														},
-														"ErrorMessage": "Falha na atualização do Datamart Recebimento"
-													}
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
 												}
 											}
-										],
-										"ifTrueActivities": [
-											{
-												"name": "Processa Datamart",
-												"type": "SqlServerStoredProcedure",
-												"dependsOn": [],
-												"policy": {
-													"timeout": "7.00:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"storedProcedureName": "SP_PROCESSA_RECEBIMENTO_SYS_LEG"
-												},
-												"linkedServiceName": {
-													"referenceName": "AzureSQL_DB_Procedimentos",
-													"type": "LinkedServiceReference"
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_SQL_STG",
+											"type": "DatasetReference",
+											"parameters": {
+												"SCHEMA": "stg",
+												"TABELA": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
 												}
 											}
-										]
+										}
+									]
+								},
+								{
+									"name": "Move arquivo para PROCESSADOS",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "Copia dados para a STG",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@concat(item().name,'-',utcnow())",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Apaga arquivo",
+									"type": "Delete",
+									"dependsOn": [
+										{
+											"activity": "Move arquivo para PROCESSADOS",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataset": {
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										},
+										"logStorageSettings": {
+											"linkedServiceName": {
+												"referenceName": "sv_hmaisbrasildatadriven",
+												"type": "LinkedServiceReference"
+											},
+											"path": "ceop/logs"
+										},
+										"enableLogging": true,
+										"storeSettings": {
+											"type": "AzureBlobFSReadSettings",
+											"recursive": true,
+											"enablePartitionDiscovery": false
+										}
 									}
 								}
 							]
@@ -958,150 +1090,10 @@
 					"elapsedTimeMetric": {},
 					"cancelAfter": {}
 				},
-				"variables": {
-					"email": {
-						"type": "String"
-					},
-					"qt_registro": {
-						"type": "String"
-					}
-				},
 				"folder": {
-					"name": "Data Warehouse"
+					"name": "Data Warehouse/P&P"
 				},
 				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CIDs_Grupo')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_StorageVM",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "Excel",
-				"typeProperties": {
-					"sheetName": "Planilha1",
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "CIDs AGRUPADOS.xlsx",
-						"folderPath": "Depara"
-					},
-					"firstRowAsHeader": true
-				},
-				"schema": [
-					{
-						"name": "CD_CATEGORIA_CID",
-						"type": "String"
-					},
-					{
-						"name": "DS_CATEGORIA_CID",
-						"type": "String"
-					},
-					{
-						"name": "GRUPO CIDs",
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSI_CSV_NC_AgentesPorDia')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Nexcore_Consolidado",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/CSI"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "AgentesPorDiaCSI.csv"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "",
-					"firstRowAsHeader": true,
-					"quoteChar": ""
-				},
-				"schema": [
-					{
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSI_CSV_NC_AgentesPorDia_Temp')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Historicos_AgentesPorDia_CSI",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/CSI/Históricos"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "",
-					"firstRowAsHeader": true,
-					"quoteChar": ""
-				},
-				"schema": [
-					{
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSI_CSV_NC_AgentesPorHora')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Nexcore_Consolidado",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/CSI"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "AgentesPorHoraCSI.csv"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "",
-					"firstRowAsHeader": true,
-					"quoteChar": ""
-				},
-				"schema": [
-					{
-						"type": "String"
-					}
-				]
 			},
 			"dependsOn": []
 		}

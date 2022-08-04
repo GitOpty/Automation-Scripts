@@ -4,32 +4,32 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Nome do Data Factory",
+			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		},
 		"AzureSQL_DB_Procedimentos_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureSQL_DB_Procedimentos'"
+			"metadata": "Secure string for 'connectionString' of 'AzureSQL_DB_Procedimentos'"
 		},
 		"AzureSqlDatabase_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'AzureSqlDatabase'"
+			"metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase'"
 		},
 		"Five9_password": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'password' de 'Five9'"
+			"metadata": "Secure string for 'password' of 'Five9'"
 		},
 		"SQL_CONTROLE_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SQL_CONTROLE'"
+			"metadata": "Secure string for 'connectionString' of 'SQL_CONTROLE'"
 		},
 		"SQL_DESTINO_connectionString": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'connectionString' de 'SQL_DESTINO'"
+			"metadata": "Secure string for 'connectionString' of 'SQL_DESTINO'"
 		},
 		"sv_hmaisbrasildatadriven_accountKey": {
 			"type": "secureString",
-			"metadata": "Cadeia de caracteres segura para 'accountKey' de 'sv_hmaisbrasildatadriven'"
+			"metadata": "Secure string for 'accountKey' of 'sv_hmaisbrasildatadriven'"
 		},
 		"Five9_properties_typeProperties_url": {
 			"type": "string",
@@ -263,6 +263,73 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiariaSMARTV2')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "SP_SMART_RAW_PRODUCAO_DIARIA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_SMART_RAW_PRODUCAO_DIARIA"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "SP_PROCESSA_PROD_DIARIA_SMART",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "SP_SMART_RAW_PRODUCAO_DIARIA",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_PROCESSA_PROD_DIARIA_SMART"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_NAJA')]",
@@ -580,6 +647,74 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_TasyV2')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline criado para gerar informações paliativo",
+				"activities": [
+					{
+						"name": "SP_ODS_TASY_PROD_DIARIA_V2",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_ODS_TASY_PROD_DIARIA_V2"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "SP_INSERT_PRODIARIA_DATAMART",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "SP_ODS_TASY_PROD_DIARIA_V2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_INSERT_PRODIARIA_DATAMART"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DM_Recebimento')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -617,6 +752,179 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Five9')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "STG DW FIVE9_ESP0001",
+						"type": "Script",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SQL_DESTINO",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "MERGE\t           \n\tdw.FIVE9_ESP0001 AS destino           \nUSING            \n\tstg.FIVE9_ESP0001 AS origem           \n           \n    ON(        \n        destino.id_ligacao = origem.id_ligacao        \n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.DATA\t\t\t\t\t=origem.DATA,\ndestino.REGISTRO_DATA_HORA\t\t=origem.REGISTRO_DATA_HORA,\ndestino.CAMPANHA\t\t\t\t=origem.CAMPANHA,\ndestino.COMPETENCIA\t\t\t\t=origem.COMPETENCIA,\ndestino.AGENTE\t\t\t\t\t=origem.AGENTE,\ndestino.NOME_AGENTE\t\t\t\t=origem.NOME_AGENTE,\ndestino.POSICAO\t\t\t\t\t=origem.POSICAO,\ndestino.ANI\t\t\t\t\t\t=origem.ANI,\ndestino.NOME_CLIENTE\t\t\t=origem.NOME_CLIENTE,\ndestino.DNIS\t\t\t\t\t=origem.DNIS,\ndestino.TEMPO_LIGACAO\t\t\t=origem.TEMPO_LIGACAO,\ndestino.TEMPO_FATURAMENTO_ARRED\t=origem.TEMPO_FATURAMENTO_ARRED,\ndestino.TEMPO_IVR\t\t\t\t=origem.TEMPO_IVR,\ndestino.CAMINHO_IVR\t\t\t\t=origem.CAMINHO_IVR,\ndestino.TEMPO_ESPERA_FILA\t\t=origem.TEMPO_ESPERA_FILA,\ndestino.TEMPO_TOQUE\t\t\t\t=origem.TEMPO_TOQUE,\ndestino.TEMPO_CONVERSA\t\t\t=origem.TEMPO_CONVERSA,\ndestino.TEMPO_RETENCAO\t\t\t=origem.TEMPO_RETENCAO,\ndestino.TEMPO_ESPERA\t\t\t=origem.TEMPO_ESPERA,\ndestino.TEMPO_ABANDONAR\t\t\t=origem.TEMPO_ABANDONAR,\ndestino.TEMPO_TOTAL_FILA\t\t\t=origem.TEMPO_TOTAL_FILA,\ndestino.AP_TEMPO_ATIVIDADE_LIGACAO\t=origem.AP_TEMPO_ATIVIDADE_LIGACAO,\ndestino.TRANSFERENCIAS\t\t\t\t=origem.TRANSFERENCIAS,\ndestino.CONFERENCIAS\t\t\t\t=origem.CONFERENCIAS,\ndestino.RETENCOES\t\t\t\t\t=origem.RETENCOES,\ndestino.ABANDONADA\t\t\t\t\t=origem.ABANDONADA,\ndestino.GRAVACOES\t\t\t\t\t=origem.GRAVACOES,\ndestino.TIPO_CAMPANHA\t\t\t\t=origem.TIPO_CAMPANHA,\ndestino.TIPO_LIGACAO\t\t\t\t=origem.TIPO_LIGACAO,\ndestino.GRUPO_AGENTES\t\t\t\t=origem.GRUPO_AGENTES\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.id_ligacao\t\n,origem.DATA\n,origem.REGISTRO_DATA_HORA\n,origem.CAMPANHA\n,origem.COMPETENCIA\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.POSICAO\n,origem.ANI\n,origem.NOME_CLIENTE\n,origem.DNIS\n,origem.TEMPO_LIGACAO\n,origem.TEMPO_FATURAMENTO_ARRED\n,origem.TEMPO_IVR\n,origem.CAMINHO_IVR\n,origem.TEMPO_ESPERA_FILA\n,origem.TEMPO_TOQUE\n,origem.TEMPO_CONVERSA\n,origem.TEMPO_RETENCAO\n,origem.TEMPO_ESPERA\n,origem.TEMPO_ABANDONAR\n,origem.TEMPO_TOTAL_FILA\n,origem.AP_TEMPO_ATIVIDADE_LIGACAO\n,origem.TRANSFERENCIAS\n,origem.CONFERENCIAS\n,origem.RETENCOES\n,origem.ABANDONADA\n,origem.GRAVACOES\n,origem.TIPO_CAMPANHA\n,origem.TIPO_LIGACAO\n,origem.GRUPO_AGENTES\n);        "
+								}
+							]
+						}
+					},
+					{
+						"name": "STG DW FIVE9_ESP0002",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "STG DW FIVE9_ESP0001",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SQL_DESTINO",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "MERGE\t           \n\tdw.FIVE9_ESP0002 AS destino           \nUSING            \n\tstg.FIVE9_ESP0002 AS origem           \n           \n    ON(        \n        destino.agente = origem.agente AND\n\t\tdestino.REGISTRO_HORA_DATA_ACESSO = origem.REGISTRO_HORA_DATA_ACESSO\n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.DATA_HORA\t\t\t\t\t=origem.DATA_HORA,\ndestino.NOME_AGENTE\t\t\t\t\t=origem.NOME_AGENTE,\ndestino.GRUPO_AGENTES\t\t\t\t=origem.GRUPO_AGENTES,\ndestino.REGISTRO_HORA_DATA_SAIDA\t=origem.REGISTRO_HORA_DATA_SAIDA,\ndestino.TEMPO_LOGIN\t\t\t\t\t=origem.TEMPO_LOGIN,\ndestino.DATA\t\t\t\t\t\t=origem.DATA\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.DATA_HORA\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.GRUPO_AGENTES\n,origem.REGISTRO_HORA_DATA_ACESSO\n,origem.REGISTRO_HORA_DATA_SAIDA\n,origem.TEMPO_LOGIN\n,origem.DATA\n);        \n"
+								}
+							]
+						}
+					},
+					{
+						"name": "STG DW FIVE9_ESP0003",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "STG DW FIVE9_ESP0002",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SQL_DESTINO",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "MERGE\t           \n\tdw.FIVE9_ESP0003 AS destino           \nUSING            \n\tstg.FIVE9_ESP0003 AS origem           \n           \n    ON(        \n        destino.id_ligacao = origem.id_ligacao \n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.ID_LIGACAO\t\t\t\t\t\t\t=origem.ID_LIGACAO,\ndestino.CAMPANHA\t\t\t\t\t\t\t=origem.CAMPANHA,\ndestino.TIPO_LIGACAO\t\t\t\t\t\t=origem.TIPO_LIGACAO,\ndestino.AGENTE\t\t\t\t\t\t\t\t=origem.AGENTE,\ndestino.NOME_AGENTE\t\t\t\t\t\t\t=origem.NOME_AGENTE,\ndestino.POSICAO\t\t\t\t\t\t\t\t=origem.POSICAO,\ndestino.ANI\t\t\t\t\t\t\t\t\t=origem.ANI,\ndestino.TEMPO_LIGACAO\t\t\t\t\t\t=origem.TEMPO_LIGACAO,\ndestino.TEMPO_FATURAMENTO_ARRENDONDADO\t\t=origem.TEMPO_FATURAMENTO_ARRENDONDADO,\ndestino.TEMPO_RETENCAO\t\t\t\t\t\t=origem.TEMPO_RETENCAO,\ndestino.TEMPO_ESPERA\t\t\t\t\t\t=origem.TEMPO_ESPERA,\ndestino.APÓS_TEMPO_ATIVIDADE_LIGACAO\t\t=origem.APÓS_TEMPO_ATIVIDADE_LIGACAO,\ndestino.TRANSFERENCIAS\t\t\t\t\t\t=origem.TRANSFERENCIAS,\ndestino.CONFERENCIAS\t\t\t\t\t\t=origem.CONFERENCIAS,\ndestino.ABANDONADA\t\t\t\t\t\t\t=origem.ABANDONADA,\ndestino.DATA\t\t\t\t\t\t\t\t=origem.DATA,\ndestino.HORA\t\t\t\t\t\t\t\t=origem.HORA,\ndestino.COMPETENCIA\t\t\t\t\t\t\t=origem.COMPETENCIA,\ndestino.TEMPO_CONVERSA\t\t\t\t\t\t=origem.TEMPO_CONVERSA\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.ID_LIGACAO\n,origem.CAMPANHA\n,origem.TIPO_LIGACAO\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.POSICAO\n,origem.ANI\n,origem.TEMPO_LIGACAO\n,origem.TEMPO_FATURAMENTO_ARRENDONDADO\n,origem.TEMPO_RETENCAO\n,origem.TEMPO_ESPERA\n,origem.APÓS_TEMPO_ATIVIDADE_LIGACAO\n,origem.TRANSFERENCIAS\n,origem.CONFERENCIAS\n,origem.ABANDONADA\n,origem.DATA\n,origem.HORA\n,origem.COMPETENCIA\n,origem.TEMPO_CONVERSA\n\n);        \n"
+								}
+							]
+						}
+					},
+					{
+						"name": "STG DW FIVE9_ESP0004",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "STG DW FIVE9_ESP0003",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SQL_DESTINO",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "MERGE\t           \n\tdw.FIVE9_ESP0004 AS destino           \nUSING            \n\tstg.FIVE9_ESP0004 AS origem           \n           \n    ON(        \ndestino.CAMPANHA\t\t\t\t\t=origem.CAMPANHA\t\t\tAND\ndestino.TIPO_LIGACAO\t\t\t\t=origem.TIPO_LIGACAO\t\tAND\ndestino.AGENTE\t\t\t\t\t\t=origem.AGENTE\t\t\t\tAND\ndestino.NOME_AGENTE\t\t\t\t\t=origem.NOME_AGENTE\t\t\tAND\ndestino.POSICAO\t\t\t\t\t\t=origem.POSICAO\t\t\t\tAND\ndestino.ANI\t\t\t\t\t\t\t=origem.ANI\t\t\t\t\tAND\ndestino.DNIS\t\t\t\t\t\t=origem.DNIS\t\t\t\tAND\ndestino.TEMPO_LIGACAO\t\t\t\t=origem.TEMPO_LIGACAO\t\tAND\ndestino.TEMPO_ESPERA_FILA\t\t\t=origem.TEMPO_ESPERA_FILA\tAND\ndestino.TEMPO_CONVERSA\t\t\t\t=origem.TEMPO_CONVERSA\t\tAND\ndestino.TEMPO_ESPERA\t\t\t\t=origem.TEMPO_ESPERA\t\tAND\ndestino.ABANDONADA\t\t\t\t\t=origem.ABANDONADA\t\t\tAND\ndestino.DATA\t\t\t\t\t\t=origem.DATA\t\t\t\tAND\ndestino.HORA\t\t\t\t\t\t=origem.HORA\n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.CAMPANHA\t\t\t\t\t=origem.CAMPANHA,\ndestino.TIPO_LIGACAO\t\t\t\t=origem.TIPO_LIGACAO,\ndestino.AGENTE\t\t\t\t\t\t=origem.AGENTE,\ndestino.NOME_AGENTE\t\t\t\t\t=origem.NOME_AGENTE,\ndestino.POSICAO\t\t\t\t\t\t=origem.POSICAO,\ndestino.ANI\t\t\t\t\t\t\t=origem.ANI,\ndestino.DNIS\t\t\t\t\t\t=origem.DNIS,\ndestino.TEMPO_LIGACAO\t\t\t\t=origem.TEMPO_LIGACAO,\ndestino.TEMPO_ESPERA_FILA\t\t\t=origem.TEMPO_ESPERA_FILA,\ndestino.TEMPO_CONVERSA\t\t\t\t=origem.TEMPO_CONVERSA,\ndestino.TEMPO_ESPERA\t\t\t\t=origem.TEMPO_ESPERA,\ndestino.ABANDONADA\t\t\t\t\t=origem.ABANDONADA,\ndestino.DATA\t\t\t\t\t\t=origem.DATA,\ndestino.HORA\t\t\t\t\t\t=origem.HORA\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.CAMPANHA\n,origem.TIPO_LIGACAO\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.POSICAO\n,origem.ANI\n,origem.DNIS\n,origem.TEMPO_LIGACAO\n,origem.TEMPO_ESPERA_FILA\n,origem.TEMPO_CONVERSA\n,origem.TEMPO_ESPERA\n,origem.ABANDONADA\n,origem.DATA\n,origem.HORA\n);"
+								}
+							]
+						}
+					},
+					{
+						"name": "STG DW FIVE9_ESP0006",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "STG DW FIVE9_ESP0004",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SQL_DESTINO",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "MERGE\t           \n\tdw.FIVE9_ESP0006 AS destino           \nUSING            \n\tstg.FIVE9_ESP0006 AS origem           \n           \n    ON(        \n       \n\t\tdestino.campanha\t\t\t\t\t\t= origem.campanha\t\tAND\t\n\t\tdestino.tipo_ligacao\t\t\t\t\t= origem.tipo_ligacao\tAND\t\n\t\tdestino.agente\t\t\t\t\t\t\t= origem.agente\t\t\tAND\n\t\tdestino.tempo_conversa\t\t\t\t\t= origem.tempo_conversa AND \n\t\tdestino.apos_tempo_atividade_ligacao\t= origem.apos_tempo_atividade_ligacao AND \t\n\t\tdestino.data\t\t\t\t\t\t\t= origem.data\n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.campanha\t\t\t\t\t=origem.campanha,\ndestino.tipo_ligacao\t\t\t\t=origem.tipo_ligacao,\ndestino.agente\t\t\t\t\t\t=origem.agente,\ndestino.tempo_conversa\t\t\t\t=origem.tempo_conversa,\ndestino.apos_tempo_atividade_ligacao=origem.apos_tempo_atividade_ligacao,\ndestino.data\t\t\t\t\t\t=origem.data\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.campanha\n,origem.tipo_ligacao\n,origem.agente\n,origem.tempo_conversa\n,origem.apos_tempo_atividade_ligacao\n,origem.data\n);        \n"
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Five9"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/SQL_DESTINO')]"
 			]
 		},
 		{
@@ -714,320 +1022,6 @@
 				},
 				"annotations": [],
 				"lastPublishTime": "2021-07-20T18:04:44Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Workflows Requestia')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Extrai informações específicas para serem processadas nos workflows do Office Flow",
-				"activities": [
-					{
-						"name": "Extract CAPEX",
-						"description": "Copy NFD tickets to REQUESTIA_CAPEXNFD table, solving timeout in Microsoft Flow that send weekly mail from sergio.queiroz@opty.com.br account",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [
-							{
-								"activity": "Start",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "[[dbo].[sp_EXTRACTCAPEXREQUESTS]"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						}
-					},
-					{
-						"name": "Extract TISS",
-						"description": "Copy TISS tickets to specific table, solving timeout in Microsoft Flow that send weekly mail from sergio.queiroz@opty.com.br account",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [
-							{
-								"activity": "Start",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "[[dbo].[sp_EXTRACTTISSREQUESTS]"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						}
-					},
-					{
-						"name": "Start",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Apoio"
-				},
-				"annotations": [],
-				"lastPublishTime": "2019-10-09T15:23:34Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_Agendamentos_Futuros_Unidade')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Retornos"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "CD_PESSOA_FISICA",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CD_CONVENIO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CNPJ",
-						"type": "varchar"
-					},
-					{
-						"name": "DATA_AGENDA",
-						"type": "date"
-					},
-					{
-						"name": "HORA_AGENDA",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "CD_TIPO_AGENDA",
-						"type": "varchar"
-					},
-					{
-						"name": "NM_PACIENTE",
-						"type": "varchar"
-					},
-					{
-						"name": "DS_PROCEDIMENTO_PRINC",
-						"type": "varchar"
-					},
-					{
-						"name": "DS_PROCEDIMENTO_ADIC",
-						"type": "varchar"
-					},
-					{
-						"name": "IE_QUANTIDADE",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "NM_USUARIO",
-						"type": "varchar"
-					},
-					{
-						"name": "MEDICO",
-						"type": "varchar"
-					},
-					{
-						"name": "SIGLA_UNIDADE",
-						"type": "varchar"
-					},
-					{
-						"name": "MARCA",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "Agendamentos_Futuros_Unidade"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_NC_AgentesPorDia')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/Azure"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "Usuario",
-						"type": "varchar"
-					},
-					{
-						"name": "Intervalo",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Atendidas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Recusas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Recebidas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Internas_Recebidas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Transferencias",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Efetuadas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Efetuadas_Tratados",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Taxa_de_Contato",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Atendidas",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Internas_Recebidas",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Efetuadas",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Medio_Falado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Total_Falado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Toque_Agente",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Toque_Cliente",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Pausa",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Estouro",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Disponivel",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Indisponivel",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Logado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Deslogado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Falado_x_Logado",
-						"type": "time",
-						"scale": 7
-					}
-				],
-				"typeProperties": {
-					"tableName": "[[dbo].[Nexcore_AgentesPorDia]"
-				}
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"

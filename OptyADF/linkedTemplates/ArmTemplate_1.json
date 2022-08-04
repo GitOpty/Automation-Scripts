@@ -4,7 +4,7 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Nome do Data Factory",
+			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		}
 	},
@@ -12,6 +12,314 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Workflows Requestia')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Extrai informações específicas para serem processadas nos workflows do Office Flow",
+				"activities": [
+					{
+						"name": "Extract CAPEX",
+						"description": "Copy NFD tickets to REQUESTIA_CAPEXNFD table, solving timeout in Microsoft Flow that send weekly mail from sergio.queiroz@opty.com.br account",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Start",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[sp_EXTRACTCAPEXREQUESTS]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Extract TISS",
+						"description": "Copy TISS tickets to specific table, solving timeout in Microsoft Flow that send weekly mail from sergio.queiroz@opty.com.br account",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Start",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[sp_EXTRACTTISSREQUESTS]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Start",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Apoio"
+				},
+				"annotations": [],
+				"lastPublishTime": "2019-10-09T15:23:34Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_Agendamentos_Futuros_Unidade')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Retornos"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CD_PESSOA_FISICA",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "CD_CONVENIO",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "CNPJ",
+						"type": "varchar"
+					},
+					{
+						"name": "DATA_AGENDA",
+						"type": "date"
+					},
+					{
+						"name": "HORA_AGENDA",
+						"type": "datetime",
+						"precision": 23,
+						"scale": 3
+					},
+					{
+						"name": "CD_TIPO_AGENDA",
+						"type": "varchar"
+					},
+					{
+						"name": "NM_PACIENTE",
+						"type": "varchar"
+					},
+					{
+						"name": "DS_PROCEDIMENTO_PRINC",
+						"type": "varchar"
+					},
+					{
+						"name": "DS_PROCEDIMENTO_ADIC",
+						"type": "varchar"
+					},
+					{
+						"name": "IE_QUANTIDADE",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "NM_USUARIO",
+						"type": "varchar"
+					},
+					{
+						"name": "MEDICO",
+						"type": "varchar"
+					},
+					{
+						"name": "SIGLA_UNIDADE",
+						"type": "varchar"
+					},
+					{
+						"name": "MARCA",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Agendamentos_Futuros_Unidade"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_NC_AgentesPorDia')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Nexcore/Azure"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "Usuario",
+						"type": "varchar"
+					},
+					{
+						"name": "Intervalo",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Atendidas",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Recusas",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Recebidas",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Internas_Recebidas",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Transferencias",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Efetuadas",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Efetuadas_Tratados",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "Taxa_de_Contato",
+						"type": "varchar"
+					},
+					{
+						"name": "Tempo_Atendidas",
+						"type": "varchar"
+					},
+					{
+						"name": "Tempo_Internas_Recebidas",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Tempo_Efetuadas",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Tempo_Medio_Falado",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Tempo_Total_Falado",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Tempo_Toque_Agente",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Tempo_Toque_Cliente",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Tempo_Pausa",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Tempo_Estouro",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Tempo_Disponivel",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Tempo_Indisponivel",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Tempo_Logado",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Tempo_Deslogado",
+						"type": "time",
+						"scale": 7
+					},
+					{
+						"name": "Falado_x_Logado",
+						"type": "time",
+						"scale": 7
+					}
+				],
+				"typeProperties": {
+					"tableName": "[[dbo].[Nexcore_AgentesPorDia]"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_NC_AgentesPorDia_Temp')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
@@ -1558,69 +1866,6 @@
 				"typeProperties": {
 					"schema": "dw",
 					"table": "DimConvenioCGC"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZ_ESTOQUE_POSICAO')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Estoque"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "estoque_posicao"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZ_EXCEL_CIDS_GRUPO')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [],
-				"typeProperties": {
-					"schema": "dw",
-					"table": "TBL_CIDs_GRUPO"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZ_MOVIMENTO_ESTOQUE')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Estoque"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "movimento_estoque"
 				}
 			},
 			"dependsOn": []

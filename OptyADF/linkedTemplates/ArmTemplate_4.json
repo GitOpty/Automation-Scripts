@@ -4,7 +4,7 @@
 	"parameters": {
 		"factoryName": {
 			"type": "string",
-			"metadata": "Nome do Data Factory",
+			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		}
 	},
@@ -12,6 +12,150 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/DESTINO_TABELAS_ADF')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"Schema_Destino": {
+						"type": "string"
+					},
+					"Tabela_Destino": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().Schema_Destino",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().Tabela_Destino",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_Five9')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Five9",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "RestResource",
+				"typeProperties": {
+					"relativeUrl": {
+						"value": "\\99 - Relatorios ESP\\ESP0001",
+						"type": "Expression"
+					}
+				},
+				"schema": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_HMAISDATADRIVEN')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "sv_hmaisbrasildatadriven",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"Filesystem": {
+						"type": "string"
+					},
+					"File": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().File",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().Filesystem",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ";",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_HMAISDATADRIVEN_BINARY')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "sv_hmaisbrasildatadriven",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FileSystem": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileSystem": {
+							"value": "@dataset().FileSystem",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DW_ORIGEM')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/FIVE9_DS_CSV_ESP0001')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
@@ -1295,393 +1439,6 @@
 				"typeProperties": {
 					"schema": "stg",
 					"table": "bi_stg_mns"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/stage_mte')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "mte_dthr",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "mte_serie",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "mte_seq",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "mte_status",
-						"type": "char"
-					},
-					{
-						"name": "mte_ind_rec_nf",
-						"type": "char"
-					},
-					{
-						"name": "mte_nfs_numero",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "mte_pac_reg",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "mte_ind_pac_resp",
-						"type": "char"
-					},
-					{
-						"name": "mte_tca_cod",
-						"type": "char"
-					},
-					{
-						"name": "mte_str_recep",
-						"type": "char"
-					},
-					{
-						"name": "mte_valor",
-						"type": "decimal",
-						"precision": 12,
-						"scale": 2
-					},
-					{
-						"name": "mte_desconto",
-						"type": "decimal",
-						"precision": 12,
-						"scale": 2
-					}
-				],
-				"typeProperties": {
-					"schema": "stg",
-					"table": "bi_stg_mte"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/stage_nfs')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "nfs_dt_emis",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "nfs_numero",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "nfs_tipo",
-						"type": "char"
-					},
-					{
-						"name": "nfs_serie",
-						"type": "char"
-					},
-					{
-						"name": "nfs_ind_tipo_fatura",
-						"type": "char"
-					},
-					{
-						"name": "nfs_emp_cod",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "nfs_emp_codigo",
-						"type": "char"
-					},
-					{
-						"name": "nfs_nfl_num",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "nfs_str_cod",
-						"type": "char"
-					},
-					{
-						"name": "nfs_valor",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "nfs_perc_iss",
-						"type": "decimal",
-						"precision": 5,
-						"scale": 2
-					},
-					{
-						"name": "nfs_perc_ir",
-						"type": "decimal",
-						"precision": 5,
-						"scale": 2
-					},
-					{
-						"name": "nfs_vlr_iss",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "nfs_vlr_ir",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "nfs_perc_multa",
-						"type": "decimal",
-						"precision": 5,
-						"scale": 2
-					},
-					{
-						"name": "nfs_vlr_pis",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "nfs_vlr_cofins",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "nfs_vlr_cssl",
-						"type": "decimal",
-						"precision": 18,
-						"scale": 2
-					},
-					{
-						"name": "nfs_perc_pis",
-						"type": "decimal",
-						"precision": 5,
-						"scale": 2
-					},
-					{
-						"name": "nfs_perc_cofins",
-						"type": "decimal",
-						"precision": 5,
-						"scale": 2
-					},
-					{
-						"name": "nfs_perc_cssl",
-						"type": "decimal",
-						"precision": 5,
-						"scale": 2
-					}
-				],
-				"typeProperties": {
-					"schema": "stg",
-					"table": "bi_stg_nfs"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/stage_rdi')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "rdi_vcto",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "rdi_seq",
-						"type": "decimal",
-						"precision": 6,
-						"scale": 0
-					},
-					{
-						"name": "rdi_forma_pag",
-						"type": "char"
-					},
-					{
-						"name": "rdi_lib_repasse",
-						"type": "char"
-					},
-					{
-						"name": "rdi_mns_serie",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "rdi_mns_num",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "rdi_mte_serie",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "rdi_mte_seq",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "rdi_valor",
-						"type": "decimal",
-						"precision": 12,
-						"scale": 2
-					},
-					{
-						"name": "rdi_valor_complemento",
-						"type": "decimal",
-						"precision": 12,
-						"scale": 2
-					}
-				],
-				"typeProperties": {
-					"schema": "stg",
-					"table": "bi_stg_rdi"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/stage_str')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "str_cod",
-						"type": "char"
-					},
-					{
-						"name": "str_nome",
-						"type": "char"
-					},
-					{
-						"name": "str_resp",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "str_tipo",
-						"type": "char"
-					},
-					{
-						"name": "str_status",
-						"type": "char"
-					}
-				],
-				"typeProperties": {
-					"schema": "stg",
-					"table": "bi_stg_str"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/stage_tca')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "tca_cod",
-						"type": "char"
-					},
-					{
-						"name": "tca_descr",
-						"type": "varchar"
-					},
-					{
-						"name": "tca_qt_dias_vcto",
-						"type": "decimal",
-						"precision": 5,
-						"scale": 0
-					},
-					{
-						"name": "tca_ind_cr",
-						"type": "char"
-					},
-					{
-						"name": "tca_del_logica",
-						"type": "char"
-					},
-					{
-						"name": "tca_valor_padrao",
-						"type": "decimal",
-						"precision": 14,
-						"scale": 2
-					}
-				],
-				"typeProperties": {
-					"schema": "stg",
-					"table": "bi_stg_tca"
 				}
 			},
 			"dependsOn": []
