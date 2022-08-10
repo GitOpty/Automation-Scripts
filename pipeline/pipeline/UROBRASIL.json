@@ -1,0 +1,332 @@
+{
+	"name": "UROBRASIL",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lista arquivos",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.02:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "DS_HMAISDATADRIVEN_BINARY",
+						"type": "DatasetReference",
+						"parameters": {
+							"FileSystem": "ortocity"
+						}
+					},
+					"fieldList": [
+						"childItems",
+						"itemType",
+						"itemName",
+						"lastModified"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "BinaryReadSettings"
+					}
+				}
+			},
+			{
+				"name": "Filtro",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "Lista arquivos",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lista arquivos').output.childItems",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@endsWith(item().name, 'csv')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Filtro",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Filtro').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Copia dados para a STG",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"preCopyScript": {
+										"value": "@{concat('Drop table stg.',activity('Lista arquivos').output.itemName)}",
+										"type": "Expression"
+									},
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false,
+									"tableOption": "autoCreate",
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_HMAISDATADRIVEN",
+									"type": "DatasetReference",
+									"parameters": {
+										"Filesystem": {
+											"value": "@activity('Lista arquivos').output.itemName",
+											"type": "Expression"
+										},
+										"File": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AZ_SQL_STG",
+									"type": "DatasetReference",
+									"parameters": {
+										"SCHEMA": "stg",
+										"TABELA": {
+											"value": "@activity('Lista arquivos').output.itemName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "Move arquivo para PROCESSADOS",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "STG DW",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_HMAISDATADRIVEN",
+									"type": "DatasetReference",
+									"parameters": {
+										"Filesystem": {
+											"value": "@activity('Lista arquivos').output.itemName",
+											"type": "Expression"
+										},
+										"File": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DS_HMAISDATADRIVEN",
+									"type": "DatasetReference",
+									"parameters": {
+										"Filesystem": {
+											"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
+											"type": "Expression"
+										},
+										"File": {
+											"value": "@concat(item().name,'-',utcnow())",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "Apaga arquivo",
+							"type": "Delete",
+							"dependsOn": [
+								{
+									"activity": "Move arquivo para PROCESSADOS",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "DS_HMAISDATADRIVEN",
+									"type": "DatasetReference",
+									"parameters": {
+										"Filesystem": {
+											"value": "@activity('Lista arquivos').output.itemName",
+											"type": "Expression"
+										},
+										"File": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								},
+								"logStorageSettings": {
+									"linkedServiceName": {
+										"referenceName": "sv_hmaisbrasildatadriven",
+										"type": "LinkedServiceReference"
+									},
+									"path": "ceop/logs"
+								},
+								"enableLogging": true,
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							}
+						},
+						{
+							"name": "STG DW",
+							"type": "Script",
+							"dependsOn": [
+								{
+									"activity": "Copia dados para a STG",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "SQL_DESTINO",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "NonQuery",
+										"text": "MERGE\t           \n\tdw.ortocity AS destino           \nUSING            \n\tstg.ortocity AS origem           \n           \n    ON(        \ndestino.CD_ESTABELECIMENTO\t\t= origem.CD_ESTABELECIMENTO AND\ndestino.DS_ESTABELECIMENTO\t\t= origem.DS_ESTABELECIMENTO AND\ndestino.NR_ATENDIMENTO\t\t\t= origem.NR_ATENDIMENTO AND\ndestino.NR_INTERNO_CONTA\t\t= origem.NR_INTERNO_CONTA AND\ndestino.CD_PESSOA_FISICA\t\t= origem.CD_PESSOA_FISICA AND\ndestino.CD_CONVENIO\t\t\t\t= origem.CD_CONVENIO AND\ndestino.CD_MEDICO_EXECUTANTE\t=\torigem.CD_MEDICO_EXECUTANTE \n)        \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.CD_ESTABELECIMENTO=origem.CD_ESTABELECIMENTO ,\ndestino.DS_ESTABELECIMENTO=origem.DS_ESTABELECIMENTO ,\ndestino.NR_ATENDIMENTO=origem.NR_ATENDIMENTO ,\ndestino.NR_INTERNO_CONTA=origem.NR_INTERNO_CONTA ,\ndestino.CD_PESSOA_FISICA=origem.CD_PESSOA_FISICA ,\ndestino.NM_PESSOA_FISICA=origem.NM_PESSOA_FISICA ,\ndestino.DT_NASCIMENTO=origem.DT_NASCIMENTO ,\ndestino.CD_CONVENIO=origem.CD_CONVENIO ,\ndestino.DS_CONVENIO=origem.DS_CONVENIO ,\ndestino.CD_MEDICO_EXECUTANTE=origem.CD_MEDICO_EXECUTANTE ,\ndestino.NM_MEDICO_EXECUTANTE=origem.NM_MEDICO_EXECUTANTE ,\ndestino.CD_SETOR_EXECUTANTE=origem.CD_SETOR_EXECUTANTE ,\ndestino.DS_SETOR_EXECUTANTE=origem.DS_SETOR_EXECUTANTE ,\ndestino.DT_ENTRADA=origem.DT_ENTRADA ,\ndestino.CD_ITEM=origem.CD_ITEM ,\ndestino.DS_ITEM=origem.DS_ITEM ,\ndestino.DT_LANC_ITEM=origem.DT_LANC_ITEM ,\ndestino.QT=origem.QT ,\ndestino.VALOR=origem.VALOR \n\n\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.CD_ESTABELECIMENTO,\norigem.DS_ESTABELECIMENTO,\norigem.NR_ATENDIMENTO,\norigem.NR_INTERNO_CONTA,\norigem.CD_PESSOA_FISICA,\norigem.NM_PESSOA_FISICA,\norigem.DT_NASCIMENTO,\norigem.CD_CONVENIO,\norigem.DS_CONVENIO,\norigem.CD_MEDICO_EXECUTANTE,\norigem.NM_MEDICO_EXECUTANTE,\norigem.CD_SETOR_EXECUTANTE,\norigem.DS_SETOR_EXECUTANTE,\norigem.DT_ENTRADA,\norigem.CD_ITEM,\norigem.DS_ITEM,\norigem.DT_LANC_ITEM,\norigem.QT,\norigem.VALOR\n); "
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		],
+		"folder": {
+			"name": "Data Warehouse/P&P"
+		},
+		"annotations": []
+	}
+}
