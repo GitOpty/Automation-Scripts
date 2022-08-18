@@ -359,6 +359,10 @@
 			"type": "string",
 			"defaultValue": "hobrasil\\serv.corp.sa"
 		},
+		"LS_Otorrinocenter_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "otorrinocenter"
+		},
 		"Naja Server_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
 			"defaultValue": "NajaPE"
@@ -47260,7 +47264,7 @@
 								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
 								"type": "DatasetReference",
 								"parameters": {
-									"FileSystem": "urobrasil"
+									"FileSystem": "oftalmodiagnose"
 								}
 							},
 							"fieldList": [
@@ -47319,6 +47323,7 @@
 								"value": "@activity('Filtro').output.value",
 								"type": "Expression"
 							},
+							"isSequential": true,
 							"activities": [
 								{
 									"name": "Copia dados para a STG",
@@ -47347,7 +47352,7 @@
 										"sink": {
 											"type": "AzureSqlSink",
 											"preCopyScript": {
-												"value": "@{concat('Drop table stg.',activity('Lista arquivos').output.itemName)}",
+												"value": "\n\n\n",
 												"type": "Expression"
 											},
 											"writeBehavior": "insert",
@@ -47388,7 +47393,7 @@
 											"parameters": {
 												"SCHEMA": "stg",
 												"TABELA": {
-													"value": "@activity('Lista arquivos').output.itemName",
+													"value": "@concat('oftalmodiagnose_',substring(item().Name,0,3))\n\n",
 													"type": "Expression"
 												}
 											}
@@ -47556,7 +47561,7 @@
 										"scripts": [
 											{
 												"type": "NonQuery",
-												"text": "MERGE\t           \n\tdw.ortocity AS destino           \nUSING            \n\tstg.ortocity AS origem           \n           \n    ON(        \ndestino.CD_ESTABELECIMENTO\t\t= origem.CD_ESTABELECIMENTO AND\ndestino.DS_ESTABELECIMENTO\t\t= origem.DS_ESTABELECIMENTO AND\ndestino.NR_ATENDIMENTO\t\t\t= origem.NR_ATENDIMENTO AND\ndestino.NR_INTERNO_CONTA\t\t= origem.NR_INTERNO_CONTA AND\ndestino.CD_PESSOA_FISICA\t\t= origem.CD_PESSOA_FISICA AND\ndestino.CD_CONVENIO\t\t\t\t= origem.CD_CONVENIO AND\ndestino.CD_MEDICO_EXECUTANTE\t=\torigem.CD_MEDICO_EXECUTANTE \n)        \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.CD_ESTABELECIMENTO=origem.CD_ESTABELECIMENTO ,\ndestino.DS_ESTABELECIMENTO=origem.DS_ESTABELECIMENTO ,\ndestino.NR_ATENDIMENTO=origem.NR_ATENDIMENTO ,\ndestino.NR_INTERNO_CONTA=origem.NR_INTERNO_CONTA ,\ndestino.CD_PESSOA_FISICA=origem.CD_PESSOA_FISICA ,\ndestino.NM_PESSOA_FISICA=origem.NM_PESSOA_FISICA ,\ndestino.DT_NASCIMENTO=origem.DT_NASCIMENTO ,\ndestino.CD_CONVENIO=origem.CD_CONVENIO ,\ndestino.DS_CONVENIO=origem.DS_CONVENIO ,\ndestino.CD_MEDICO_EXECUTANTE=origem.CD_MEDICO_EXECUTANTE ,\ndestino.NM_MEDICO_EXECUTANTE=origem.NM_MEDICO_EXECUTANTE ,\ndestino.CD_SETOR_EXECUTANTE=origem.CD_SETOR_EXECUTANTE ,\ndestino.DS_SETOR_EXECUTANTE=origem.DS_SETOR_EXECUTANTE ,\ndestino.DT_ENTRADA=origem.DT_ENTRADA ,\ndestino.CD_ITEM=origem.CD_ITEM ,\ndestino.DS_ITEM=origem.DS_ITEM ,\ndestino.DT_LANC_ITEM=origem.DT_LANC_ITEM ,\ndestino.QT=origem.QT ,\ndestino.VALOR=origem.VALOR \n\n\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.CD_ESTABELECIMENTO,\norigem.DS_ESTABELECIMENTO,\norigem.NR_ATENDIMENTO,\norigem.NR_INTERNO_CONTA,\norigem.CD_PESSOA_FISICA,\norigem.NM_PESSOA_FISICA,\norigem.DT_NASCIMENTO,\norigem.CD_CONVENIO,\norigem.DS_CONVENIO,\norigem.CD_MEDICO_EXECUTANTE,\norigem.NM_MEDICO_EXECUTANTE,\norigem.CD_SETOR_EXECUTANTE,\norigem.DS_SETOR_EXECUTANTE,\norigem.DT_ENTRADA,\norigem.CD_ITEM,\norigem.DS_ITEM,\norigem.DT_LANC_ITEM,\norigem.QT,\norigem.VALOR\n); "
+												"text": "select 1"
 											}
 										]
 									}
@@ -79304,6 +79309,33 @@
 							"type": "LinkedServiceReference"
 						},
 						"secretName": "vmSA"
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/ServidorArquivosBI')]",
+				"[concat(variables('factoryId'), '/linkedServices/SV_OptyKeyVault')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_Otorrinocenter')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "[parameters('LS_Otorrinocenter_properties_typeProperties_connectionString_secretName')]"
 					}
 				},
 				"connectVia": {
