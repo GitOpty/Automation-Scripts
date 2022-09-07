@@ -13,6 +13,72 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_TasyV2')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline criado para gerar informações paliativo",
+				"activities": [
+					{
+						"name": "SP_ODS_TASY_PROD_DIARIA_V2",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_ODS_TASY_PROD_DIARIA_V2"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "SP_INSERT_PRODIARIA_DATAMART",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "SP_ODS_TASY_PROD_DIARIA_V2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_INSERT_PRODIARIA_DATAMART"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DM_Recebimento')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -1866,129 +1932,6 @@
 				"typeProperties": {
 					"schema": "dbo",
 					"table": "Ret_Pacientes_Unidade"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_Zero_Faltas')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Zero Faltas"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "id_compromisso",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "id_cliente",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "nomepaciente",
-						"type": "varchar"
-					},
-					{
-						"name": "dtnascimento",
-						"type": "date"
-					},
-					{
-						"name": "celular",
-						"type": "varchar"
-					},
-					{
-						"name": "email",
-						"type": "varchar"
-					},
-					{
-						"name": "idconvenio",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "convenio",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "cd_plano",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "ds_plano",
-						"type": "varchar"
-					},
-					{
-						"name": "datacompromisso",
-						"type": "date"
-					},
-					{
-						"name": "horacompromisso",
-						"type": "datetime",
-						"precision": 23,
-						"scale": 3
-					},
-					{
-						"name": "id_status",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "ds_status",
-						"type": "varchar"
-					},
-					{
-						"name": "cd_agenda",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "agenda",
-						"type": "varchar"
-					},
-					{
-						"name": "cd_procedimento",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "procedimento",
-						"type": "varchar"
-					},
-					{
-						"name": "id_empresa",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "empresa",
-						"type": "varchar"
-					},
-					{
-						"name": "id_unidade",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "unidade",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "Projesi_Zero_Faltas"
 				}
 			},
 			"dependsOn": []
