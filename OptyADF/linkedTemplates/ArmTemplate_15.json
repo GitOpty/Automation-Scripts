@@ -13,6 +13,44 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/SMART_ITAIGARA_PrdDataSet')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SMART_ITAIGARA_NEW",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Power BI"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SMART_Oftalmoclin_Prd_DataSet')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SMART_Oftalmoclin",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Power BI"
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/SQL_DINAMICO')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -170,346 +208,6 @@
 						}
 					}
 				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/VISAO_DF')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Lista arquivos",
-						"type": "GetMetadata",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.02:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataset": {
-								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "visaodf"
-								}
-							},
-							"fieldList": [
-								"childItems",
-								"itemType",
-								"itemName",
-								"lastModified"
-							],
-							"storeSettings": {
-								"type": "AzureBlobFSReadSettings",
-								"recursive": true,
-								"enablePartitionDiscovery": false
-							},
-							"formatSettings": {
-								"type": "BinaryReadSettings"
-							}
-						}
-					},
-					{
-						"name": "Filtro",
-						"type": "Filter",
-						"dependsOn": [
-							{
-								"activity": "Lista arquivos",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Lista arquivos').output.childItems",
-								"type": "Expression"
-							},
-							"condition": {
-								"value": "@endsWith(item().name, 'csv')",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "ForEach1",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Filtro",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Filtro').output.value",
-								"type": "Expression"
-							},
-							"isSequential": true,
-							"activities": [
-								{
-									"name": "Copia dados para a STG",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "AzureBlobFSReadSettings",
-												"recursive": true,
-												"enablePartitionDiscovery": false
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"preCopyScript": {
-												"value": "@{concat('Drop table stg.',activity('Lista arquivos').output.itemName)}",
-												"type": "Expression"
-											},
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"tableOption": "autoCreate",
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZ_SQL_STG",
-											"type": "DatasetReference",
-											"parameters": {
-												"SCHEMA": "stg",
-												"TABELA": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												}
-											}
-										}
-									]
-								},
-								{
-									"name": "Move arquivo para PROCESSADOS",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "STG DW",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "AzureBlobFSReadSettings",
-												"recursive": true,
-												"enablePartitionDiscovery": false
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "DelimitedTextSink",
-											"storeSettings": {
-												"type": "AzureBlobFSWriteSettings"
-											},
-											"formatSettings": {
-												"type": "DelimitedTextWriteSettings",
-												"quoteAllText": true,
-												"fileExtension": ".txt"
-											}
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@concat(item().name,'-',utcnow())",
-													"type": "Expression"
-												}
-											}
-										}
-									]
-								},
-								{
-									"name": "Apaga arquivo",
-									"type": "Delete",
-									"dependsOn": [
-										{
-											"activity": "Move arquivo para PROCESSADOS",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"dataset": {
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										},
-										"logStorageSettings": {
-											"linkedServiceName": {
-												"referenceName": "sv_hmaisbrasildatadriven",
-												"type": "LinkedServiceReference"
-											},
-											"path": "ceop/logs"
-										},
-										"enableLogging": true,
-										"storeSettings": {
-											"type": "AzureBlobFSReadSettings",
-											"recursive": true,
-											"enablePartitionDiscovery": false
-										}
-									}
-								},
-								{
-									"name": "STG DW",
-									"type": "Script",
-									"dependsOn": [
-										{
-											"activity": "Copia dados para a STG",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"linkedServiceName": {
-										"referenceName": "SQL_DESTINO",
-										"type": "LinkedServiceReference"
-									},
-									"typeProperties": {
-										"scripts": [
-											{
-												"type": "NonQuery",
-												"text": "MERGE               \n    dw.visaodf AS destino           \nUSING            \n    stg.visaodf AS ORIGEM           \n           \n    ON(    \n    destino.NR_ATENDIMENTO\t\t= origem.NR_ATENDIMENTO\t\t\tAND\n    destino.CD_ESTABELECIMENTO\t= origem.CD_ESTABELECIMENTO\t\tAND\n    destino.NT_INTERNO_CONTA\t= origem.NT_INTERNO_CONTA\t\tAND\n    destino.CD_PESSOA_FISICA\t= origem.CD_PESSOA_FISICA\t\tAND\n\tdestino.cd_convenio\t\t\t= origem.cd_convenio\t\t\tAND\n\tdestino.cd_item_unico\t\t= origem.cd_item_unico\t\t\tAND\n\tdestino.dt_entrada\t\t\t= origem.dt_entrada\t\t\t\n\n\n)        \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET         \n\ndestino.NR_ATENDIMENTO\t\t\t= origem.NR_ATENDIMENTO,\ndestino.CD_ESTABELECIMENTO\t\t= origem.CD_ESTABELECIMENTO,\ndestino.DS_ESTABELECIMENTO\t\t= origem.DS_ESTABELECIMENTO,\ndestino.NT_INTERNO_CONTA\t\t= origem.NT_INTERNO_CONTA,\ndestino.CD_PESSOA_FISICA\t\t= origem.CD_PESSOA_FISICA,\ndestino.NM_PESSOA_FISICA\t\t= origem.NM_PESSOA_FISICA,\ndestino.DT_NASCIMENTO\t\t\t= origem.DT_NASCIMENTO,\ndestino.CNPJ_CONVENIO\t\t\t= origem.CNPJ_CONVENIO,\ndestino.CD_CONVENIO\t\t\t\t= origem.CD_CONVENIO,\ndestino.DS_CONVENIO\t\t\t\t= origem.DS_CONVENIO,\ndestino.CRM\t\t\t\t\t\t= origem.CRM,\ndestino.CD_MEDICO_EXECUTANTE\t= origem.CD_MEDICO_EXECUTANTE,\ndestino.NM_MEDICOEXECUTANTE\t\t= origem.NM_MEDICOEXECUTANTE,\ndestino.CD_SETOR_EXECUTANTE\t\t= origem.CD_SETOR_EXECUTANTE,\ndestino.DS_SETOR_EXECUTANTE\t\t= origem.DS_SETOR_EXECUTANTE,\ndestino.DT_ENTRADA\t\t\t\t= origem.DT_ENTRADA,\ndestino.COD_TUSS\t\t\t\t= origem.COD_TUSS,\ndestino.CD_ITEM_UNICO\t\t\t= origem.CD_ITEM_UNICO,\ndestino.CD_ITEM\t\t\t\t\t= origem.CD_ITEM,\ndestino.DS_ITEM\t\t\t\t\t= origem.DS_ITEM,\ndestino.CTP_ITEM\t\t\t\t= origem.CTP_ITEM,\ndestino.DTP_ITEM\t\t\t\t= origem.DTP_ITEM,\ndestino.DT_LANC_ITEM\t\t\t= origem.DT_LANC_ITEM,\ndestino.QTD\t\t\t\t\t\t= origem.QTD,\ndestino.VALORUNITARIO\t\t\t= origem.VALORUNITARIO,\ndestino.VALOR\t\t\t\t\t= origem.VALOR\n\n \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n    VALUES (\n\norigem.NR_ATENDIMENTO,\norigem.CD_ESTABELECIMENTO,\norigem.DS_ESTABELECIMENTO,\norigem.NT_INTERNO_CONTA,\norigem.CD_PESSOA_FISICA,\norigem.NM_PESSOA_FISICA,\norigem.DT_NASCIMENTO,\norigem.CNPJ_CONVENIO,\norigem.CD_CONVENIO,\norigem.DS_CONVENIO,\norigem.CRM,\norigem.CD_MEDICO_EXECUTANTE,\norigem.NM_MEDICOEXECUTANTE,\norigem.CD_SETOR_EXECUTANTE,\norigem.DS_SETOR_EXECUTANTE,\norigem.DT_ENTRADA,\norigem.COD_TUSS,\norigem.CD_ITEM_UNICO,\norigem.CD_ITEM,\norigem.DS_ITEM,\norigem.CTP_ITEM,\norigem.DTP_ITEM,\norigem.DT_LANC_ITEM,\norigem.QTD,\norigem.VALORUNITARIO,\norigem.VALOR\n\n\n);\n"
-											}
-										]
-									}
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/P&P"
-				},
-				"annotations": []
 			},
 			"dependsOn": []
 		},
@@ -2130,7 +1828,9 @@
 				"lastPublishTime": "2021-07-20T18:04:45Z"
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/SMART_ITAIGARA_PrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/SMART_Oftalmoclin_Prd_DataSet')]"
 			]
 		},
 		{
@@ -8985,105 +8685,6 @@
 				"lastPublishTime": "2020-02-10T20:56:25Z"
 			},
 			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Baixas titulos')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Baixa titulos HTML5",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select obter_cgc_estabelecimento(R.CD_ESTABELECIMENTO) AS CD_CGC_ESTAB, \nl.nr_titulo, \nl.dt_recebimento, \nl.vl_recebido, \nl.vl_descontos, \nl.vl_juros, \nl.vl_multa, \nl.dt_atualizacao, \nt.ds_tipo_recebimento,\nX.DS_TRANSACAO,\n'' as MARCA,\n'' as SIGLA_UNIDADE\nfrom titulo_receber r,\n     TITULO_RECEBER_LIQ L,\n     tipo_recebimento t,\n     TRANSACAO_FINANCEIRA X\nwhere r.nr_titulo = l.nr_titulo \nand l.cd_tipo_recebimento = t.cd_tipo_recebimento\nAND l.nr_seq_trans_fin = X.NR_SEQUENCIA\nand r.cd_estabelecimento not in (11)\nand rownum < 50",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Baixa Titulo Sadalla",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select obter_cgc_estabelecimento(R.CD_ESTABELECIMENTO) AS CD_CGC_ESTAB, \nl.nr_titulo, \nl.dt_recebimento, \nl.vl_recebido, \nl.vl_descontos, \nl.vl_juros, \nl.vl_multa, \nl.dt_atualizacao, \nt.ds_tipo_recebimento,\nX.DS_TRANSACAO,\n'' as MARCA,\n'' as SIGLA_UNIDADE\nfrom titulo_receber r,\n     TITULO_RECEBER_LIQ L,\n     tipo_recebimento t,\n     TRANSACAO_FINANCEIRA X\nwhere r.nr_titulo = l.nr_titulo \nand l.cd_tipo_recebimento = t.cd_tipo_recebimento\nAND l.nr_seq_trans_fin = X.NR_SEQUENCIA\nand r.cd_estabelecimento not in (11)\nand rownum < 50",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SadallaTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Contas a receber"
-				},
-				"annotations": [],
-				"lastPublishTime": "2019-09-10T17:22:52Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
-			]
 		}
 	]
 }
