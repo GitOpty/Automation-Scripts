@@ -31,6 +31,14 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'password' of 'Historicos_Bilhetes_INOB'"
 		},
+		"LS_IRIS_ODBC_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'LS_IRIS_ODBC'"
+		},
+		"LS_IRIS_ODBC_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'LS_IRIS_ODBC'"
+		},
 		"SMART_HOSL_NEW_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'SMART_HOSL_NEW'"
@@ -358,6 +366,10 @@
 		"LINK_PASTA_BI_properties_typeProperties_userId": {
 			"type": "string",
 			"defaultValue": "hobrasil\\serv.corp.sa"
+		},
+		"LS_IRIS_ODBC_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "BI"
 		},
 		"LS_Otorrinocenter_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
@@ -46205,7 +46217,14 @@
 					{
 						"name": "Lista arquivos",
 						"type": "GetMetadata",
-						"dependsOn": [],
+						"dependsOn": [
+							{
+								"activity": "Copy data1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
 						"policy": {
 							"timeout": "0.02:00:00",
 							"retry": 0,
@@ -46522,6 +46541,58 @@
 								}
 							]
 						}
+					},
+					{
+						"name": "Copy data1",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OdbcSource",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_IRIS_ODBC",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "IRIS_OSM"
+								}
+							}
+						]
 					}
 				],
 				"policy": {
@@ -46535,8 +46606,9 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/DS_HMAISDATADRIVEN_BINARY')]",
-				"[concat(variables('factoryId'), '/datasets/DS_HMAISDATADRIVEN')]",
+				"[concat(variables('factoryId'), '/datasets/DS_IRIS_ODBC')]",
 				"[concat(variables('factoryId'), '/datasets/AZ_SQL_STG')]",
+				"[concat(variables('factoryId'), '/datasets/DS_HMAISDATADRIVEN')]",
 				"[concat(variables('factoryId'), '/linkedServices/SQL_DESTINO')]",
 				"[concat(variables('factoryId'), '/linkedServices/sv_hmaisbrasildatadriven')]"
 			]
@@ -72332,6 +72404,26 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/DS_IRIS_ODBC')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_IRIS_ODBC",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "OdbcTable",
+				"schema": [],
+				"typeProperties": {
+					"tableName": "\"DBA\".\"OSM\""
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_IRIS_ODBC')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DS_Otorrinocenter')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -81244,6 +81336,34 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/LS_IRIS_ODBC')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Odbc",
+				"typeProperties": {
+					"connectionString": {
+						"type": "SecureString",
+						"value": "[parameters('LS_IRIS_ODBC_connectionString')]"
+					},
+					"authenticationType": "Basic",
+					"userName": "[parameters('LS_IRIS_ODBC_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('LS_IRIS_ODBC_password')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "IRIS",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/IRIS')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/LS_Otorrinocenter')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
@@ -82421,6 +82541,16 @@
 				"[concat(variables('factoryId'), '/pipelines/Geral Atendimentos Sadalla')]",
 				"[concat(variables('factoryId'), '/pipelines/OTORRINOCENTER')]"
 			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/IRIS')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "SelfHosted",
+				"typeProperties": {}
+			},
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/IRVISAODF')]",
