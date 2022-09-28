@@ -5,7 +5,14 @@
 			{
 				"name": "Lista arquivos",
 				"type": "GetMetadata",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "GERA ARQUIVO",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.02:00:00",
 					"retry": 0,
@@ -323,6 +330,78 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "GERA ARQUIVO",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.05:00:00",
+					"retry": 2,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": {
+							"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+							"type": "Expression"
+						},
+						"partitionOption": "None",
+						"convertDecimalToInteger": false,
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_ORTOCITY",
+						"type": "DatasetReference",
+						"parameters": {
+							"schema_name": {
+								"value": "@item().NOME_SCHEMA_ORIGEM",
+								"type": "Expression"
+							},
+							"table_name": {
+								"value": "@item().NOME_SCHEMA_ORIGEM",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DESTINO_TABELAS_ADF",
+						"type": "DatasetReference",
+						"parameters": {
+							"Schema_Destino": {
+								"value": "@item().NOME_SCHEMA_DESTINO",
+								"type": "Expression"
+							},
+							"Tabela_Destino": {
+								"value": "@item().NOME_TABELA_DESTINO",
+								"type": "Expression"
+							}
+						}
+					}
+				]
 			}
 		],
 		"folder": {
