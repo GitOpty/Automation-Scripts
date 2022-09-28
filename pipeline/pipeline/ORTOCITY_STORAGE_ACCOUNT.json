@@ -7,7 +7,7 @@
 				"type": "GetMetadata",
 				"dependsOn": [
 					{
-						"activity": "GERA ARQUIVO",
+						"activity": "GERA ARQUIVO CADATEND",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -332,7 +332,7 @@
 				}
 			},
 			{
-				"name": "GERA ARQUIVO",
+				"name": "GERA ARQUIVO CADATEND",
 				"type": "Copy",
 				"dependsOn": [],
 				"policy": {
@@ -347,7 +347,7 @@
 					"source": {
 						"type": "OracleSource",
 						"oracleReaderQuery": {
-							"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+							"value": "SELECT * FROM FERNANDO.CADATEND",
 							"type": "Expression"
 						},
 						"partitionOption": "None",
@@ -355,10 +355,15 @@
 						"queryTimeout": "02:00:00"
 					},
 					"sink": {
-						"type": "AzureSqlSink",
-						"writeBehavior": "insert",
-						"sqlWriterUseTableLock": false,
-						"disableMetricsCollection": false
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
 					},
 					"enableStaging": false,
 					"translator": {
@@ -372,15 +377,15 @@
 				},
 				"inputs": [
 					{
-						"referenceName": "DS_ORTOCITY",
+						"referenceName": "DS_ORTOCITY_WITH_PARAM",
 						"type": "DatasetReference",
 						"parameters": {
 							"schema_name": {
-								"value": "@item().NOME_SCHEMA_ORIGEM",
+								"value": "FERNANDO",
 								"type": "Expression"
 							},
 							"table_name": {
-								"value": "@item().NOME_SCHEMA_ORIGEM",
+								"value": "CADATEND",
 								"type": "Expression"
 							}
 						}
@@ -388,17 +393,11 @@
 				],
 				"outputs": [
 					{
-						"referenceName": "DESTINO_TABELAS_ADF",
+						"referenceName": "DS_HMAISDATADRIVEN",
 						"type": "DatasetReference",
 						"parameters": {
-							"Schema_Destino": {
-								"value": "@item().NOME_SCHEMA_DESTINO",
-								"type": "Expression"
-							},
-							"Tabela_Destino": {
-								"value": "@item().NOME_TABELA_DESTINO",
-								"type": "Expression"
-							}
+							"Filesystem": "ortocity",
+							"File": "CADATEND"
 						}
 					}
 				]
