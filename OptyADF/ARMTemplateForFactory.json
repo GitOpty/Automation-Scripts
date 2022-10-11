@@ -654,20 +654,6 @@
 						}
 					},
 					{
-						"name": "CARGA DEPARA",
-						"type": "ExecutePipeline",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "DEPARA",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					},
-					{
 						"name": "Chama Inicializador Datamart",
 						"type": "ExecutePipeline",
 						"dependsOn": [
@@ -715,7 +701,6 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_TASY')]",
 				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_SMART')]",
-				"[concat(variables('factoryId'), '/pipelines/DEPARA')]",
 				"[concat(variables('factoryId'), '/pipelines/2_Processa_DataMart')]",
 				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_NAJA_DW')]"
 			]
@@ -53293,6 +53278,38 @@
 								}
 							]
 						}
+					},
+					{
+						"name": "Merge DW",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "PROCESSA ETL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "exec proc sp_carga_oft_tbl_AGM;\nexec proc sp_carga_oft_tbl_ctf;\nexec proc sp_carga_oft_tbl_cnv;\nexec proc sp_carga_oft_tbl_gcc;\nexec proc sp_carga_oft_tbl_emp;\nexec proc sp_carga_oft_tbl_psv;\nexec proc sp_carga_oft_tbl_smk;\nexec proc sp_carga_oft_tbl_str;\nexec proc sp_carga_oft_tbl_gmm;\nexec proc sp_carga_oft_tbl_hon;\nexec proc sp_carga_oft_tbl_pac;\nexec proc sp_carga_oft_tbl_smm;"
+								}
+							]
+						}
 					}
 				],
 				"policy": {
@@ -53311,9 +53328,9 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/LISTA_TABELAS_ADF')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
 				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/datasets/SQL_DINAMICO')]",
-				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
 				"[concat(variables('factoryId'), '/datasets/DS_OFTALMODIAGNOSE_ODBC_WITH_PARAM')]"
 			]
 		},
@@ -66615,7 +66632,7 @@
 						"typeProperties": {
 							"source": {
 								"type": "OdbcSource",
-								"query": "SELECT  \nA.*\nFROM dba.CNV A\n",
+								"query": "SELECT  \nA.*\nFROM dba.PSV A\n",
 								"queryTimeout": "02:00:00"
 							},
 							"sink": {
@@ -84182,7 +84199,7 @@
 				"schema": [],
 				"typeProperties": {
 					"schema": "stg",
-					"table": "iris_cnv"
+					"table": "iris_pac"
 				}
 			},
 			"dependsOn": [
@@ -89412,6 +89429,44 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Daily 00 AM')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "OFTALMODIAGNOSE_ADF",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2022-10-11T00:00:00Z",
+						"timeZone": "UTC",
+						"schedule": {
+							"minutes": [
+								0
+							],
+							"hours": [
+								0
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/OFTALMODIAGNOSE_ADF')]"
+			]
 		}
 	]
 }
