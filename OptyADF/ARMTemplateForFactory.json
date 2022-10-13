@@ -15145,6 +15145,12 @@
 														"dependencyConditions": [
 															"Succeeded"
 														]
+													},
+													{
+														"activity": "Data Busca Banco",
+														"dependencyConditions": [
+															"Succeeded"
+														]
 													}
 												],
 												"policy": {
@@ -15157,13 +15163,12 @@
 												"userProperties": [],
 												"typeProperties": {
 													"source": {
-														"type": "SqlServerSource",
-														"sqlReaderQuery": {
-															"value": "@concat(\n'select * from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' where ', item().nome_coluna_referencia,' >= ''',\nitem().Data_Inicio, ''' and ', item().nome_coluna_referencia, ' <= ''', item().Data_Fim, ''''\n\n )",
+														"type": "OdbcSource",
+														"query": {
+															"value": "@concat(\n'select * from ',item().NOME_TABELA_ORIGEM,' where SUBSTRING(', item().nome_coluna_referencia,',1,10) >= ',variables('DT_INICIO') \n\n )",
 															"type": "Expression"
 														},
-														"queryTimeout": "02:00:00",
-														"partitionOption": "None"
+														"queryTimeout": "02:00:00"
 													},
 													"sink": {
 														"type": "AzureSqlSink",
@@ -15181,21 +15186,11 @@
 												},
 												"inputs": [
 													{
-														"referenceName": "SQL_DINAMICO",
+														"referenceName": "IRIS_ODBC",
 														"type": "DatasetReference",
 														"parameters": {
-															"NOME_KEYVAULT_SECRET": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"schema_name": {
-																"value": "@item().NOME_SCHEMA_ORIGEM",
-																"type": "Expression"
-															},
-															"table_name": {
-																"value": "@item().NOME_TABELA_ORIGEM",
-																"type": "Expression"
-															}
+															"SCHEMA_NAME": "@item().NOME_SCHEMA_ORIGEM",
+															"TABLE_NAME": "@item().NOME_TABELA_ORIGEM"
 														}
 													}
 												],
@@ -15501,6 +15496,19 @@
 												"linkedServiceName": {
 													"referenceName": "AzureSQL_DB_Procedimentos",
 													"type": "LinkedServiceReference"
+												}
+											},
+											{
+												"name": "Data Busca Banco",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "DT_INICIO",
+													"value": {
+														"value": "@concat('''',string(formatDateTime(adddays(utcnow(), -30), 'yyyy-MM-dd')),'''')",
+														"type": "Expression"
+													}
 												}
 											}
 										],
@@ -15967,7 +15975,7 @@
 							"scripts": [
 								{
 									"type": "NonQuery",
-									"text": "EXEC sp_carga_iris_tbl_AGM;\nEXEC sp_carga_iris_tbl_mte;\nEXEC sp_carga_iris_tbl_pac;\nEXEC sp_carga_iris_tbl_mns;\nEXEC sp_carga_iris_tbl_ext;\nEXEC sp_carga_iris_tbl_nfs;\nEXEC sp_carga_iris_tbl_smm;\nEXEC sp_carga_iris_tbl_hon;\nEXEC sp_carga_iris_tbl_cnv;\nEXEC sp_carga_iris_tbl_ctf;\nEXEC sp_carga_iris_tbl_gcc;\nEXEC sp_carga_iris_tbl_psv;\nEXEC sp_carga_iris_tbl_smk;\nEXEC sp_carga_iris_tbl_emp;\nEXEC sp_carga_iris_tbl_fat;\nEXEC sp_carga_iris_tbl_nfl;\nEXEC sp_carga_iris_tbl_gmm;"
+									"text": "EXEC sp_carga_iris_tbl_AGM;\nEXEC sp_carga_iris_tbl_mte;\nEXEC sp_carga_iris_tbl_pac;\nEXEC sp_carga_iris_tbl_mns;\nEXEC sp_carga_iris_tbl_ext;\nEXEC sp_carga_iris_tbl_nfs;\nEXEC sp_carga_iris_tbl_smm;\nEXEC sp_carga_iris_tbl_hon;\nEXEC sp_carga_iris_tbl_cnv;\nEXEC sp_carga_iris_tbl_ctf;\nEXEC sp_carga_iris_tbl_gcc;\nEXEC sp_carga_iris_tbl_psv;\nEXEC sp_carga_iris_tbl_smk;\nEXEC sp_carga_iris_tbl_emp;\nEXEC sp_carga_iris_tbl_fat;\nEXEC sp_carga_iris_tbl_nfl;\nEXEC sp_carga_iris_tbl_gmm;\nEXEC sp_carga_iris_tbl_str;"
 								}
 							]
 						}
@@ -15980,6 +15988,9 @@
 				"variables": {
 					"StartTime": {
 						"type": "String"
+					},
+					"DT_INICIO": {
+						"type": "String"
 					}
 				},
 				"folder": {
@@ -15991,7 +16002,6 @@
 				"[concat(variables('factoryId'), '/datasets/LISTA_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
 				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
-				"[concat(variables('factoryId'), '/datasets/SQL_DINAMICO')]",
 				"[concat(variables('factoryId'), '/datasets/IRIS_ODBC')]"
 			]
 		},
@@ -84199,7 +84209,7 @@
 				"schema": [],
 				"typeProperties": {
 					"schema": "stg",
-					"table": "iris_pac"
+					"table": "iris_smm"
 				}
 			},
 			"dependsOn": [
@@ -88990,6 +89000,52 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Daily 00 AM')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "OFTALMODIAGNOSE_ADF",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "CARGA_DINAMICA_ADF_SMART_IRIS",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2022-10-11T00:00:00",
+						"timeZone": "E. South America Standard Time",
+						"schedule": {
+							"minutes": [
+								0
+							],
+							"hours": [
+								0
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/OFTALMODIAGNOSE_ADF')]",
+				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_SMART_IRIS')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Daily 0100 AM')]",
 			"type": "Microsoft.DataFactory/factories/triggers",
 			"apiVersion": "2018-06-01",
@@ -89295,13 +89351,6 @@
 					},
 					{
 						"pipelineReference": {
-							"referenceName": "VISAO_DF_STORAGE_ACCOUNT",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					},
-					{
-						"pipelineReference": {
 							"referenceName": "VISAO_DF",
 							"type": "PipelineReference"
 						},
@@ -89329,7 +89378,6 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/UROBRASIL')]",
 				"[concat(variables('factoryId'), '/pipelines/UPO')]",
-				"[concat(variables('factoryId'), '/pipelines/VISAO_DF_STORAGE_ACCOUNT')]",
 				"[concat(variables('factoryId'), '/pipelines/VISAO_DF')]"
 			]
 		},
@@ -89429,44 +89477,6 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Daily 00 AM')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "OFTALMODIAGNOSE_ADF",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					}
-				],
-				"type": "ScheduleTrigger",
-				"typeProperties": {
-					"recurrence": {
-						"frequency": "Day",
-						"interval": 1,
-						"startTime": "2022-10-11T00:00:00Z",
-						"timeZone": "UTC",
-						"schedule": {
-							"minutes": [
-								0
-							],
-							"hours": [
-								0
-							]
-						}
-					}
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/OFTALMODIAGNOSE_ADF')]"
-			]
 		}
 	]
 }

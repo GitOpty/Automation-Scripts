@@ -5716,6 +5716,12 @@
 														"dependencyConditions": [
 															"Succeeded"
 														]
+													},
+													{
+														"activity": "Data Busca Banco",
+														"dependencyConditions": [
+															"Succeeded"
+														]
 													}
 												],
 												"policy": {
@@ -5728,13 +5734,12 @@
 												"userProperties": [],
 												"typeProperties": {
 													"source": {
-														"type": "SqlServerSource",
-														"sqlReaderQuery": {
-															"value": "@concat(\n'select * from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' where ', item().nome_coluna_referencia,' >= ''',\nitem().Data_Inicio, ''' and ', item().nome_coluna_referencia, ' <= ''', item().Data_Fim, ''''\n\n )",
+														"type": "OdbcSource",
+														"query": {
+															"value": "@concat(\n'select * from ',item().NOME_TABELA_ORIGEM,' where SUBSTRING(', item().nome_coluna_referencia,',1,10) >= ',variables('DT_INICIO') \n\n )",
 															"type": "Expression"
 														},
-														"queryTimeout": "02:00:00",
-														"partitionOption": "None"
+														"queryTimeout": "02:00:00"
 													},
 													"sink": {
 														"type": "AzureSqlSink",
@@ -5752,21 +5757,11 @@
 												},
 												"inputs": [
 													{
-														"referenceName": "SQL_DINAMICO",
+														"referenceName": "IRIS_ODBC",
 														"type": "DatasetReference",
 														"parameters": {
-															"NOME_KEYVAULT_SECRET": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"schema_name": {
-																"value": "@item().NOME_SCHEMA_ORIGEM",
-																"type": "Expression"
-															},
-															"table_name": {
-																"value": "@item().NOME_TABELA_ORIGEM",
-																"type": "Expression"
-															}
+															"SCHEMA_NAME": "@item().NOME_SCHEMA_ORIGEM",
+															"TABLE_NAME": "@item().NOME_TABELA_ORIGEM"
 														}
 													}
 												],
@@ -6072,6 +6067,19 @@
 												"linkedServiceName": {
 													"referenceName": "AzureSQL_DB_Procedimentos",
 													"type": "LinkedServiceReference"
+												}
+											},
+											{
+												"name": "Data Busca Banco",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "DT_INICIO",
+													"value": {
+														"value": "@concat('''',string(formatDateTime(adddays(utcnow(), -30), 'yyyy-MM-dd')),'''')",
+														"type": "Expression"
+													}
 												}
 											}
 										],
@@ -6538,7 +6546,7 @@
 							"scripts": [
 								{
 									"type": "NonQuery",
-									"text": "EXEC sp_carga_iris_tbl_AGM;\nEXEC sp_carga_iris_tbl_mte;\nEXEC sp_carga_iris_tbl_pac;\nEXEC sp_carga_iris_tbl_mns;\nEXEC sp_carga_iris_tbl_ext;\nEXEC sp_carga_iris_tbl_nfs;\nEXEC sp_carga_iris_tbl_smm;\nEXEC sp_carga_iris_tbl_hon;\nEXEC sp_carga_iris_tbl_cnv;\nEXEC sp_carga_iris_tbl_ctf;\nEXEC sp_carga_iris_tbl_gcc;\nEXEC sp_carga_iris_tbl_psv;\nEXEC sp_carga_iris_tbl_smk;\nEXEC sp_carga_iris_tbl_emp;\nEXEC sp_carga_iris_tbl_fat;\nEXEC sp_carga_iris_tbl_nfl;\nEXEC sp_carga_iris_tbl_gmm;"
+									"text": "EXEC sp_carga_iris_tbl_AGM;\nEXEC sp_carga_iris_tbl_mte;\nEXEC sp_carga_iris_tbl_pac;\nEXEC sp_carga_iris_tbl_mns;\nEXEC sp_carga_iris_tbl_ext;\nEXEC sp_carga_iris_tbl_nfs;\nEXEC sp_carga_iris_tbl_smm;\nEXEC sp_carga_iris_tbl_hon;\nEXEC sp_carga_iris_tbl_cnv;\nEXEC sp_carga_iris_tbl_ctf;\nEXEC sp_carga_iris_tbl_gcc;\nEXEC sp_carga_iris_tbl_psv;\nEXEC sp_carga_iris_tbl_smk;\nEXEC sp_carga_iris_tbl_emp;\nEXEC sp_carga_iris_tbl_fat;\nEXEC sp_carga_iris_tbl_nfl;\nEXEC sp_carga_iris_tbl_gmm;\nEXEC sp_carga_iris_tbl_str;"
 								}
 							]
 						}
@@ -6550,6 +6558,9 @@
 				},
 				"variables": {
 					"StartTime": {
+						"type": "String"
+					},
+					"DT_INICIO": {
 						"type": "String"
 					}
 				},
