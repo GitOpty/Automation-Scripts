@@ -101,6 +101,12 @@
 												"dependencyConditions": [
 													"Succeeded"
 												]
+											},
+											{
+												"activity": "Data Inicio Banco",
+												"dependencyConditions": [
+													"Succeeded"
+												]
 											}
 										],
 										"policy": {
@@ -113,13 +119,8 @@
 										"userProperties": [],
 										"typeProperties": {
 											"source": {
-												"type": "SqlServerSource",
-												"sqlReaderQuery": {
-													"value": "@concat(\n'select * from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' where ', item().nome_coluna_referencia,' >= ''',\nitem().Data_Inicio, ''' and ', item().nome_coluna_referencia, ' <= ''', item().Data_Fim, ''''\n\n )",
-													"type": "Expression"
-												},
-												"queryTimeout": "02:00:00",
-												"partitionOption": "None"
+												"type": "OdbcSource",
+												"queryTimeout": "02:00:00"
 											},
 											"sink": {
 												"type": "AzureSqlSink",
@@ -137,22 +138,8 @@
 										},
 										"inputs": [
 											{
-												"referenceName": "SQL_DINAMICO",
-												"type": "DatasetReference",
-												"parameters": {
-													"NOME_KEYVAULT_SECRET": {
-														"value": "@item().NOME_KEYVAULT_SECRET",
-														"type": "Expression"
-													},
-													"schema_name": {
-														"value": "@item().NOME_SCHEMA_ORIGEM",
-														"type": "Expression"
-													},
-													"table_name": {
-														"value": "@item().NOME_TABELA_ORIGEM",
-														"type": "Expression"
-													}
-												}
+												"referenceName": "Oftalmodiagnose_ODBC",
+												"type": "DatasetReference"
 											}
 										],
 										"outputs": [
@@ -457,6 +444,16 @@
 										"linkedServiceName": {
 											"referenceName": "AzureSQL_DB_Procedimentos",
 											"type": "LinkedServiceReference"
+										}
+									},
+									{
+										"name": "Data Inicio Banco",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "DT_INICIO",
+											"value": "@concat('\"',string(formatDateTime(adddays(utcnow(), -30), 'yyyy-MM-dd')),'\"')"
 										}
 									}
 								],
@@ -933,6 +930,9 @@
 		],
 		"variables": {
 			"StartTime": {
+				"type": "String"
+			},
+			"DT_INICIO": {
 				"type": "String"
 			}
 		},
