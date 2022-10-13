@@ -99,6 +99,12 @@
 												"dependencyConditions": [
 													"Succeeded"
 												]
+											},
+											{
+												"activity": "Data Busca Banco",
+												"dependencyConditions": [
+													"Succeeded"
+												]
 											}
 										],
 										"policy": {
@@ -113,7 +119,7 @@
 											"source": {
 												"type": "SqlServerSource",
 												"sqlReaderQuery": {
-													"value": "@concat(\n'select * from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' where ', item().nome_coluna_referencia,' >= ''',\nitem().Data_Inicio, ''' and ', item().nome_coluna_referencia, ' <= ''', item().Data_Fim, ''''\n\n )",
+													"value": "@concat(\n'select * from ',item().NOME_TABELA_ORIGEM,' where SUBSTRING(', item().nome_coluna_referencia,',1,10) >= ',variables('DT_INICIO')\n )",
 													"type": "Expression"
 												},
 												"queryTimeout": "02:00:00",
@@ -455,6 +461,19 @@
 										"linkedServiceName": {
 											"referenceName": "AzureSQL_DB_Procedimentos",
 											"type": "LinkedServiceReference"
+										}
+									},
+									{
+										"name": "Data Busca Banco",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "DT_INICIO",
+											"value": {
+												"value": "@concat('\"',string(formatDateTime(adddays(utcnow(), -30), 'yyyy-MM-dd')),'\"')",
+												"type": "Expression"
+											}
 										}
 									}
 								],
@@ -929,6 +948,9 @@
 		],
 		"variables": {
 			"StartTime": {
+				"type": "String"
+			},
+			"DT_INICIO": {
 				"type": "String"
 			}
 		},
