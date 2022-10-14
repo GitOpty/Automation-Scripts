@@ -52492,6 +52492,12 @@
 														"dependencyConditions": [
 															"Succeeded"
 														]
+													},
+													{
+														"activity": "Data Inicio Banco",
+														"dependencyConditions": [
+															"Succeeded"
+														]
 													}
 												],
 												"policy": {
@@ -52504,13 +52510,12 @@
 												"userProperties": [],
 												"typeProperties": {
 													"source": {
-														"type": "SqlServerSource",
-														"sqlReaderQuery": {
-															"value": "@concat(\n'select * from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' where ', item().nome_coluna_referencia,' >= ''',\nitem().Data_Inicio, ''' and ', item().nome_coluna_referencia, ' <= ''', item().Data_Fim, ''''\n\n )",
+														"type": "OdbcSource",
+														"query": {
+															"value": "@concat(\n'select * from ',item().NOME_TABELA_ORIGEM,' where SUBSTRING(', item().nome_coluna_referencia,',1,10) >= ',variables('DT_INICIO') \n\n )",
 															"type": "Expression"
 														},
-														"queryTimeout": "02:00:00",
-														"partitionOption": "None"
+														"queryTimeout": "02:00:00"
 													},
 													"sink": {
 														"type": "AzureSqlSink",
@@ -52528,21 +52533,14 @@
 												},
 												"inputs": [
 													{
-														"referenceName": "SQL_DINAMICO",
+														"referenceName": "Oftalmodiagnose_ODBC",
 														"type": "DatasetReference",
 														"parameters": {
-															"NOME_KEYVAULT_SECRET": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
 															"schema_name": {
 																"value": "@item().NOME_SCHEMA_ORIGEM",
 																"type": "Expression"
 															},
-															"table_name": {
-																"value": "@item().NOME_TABELA_ORIGEM",
-																"type": "Expression"
-															}
+															"table_name": "@item().NOME_TABELA_ORIGEM"
 														}
 													}
 												],
@@ -52848,6 +52846,19 @@
 												"linkedServiceName": {
 													"referenceName": "AzureSQL_DB_Procedimentos",
 													"type": "LinkedServiceReference"
+												}
+											},
+											{
+												"name": "Data Inicio Banco",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "DT_INICIO",
+													"value": {
+														"value": "@concat('''',string(formatDateTime(adddays(utcnow(), -30), 'yyyy-MM-dd')),'''')",
+														"type": "Expression"
+													}
 												}
 											}
 										],
@@ -53329,6 +53340,9 @@
 				"variables": {
 					"StartTime": {
 						"type": "String"
+					},
+					"DT_INICIO": {
+						"type": "String"
 					}
 				},
 				"folder": {
@@ -53340,7 +53354,7 @@
 				"[concat(variables('factoryId'), '/datasets/LISTA_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
 				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
-				"[concat(variables('factoryId'), '/datasets/SQL_DINAMICO')]",
+				"[concat(variables('factoryId'), '/datasets/Oftalmodiagnose_ODBC')]",
 				"[concat(variables('factoryId'), '/datasets/DS_OFTALMODIAGNOSE_ODBC_WITH_PARAM')]"
 			]
 		},
@@ -66642,7 +66656,7 @@
 						"typeProperties": {
 							"source": {
 								"type": "OdbcSource",
-								"query": "SELECT  \nA.*\nFROM dba.PSV A\n",
+								"query": "SELECT  \n'95' as estabelecimento\n,A.*\nFROM dba.smm A\nlimit 10\n",
 								"queryTimeout": "02:00:00"
 							},
 							"sink": {
@@ -66671,7 +66685,7 @@
 						],
 						"outputs": [
 							{
-								"referenceName": "IRIS_DATASET",
+								"referenceName": "OFT_DATASET",
 								"type": "DatasetReference",
 								"parameters": {}
 							}
@@ -66689,7 +66703,7 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/OdbcTable1')]",
-				"[concat(variables('factoryId'), '/datasets/IRIS_DATASET')]"
+				"[concat(variables('factoryId'), '/datasets/OFT_DATASET')]"
 			]
 		},
 		{
@@ -84282,6 +84296,27 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/OFT_DATASET')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "oft_tbl_smm"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/ORACLE_DINAMICO')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -84372,7 +84407,7 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "LS_IRIS_ODBC",
+					"referenceName": "LS_OFTALMODIAGNOSE_ODBC",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],
@@ -84381,7 +84416,33 @@
 				"typeProperties": {}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/LS_IRIS_ODBC')]"
+				"[concat(variables('factoryId'), '/linkedServices/LS_OFTALMODIAGNOSE_ODBC')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Oftalmodiagnose_ODBC')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_OFTALMODIAGNOSE_ODBC",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"schema_name": {
+						"type": "string"
+					},
+					"table_name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "OdbcTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_OFTALMODIAGNOSE_ODBC')]"
 			]
 		},
 		{
