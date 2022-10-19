@@ -45,7 +45,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"variableName": "nm_tabela",
-					"value": "VW_TTIULO_RECEBER"
+					"value": "v_bi_ext"
 				}
 			},
 			{
@@ -53,7 +53,7 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "Busca Tabelas",
+						"activity": "Limpa Tabela",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -90,10 +90,6 @@
 								},
 								"sink": {
 									"type": "AzureSqlSink",
-									"preCopyScript": {
-										"value": "@{concat('TRUNCATE TABLE ',item().NOME_SCHEMA_DESTINO,'.',item().NOME_TABELA_DESTINO)}",
-										"type": "Expression"
-									},
 									"writeBehavior": "insert",
 									"sqlWriterUseTableLock": false,
 									"disableMetricsCollection": false
@@ -138,6 +134,55 @@
 									}
 								}
 							]
+						}
+					]
+				}
+			},
+			{
+				"name": "Limpa Tabela",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Busca Tabelas",
+						"dependencyConditions": [
+							"Skipped"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Busca Tabelas').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Clear Table",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSQL_DB_Procedimentos",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "NonQuery",
+										"text": {
+											"value": "@concat('TRUNCATE TABLE ',item().NOME_SCHEMA_DESTINO,'.',item().NOME_TABELA_DESTINO)",
+											"type": "Expression"
+										}
+									}
+								]
+							}
 						}
 					]
 				}
