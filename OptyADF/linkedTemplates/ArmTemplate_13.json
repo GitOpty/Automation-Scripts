@@ -285,14 +285,7 @@
 											{
 												"name": "Exec Datamart Prod Diaria Tasy",
 												"type": "ExecutePipeline",
-												"dependsOn": [
-													{
-														"activity": "Exec Datamart Prod Diaria Smart",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
+												"dependsOn": [],
 												"userProperties": [],
 												"typeProperties": {
 													"pipeline": {
@@ -841,7 +834,7 @@
 							"scripts": [
 								{
 									"type": "NonQuery",
-									"text": "WITH ESP0003 AS (\n    SELECT DISTINCT\n        A.*\n    FROM STG.FIVE9_ESP0003 A    \n)\n\n\n\nMERGE\t           \n\tdw.FIVE9_ESP0003 AS destino           \nUSING            \n\tESP0003 AS origem           \n           \n    ON(        \n        destino.id_ligacao = origem.id_ligacao \n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.ID_LIGACAO\t\t\t\t\t\t\t=origem.ID_LIGACAO,\ndestino.CAMPANHA\t\t\t\t\t\t\t=origem.CAMPANHA,\ndestino.TIPO_LIGACAO\t\t\t\t\t\t=origem.TIPO_LIGACAO,\ndestino.AGENTE\t\t\t\t\t\t\t\t=origem.AGENTE,\ndestino.NOME_AGENTE\t\t\t\t\t\t\t=origem.NOME_AGENTE,\ndestino.POSICAO\t\t\t\t\t\t\t\t=origem.POSICAO,\ndestino.ANI\t\t\t\t\t\t\t\t\t=origem.ANI,\ndestino.TEMPO_LIGACAO\t\t\t\t\t\t=origem.TEMPO_LIGACAO,\ndestino.TEMPO_FATURAMENTO_ARRENDONDADO\t\t=origem.TEMPO_FATURAMENTO_ARRENDONDADO,\ndestino.TEMPO_RETENCAO\t\t\t\t\t\t=origem.TEMPO_RETENCAO,\ndestino.TEMPO_ESPERA\t\t\t\t\t\t=origem.TEMPO_ESPERA,\ndestino.APÓS_TEMPO_ATIVIDADE_LIGACAO\t\t=origem.APÓS_TEMPO_ATIVIDADE_LIGACAO,\ndestino.TRANSFERENCIAS\t\t\t\t\t\t=origem.TRANSFERENCIAS,\ndestino.CONFERENCIAS\t\t\t\t\t\t=origem.CONFERENCIAS,\ndestino.ABANDONADA\t\t\t\t\t\t\t=origem.ABANDONADA,\ndestino.DATA\t\t\t\t\t\t\t\t=origem.DATA,\ndestino.HORA\t\t\t\t\t\t\t\t=origem.HORA,\ndestino.COMPETENCIA\t\t\t\t\t\t\t=origem.COMPETENCIA,\ndestino.TEMPO_CONVERSA\t\t\t\t\t\t=origem.TEMPO_CONVERSA\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.ID_LIGACAO\n,origem.CAMPANHA\n,origem.TIPO_LIGACAO\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.POSICAO\n,origem.ANI\n,origem.TEMPO_LIGACAO\n,origem.TEMPO_FATURAMENTO_ARRENDONDADO\n,origem.TEMPO_RETENCAO\n,origem.TEMPO_ESPERA\n,origem.APÓS_TEMPO_ATIVIDADE_LIGACAO\n,origem.TRANSFERENCIAS\n,origem.CONFERENCIAS\n,origem.ABANDONADA\n,origem.DATA\n,origem.HORA\n,origem.COMPETENCIA\n,origem.TEMPO_CONVERSA\n\n);        \n"
+									"text": "WITH ESP0003 AS (\n    SELECT\n        TMP.*\n    FROM(\n        SELECT\n            A.*\n            ,ROW_NUMBER()OVER(PARTITION BY A.ID_LIGACAO ORDER BY A.ID_LIGACAO DESC) ID_LINHA\n        FROM STG.FIVE9_ESP0003 A\n    )TMP\n    WHERE TMP.ID_LINHA = 1  \n)\n\n\n\nMERGE\t           \n\tdw.FIVE9_ESP0003 AS destino           \nUSING            \n\tESP0003 AS origem           \n           \n    ON(        \n        destino.id_ligacao = origem.id_ligacao \n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.ID_LIGACAO\t\t\t\t\t\t\t=origem.ID_LIGACAO,\ndestino.CAMPANHA\t\t\t\t\t\t\t=origem.CAMPANHA,\ndestino.TIPO_LIGACAO\t\t\t\t\t\t=origem.TIPO_LIGACAO,\ndestino.AGENTE\t\t\t\t\t\t\t\t=origem.AGENTE,\ndestino.NOME_AGENTE\t\t\t\t\t\t\t=origem.NOME_AGENTE,\ndestino.POSICAO\t\t\t\t\t\t\t\t=origem.POSICAO,\ndestino.ANI\t\t\t\t\t\t\t\t\t=origem.ANI,\ndestino.TEMPO_LIGACAO\t\t\t\t\t\t=origem.TEMPO_LIGACAO,\ndestino.TEMPO_FATURAMENTO_ARRENDONDADO\t\t=origem.TEMPO_FATURAMENTO_ARRENDONDADO,\ndestino.TEMPO_RETENCAO\t\t\t\t\t\t=origem.TEMPO_RETENCAO,\ndestino.TEMPO_ESPERA\t\t\t\t\t\t=origem.TEMPO_ESPERA,\ndestino.APÓS_TEMPO_ATIVIDADE_LIGACAO\t\t=origem.APÓS_TEMPO_ATIVIDADE_LIGACAO,\ndestino.TRANSFERENCIAS\t\t\t\t\t\t=origem.TRANSFERENCIAS,\ndestino.CONFERENCIAS\t\t\t\t\t\t=origem.CONFERENCIAS,\ndestino.ABANDONADA\t\t\t\t\t\t\t=origem.ABANDONADA,\ndestino.DATA\t\t\t\t\t\t\t\t=origem.DATA,\ndestino.HORA\t\t\t\t\t\t\t\t=origem.HORA,\ndestino.COMPETENCIA\t\t\t\t\t\t\t=origem.COMPETENCIA,\ndestino.TEMPO_CONVERSA\t\t\t\t\t\t=origem.TEMPO_CONVERSA\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.ID_LIGACAO\n,origem.CAMPANHA\n,origem.TIPO_LIGACAO\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.POSICAO\n,origem.ANI\n,origem.TEMPO_LIGACAO\n,origem.TEMPO_FATURAMENTO_ARRENDONDADO\n,origem.TEMPO_RETENCAO\n,origem.TEMPO_ESPERA\n,origem.APÓS_TEMPO_ATIVIDADE_LIGACAO\n,origem.TRANSFERENCIAS\n,origem.CONFERENCIAS\n,origem.ABANDONADA\n,origem.DATA\n,origem.HORA\n,origem.COMPETENCIA\n,origem.TEMPO_CONVERSA\n\n);        \n"
 								}
 							]
 						}
@@ -3654,7 +3647,7 @@
 					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "Data Warehouse/P&P"
+					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
 				},
 				"annotations": []
 			},
@@ -5065,7 +5058,7 @@
 					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "Data Warehouse/P&P"
+					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
 				},
 				"annotations": []
 			},
@@ -5474,7 +5467,7 @@
 					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "Data Warehouse/P&P"
+					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
 				},
 				"annotations": []
 			},
