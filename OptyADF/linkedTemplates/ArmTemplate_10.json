@@ -74,20 +74,52 @@
 		"HMO_SIMAH_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
 			"defaultValue": "HMOSimah"
-		},
-		"Historicos_AgentesPorDia_CSI_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Historicos NEXCORE\\CSI\\AgentesPorDia"
-		},
-		"Historicos_AgentesPorDia_CSI_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\sa.automation"
 		}
 	},
 	"variables": {
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/stage_emp')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "emp_cod",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "emp_rsoc",
+						"type": "varchar"
+					},
+					{
+						"name": "emp_stat",
+						"type": "char"
+					},
+					{
+						"name": "emp_cgc",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "bi_stg_emp"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/stage_gcc')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
@@ -881,33 +913,6 @@
 							"type": "LinkedServiceReference"
 						},
 						"secretName": "[parameters('HMO_SIMAH_properties_typeProperties_connectionString_secretName')]"
-					}
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Historicos_AgentesPorDia_CSI')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Historicos_AgentesPorDia_CSI",
-				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('Historicos_AgentesPorDia_CSI_properties_typeProperties_host')]",
-					"userId": "[parameters('Historicos_AgentesPorDia_CSI_properties_typeProperties_userId')]",
-					"password": {
-						"type": "AzureKeyVaultSecret",
-						"store": {
-							"referenceName": "SV_OptyKeyVault",
-							"type": "LinkedServiceReference"
-						},
-						"secretName": "vmSA"
 					}
 				},
 				"connectVia": {

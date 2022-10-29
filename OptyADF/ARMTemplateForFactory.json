@@ -15011,6 +15011,54 @@
 							"referenceName": "AzureSQL_DB_Procedimentos",
 							"type": "LinkedServiceReference"
 						}
+					},
+					{
+						"name": "Exec Datamart Smart Prod",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "CARGA DW",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "DM_ProdDiariaSMARTV2",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Exec Datamart Smart Receb",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "CARGA DW",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_DATAMART_RECEBIMENTO_SMART]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
 					}
 				],
 				"policy": {
@@ -15030,6 +15078,7 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/LISTA_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiariaSMARTV2')]",
 				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/datasets/SQL_DINAMICO')]"
 			]
@@ -16927,6 +16976,54 @@
 							"referenceName": "AzureSQL_DB_Procedimentos",
 							"type": "LinkedServiceReference"
 						}
+					},
+					{
+						"name": "Exec Datamart Tasy Prod",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "CARGA DW",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "DM_ProdDiaria_TasyV2",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "Exec Datamart Tasy Receb",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "CARGA DW",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_DATAMART_RECEBIMENTO_TASY]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
 					}
 				],
 				"concurrency": 5,
@@ -16947,6 +17044,7 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/LISTA_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_TasyV2')]",
 				"[concat(variables('factoryId'), '/pipelines/Send email')]",
 				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/datasets/ORACLE_DINAMICO')]"
@@ -55236,7 +55334,7 @@
 							"scripts": [
 								{
 									"type": "NonQuery",
-									"text": "exec sp_carga_oft_tbl_AGM;\nexec sp_carga_oft_tbl_ctf;\nexec sp_carga_oft_tbl_cnv;\nexec sp_carga_oft_tbl_gcc;\nexec sp_carga_oft_tbl_emp;\nexec sp_carga_oft_tbl_psv;\nexec sp_carga_oft_tbl_smk;\nexec sp_carga_oft_tbl_str;\nexec sp_carga_oft_tbl_gmm;\nexec sp_carga_oft_tbl_hon;\nexec sp_carga_oft_tbl_pac;\nexec sp_carga_oft_tbl_smm;"
+									"text": "exec sp_carga_oft_tbl_AGM;\nexec sp_carga_oft_tbl_ctf;\nexec sp_carga_oft_tbl_cnv;\nexec sp_carga_oft_tbl_gcc;\nexec sp_carga_oft_tbl_emp;\nexec sp_carga_oft_tbl_psv;\nexec sp_carga_oft_tbl_smk;\nexec sp_carga_oft_tbl_str;\nexec sp_carga_oft_tbl_gmm;\nexec sp_carga_oft_tbl_hon;\nexec sp_carga_oft_tbl_pac;\nexec sp_carga_oft_tbl_smm;\nexec sp_carga_oft_tbl_nfs;\nEXEC sp_carga_oft_tbl_ext;\nEXEC sp_carga_oft_tbl_fat;\nEXEC sp_carga_oft_tbl_mns;\nEXEC sp_carga_oft_tbl_mte;\nEXEC sp_carga_oft_tbl_nfl;\n"
 								}
 							]
 						}
@@ -90990,6 +91088,13 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "CARGA_DINAMICA_ADF_SMART",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -91012,7 +91117,8 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/OFTALMODIAGNOSE_ADF')]",
-				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_SMART_IRIS')]"
+				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_SMART_IRIS')]",
+				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_SMART')]"
 			]
 		},
 		{
@@ -91076,6 +91182,13 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "CARGA_DINAMICA_ADF_TASY",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -91097,7 +91210,8 @@
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Chamados Requestia')]"
+				"[concat(variables('factoryId'), '/pipelines/Chamados Requestia')]",
+				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_TASY')]"
 			]
 		},
 		{
@@ -91106,16 +91220,8 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "1_Processa_Cargas_DW",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					}
-				],
+				"runtimeState": "Stopped",
+				"pipelines": [],
 				"type": "ScheduleTrigger",
 				"typeProperties": {
 					"recurrence": {
@@ -91134,9 +91240,7 @@
 					}
 				}
 			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/1_Processa_Cargas_DW')]"
-			]
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Daily 05h')]",
