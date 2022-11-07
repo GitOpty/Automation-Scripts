@@ -13,6 +13,3895 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/Pipeline Principal')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipelines desenvolvidos em conjunto com a empresa Class para a extração das informações de produção. Atualmente desativado.",
+				"activities": [
+					{
+						"name": "Sadalla_Tasy_CopyData",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "select\n\n'Tasy Sadalla' as BASE,\n--x.nr_seq_proc_pacote,\n7 as cd_marca,\n'Hospital de Olhos Sadalla Amin Ghanem' as marca,\n17 as cd_estabelecimento,\nc.nr_atendimento,\n'7'||'17'||c.nr_atendimento as nr_registro_unico,\nx.dt_atualizacao,\nat.dt_entrada,\nc.nr_interno_conta,\nnull as ds_estabelecimento,\npf.cd_pessoa_fisica,\n\npf.dt_nascimento,\npf.nr_cpf,\npf.ie_sexo,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CEP') as nr_cep,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CI') as ds_cidade,\n--pf.cd_pessoa_fisica as cd_pessoa_fisica,\nobter_nome_pf(at.cd_pessoa_fisica) as ds_pessoa_fisica,\nc.cd_convenio_parametro as cd_convenio,\nobter_nome_convenio(c.cd_convenio_parametro) as ds_convenio,\nx.cd_medico_executor,\nobter_nome_pf(x.cd_medico_executor) as ds_medico_executor,\nx.cd_medico_req as cd_medico_requisitante,\nobter_nome_pf(x.cd_medico_req) as ds_medico_requisitante,\nx.ie_origem_proced,\nx.cd_procedimento,\nx.ds_procedimento as ds_procedimento,\nx.classif as ds_classificacao,\n\n(select r.ds_grupo_receita from grupo_receita r where r.nr_sequencia = x.nr_seq_grupo_rec) as ds_classif_procedimento,\n\ncase\nwhen (select r.nr_sequencia from grupo_receita r where r.nr_sequencia = x.nr_seq_grupo_rec) = 12 then x.cd_procedimento\nelse\n\n(select z.cd_procedimento as valor \n from procedimento_paciente z \n where z.nr_atendimento = c.nr_atendimento \n and z.nr_interno_conta = c.nr_interno_conta \n --and z.vl_medico = (select max(w.vl_medico) \n and z.nr_sequencia = (select min(w.nr_sequencia)\n                          from procedimento_paciente w \n                          where w.nr_atendimento = z.nr_atendimento \n                          and w.nr_interno_conta = z.nr_interno_conta\n                          and w.cd_motivo_exc_conta is null\n                          ) \n group by z.cd_procedimento) end cd_proced_principal,\n\ncase\nwhen (select r.nr_sequencia from grupo_receita r where r.nr_sequencia = x.nr_seq_grupo_rec) = 12 then obter_desc_procedimento(x.cd_procedimento, x.ie_origem_proced)\nelse\n\nobter_desc_procedimento(\n\n(select z.cd_procedimento as valor \n   from procedimento_paciente z \n   where z.nr_atendimento = c.nr_atendimento \n   and z.nr_interno_conta = c.nr_interno_conta \n   --and z.vl_medico = (select max(w.vl_medico) \n    and z.nr_sequencia = (select min(w.nr_sequencia)\n                            from procedimento_paciente w \n                            where w.nr_atendimento = z.nr_atendimento \n                            and w.nr_interno_conta = z.nr_interno_conta\n                            and w.cd_motivo_exc_conta is null\n                            ) \n                            group by z.cd_procedimento),\n\n(select min(z.ie_origem_proced) as ie_origem_proced \n   from procedimento_paciente z \n   where z.nr_atendimento = c.nr_atendimento \n   and z.nr_interno_conta = c.nr_interno_conta \n   --and z.vl_medico = (select max(w.vl_medico) \n    and z.nr_sequencia = (select min(w.nr_sequencia)\n                         from procedimento_paciente w \n                         where w.nr_atendimento = z.nr_atendimento \n                         and w.nr_interno_conta = z.nr_interno_conta\n                         and w.cd_motivo_exc_conta is null\n                         ) \n group by z.ie_origem_proced)\n\n)end ds_proced_principal,\n\nx.qt_procedimento,\nc.vl_conta,\nx.vl_procedimento,\nc.ie_status_acerto,\ndecode(c.ie_status_acerto, 1,'Provisorio' , 2 ,'Definitivo') as status_conta,\nx.tuss as cd_tuss,\n(select x.ds_estrutura from  mat_estrutura x, mat_estrutura_cadastro y where x.nr_sequencia = y.nr_seq_estrutura and y.cd_material = x.cd_procedimento) as ds_classif_lio\nfrom atendimento_paciente at,\nconta_paciente c,\npessoa_fisica pf,\n\n(select p.nr_interno_conta, \np.cd_procedimento, \nobter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced) as ds_procedimento, \nobter_valor_dominio(19,pr.ie_classificacao) as classif,\np.cd_medico_executor,\np.cd_medico_req,\np.ie_origem_proced,\np.qt_procedimento,\np.vl_procedimento,\np.vl_medico,\np.nr_sequencia,\np.cd_edicao_amb,\np.cd_convenio,\np.nr_atendimento,\np.cd_motivo_exc_conta,\np.nr_seq_proc_crit_repasse,\nobter_codigo_tuss(p.nr_seq_proc_interno) as tuss,\np.dt_atualizacao,\npr.nr_seq_grupo_rec\nfrom procedimento_paciente p,\n     procedimento pr\nwhere p.cd_procedimento = pr.cd_procedimento\nand p.ie_origem_proced = pr.ie_origem_proced\n\nunion all\nselect mp.nr_interno_conta, \nmp.cd_material as cd_procedimento, \nm.ds_material as ds_procedimento,\nobter_dados_material(m.cd_material,'GRU') as classif,\nobter_medico_resp_atend(mp.nr_atendimento,'C') as cd_medico_executor,\nobter_medico_resp_atend(mp.nr_atendimento,'C') as cd_medico_req,\n0 as ie_origem_proced,\nmp.qt_material,\nmp.vl_material,\n0 vl_medico,\nmp.nr_sequencia,\n'0' as cd_edicao_amb,\nmp.cd_convenio,\nmp.nr_atendimento,\nmp.cd_motivo_exc_conta,\n0 nr_seq_proc_crit_repasse,\n0 tuss,\nmp.dt_atualizacao,\n0 nr_seq_grupo_rec\nfrom material_atend_paciente mp,\n     material m\nwhere mp.cd_material = m.cd_material) x\n\nwhere at.nr_atendimento = c.nr_atendimento\nand c.nr_interno_conta = x.nr_interno_conta\nand at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand c.ie_cancelamento is null\nand x.cd_motivo_exc_conta is null\nand c.cd_estabelecimento = 1\nand at.dt_entrada BETWEEN sysdate -2 and sysdate\nand c.vl_conta > 0\ngroup by \nc.nr_atendimento,\nat.dt_entrada,\nc.nr_interno_conta,\nc.cd_estabelecimento,\nat.cd_pessoa_fisica,\nc.cd_convenio_parametro,\nc.vl_conta,\nx.nr_sequencia,\nx.vl_medico,\nx.vl_procedimento,\nx.ie_origem_proced,\nx.cd_procedimento,\nx.ds_procedimento,\nx.qt_procedimento,\nx.cd_edicao_amb,\nx.cd_medico_executor,\nc.ie_status_acerto,\nx.nr_atendimento,\nx.cd_convenio,\nat.ie_tipo_atendimento,\nx.nr_interno_conta,\npf.dt_nascimento,\npf.nr_cpf,\nx.cd_medico_req,\npf.ie_sexo,\npf.cd_pessoa_fisica,\nx.classif,\nx.tuss,\nx.nr_seq_grupo_rec,\nx.dt_atualizacao,\nat.nr_atendimento\n\norder by 5,3 desc",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBatchSize": 10000,
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSqlTEMPTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Processa Itens",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Sadalla_Tasy_CopyData",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "SMART_ITAIGARA_CopyData",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "SMART_INOB_CopyData",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "SMART_HOSL_CopyData",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "SMART_ITABUNA_CopyData",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[ProcessTempItems]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Tabela Final",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Processa Itens",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select * from TEMPTASY\nWhere Processed = 'Sim'",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBatchSize": 10000,
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "MARCA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MARCA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_ATENDIMENTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "NR_ATENDIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CPF",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CPF",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_SEXO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "IE_SEXO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CEP",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CEP",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CONVENIO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_CONVENIO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_ORIGEM_PROCED",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "IE_ORIGEM_PROCED",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "Int64"
+										},
+										"sink": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PROCEDIMENTO_PRINCIPAL_FINAL",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PROCEDIMENTO_PRINCIPAL_FINAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CATEGORIA_AUXILIAR",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_CATEGORIA_AUXILIAR",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CATEGORIA_AUXILIAR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CATEGORIA_AUXILIAR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CATEGORIA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_CATEGORIA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CATEGORIA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CATEGORIA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_CLASSE",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSIF_LIO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_CLASSIF_LIO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_AJUSTADA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "QT_AJUSTADA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_CONTA",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_CONTA",
+											"type": "Single"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Single"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_STATUS_CONTA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_STATUS_CONTA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_TUSS",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_TUSS",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "MEDICO_EXECUTOR_PARCEIRO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MEDICO_EXECUTOR_PARCEIRO",
+											"type": "String"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "AzureSqlTEMPTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSqlProcedimentosTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Truncate Temp Table",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Tabela Final",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[TRUNCATETEMPTABLE]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "SMART_ITAIGARA_CopyData",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "WITH db as (\n    select \n        'Smart DayHorc Itaigara' as BASE\n        ,3 as CD_MARCA\n        ,'DAYHORC' as DS_MARCA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) AS NS_REGISTRO_UNICO --duvida\n        ,smm_dthr_alter as DT_ATUALIZACAO \n        ,osm_dthr as DT_ENTRADA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_INTERNO_CONTA --duvida\n        ,smm_num as NR_ATENDIMENTO\n        ,case ltrim(str_emp.str_cod) \n            when '18' then 7\n            when '9' then 7\n            when '13' then 7\n            when 'SCL' then 7\n            when '901' then 7\n            when 'IOF' then 7\n            when '13' then 8\n            when 'DHI' then 9\n        end as CD_ESTABELECIMENTO\n        ,case ltrim(str_emp.str_cod) \n            when '18' then 'HBA'\n            when '9' then 'HBA'\n            when '13' then 'HBA'\n            when 'SCL' then 'HBA'\n            when '901' then 'HBA'\n            when 'IOF' then 'HBA'\n            when '13' then 'Itaigara'\n            when 'DHI' then 'Itabuna'\n        end as DS_ESTABELECIMENTO\n        ,osm_pac as CD_PESSOA_FISICA\n        ,pac_nasc as DT_NASCIMENTO\n        ,pac_numcpf as NR_CPF\n        ,pac_sexo as IE_SEXO\n        ,pac_cep as NR_CEP\n        ,case \n            when isnumeric(pac_cid) = 1 then (select cde_nome from cde where cde_cod = pac_cid)\n        else pac_cid end as DS_CIDADE\n        ,pac_nome as DS_PESSOA_FISICA\n        ,cnv_cod as CD_CONVENIO\n        ,cnv_nome as DS_CONVENIO\n        ,psv_exe.psv_cod as CD_MEDICO_EXECUTOR\n        ,psv_exe.psv_apel as DS_MEDICO_EXECUTOR\n        ,psv_req.psv_cod as CD_MEDICO_REQUISITANTE\n        ,psv_req.psv_apel as DS_MEDICO_REQUISITANTE\n        ,isnull(tab_padrao,'') as IE_ORIGEM_PROCEDIMENTO\n        ,smm_cod as CD_PROCEDIMENTO\n        ,smk_rot as DS_PROCEDIMENTO\n        ,case ctf_categ \n            when 'C' then 'Consulta'\n            when 'E' then 'Exames'\n            when 'R' then 'Cirurgia'\n            when 'T' then 'Taxas'\n            when 'A' then 'Terapia'\n            when 'O' then 'Outras'\n            when 'M' then 'Materiais'\n            when 'S' then 'Materiais Especiais'\n            when 'N' then 'Medicamentos'\n            when 'G' then 'Gases'\n            when 'O' then 'Outros'\n        end as DS_CLASSIF_PROCEDIMENTO\n        ,smm_qt as QT_PROCEDIMENTO\n        ,smm_vlr + isnull(smm_ajuste_vlr,0) as VL_PROCEDIMENTO\n        ,case \n            when smm_fat_serie is not null then 2\n        else 1 end AS IE_STATUS_ACERTO\n        ,case \n            when smm_fat_serie is not null then 'Definitivo'\n        else 'Provisório' end as IE_STATUS_CONTA\n        ,'' as CD_TUSS \n        ,'' DS_CLASSIF_LIO\n        ,smm_sfat\n        ,smm_pacote\n        ,smm_num_pai\n        ,smm_p_osm_serie\n        ,smm_p_osm_num\n        ,smm_p_smm_num\n        ,smm_hsp_num\n        ,smm_rci_serie\n        ,smm_rci_num\n    from \n        osm\n        inner join smm on (\n            smm_osm_serie = osm_serie\n            and smm_osm = osm_num\n        )\n        inner join str str_osm on (\n            str_osm.str_cod = osm_str\n        )\n        inner join str str_emp on (\n            str_osm.str_str_cod = str_emp.str_cod\n        )\n        inner join pac on (\n            pac_reg = osm_pac\n        )\n        inner join cnv on (\n            cnv_cod = osm_cnv\n        )\n        inner join psv psv_exe on (\n            psv_exe.psv_cod = smm_med\n        )\n        inner join psv psv_req on (\n            psv_req.psv_cod = smm_med\n        )\n        inner join smk on (\n            smk_cod = smm_cod\n            and smk_tipo = smm_tpcod\n        )\n        inner join ctf on (\n            ctf_cod = smk_ctf\n            and ctf_tipo = smk_tipo\n        )\n        left outer join tab on (\n            tab_cod = smm_tab_cod\n        )\n    where \n        1 = 1\n        and osm_dthr >= '2019-02-26'\n        and osm_dthr <= '2019-02-26 23:59:000'\n)\n\nselect \n    CD_MARCA\n    ,DS_MARCA\n    ,NS_REGISTRO_UNICO\n    ,DT_ATUALIZACAO\n    ,DT_ENTRADA\n    ,NR_INTERNO_CONTA\n    ,NR_ATENDIMENTO\n    ,CD_ESTABELECIMENTO\n    ,DS_ESTABELECIMENTO\n    ,CD_PESSOA_FISICA\n    ,DT_NASCIMENTO\n    ,NR_CPF\n    ,IE_SEXO\n    ,NR_CEP\n    ,DS_CIDADE\n    ,DS_PESSOA_FISICA\n    ,CD_CONVENIO\n    ,DS_CONVENIO\n    ,CD_MEDICO_EXECUTOR\n    ,DS_MEDICO_EXECUTOR\n    ,CD_MEDICO_REQUISITANTE\n    ,DS_MEDICO_REQUISITANTE\n    ,IE_ORIGEM_PROCEDIMENTO\n    ,CD_PROCEDIMENTO\n    ,DS_PROCEDIMENTO\n    ,DS_CLASSIF_PROCEDIMENTO\n    ,case \n        when smm_num_pai is null then DS_PROCEDIMENTO\n    else (select    \n            CD_PROCEDIMENTO \n        from \n            db tmp \n        where \n            tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n            and db.smm_num_pai = tmp.NR_ATENDIMENTO\n        ) end as CD_PROCEDIMENTO_PRINCIPAL\n    ,case \n        when smm_num_pai is null then DS_PROCEDIMENTO\n    else (select \n            DS_PROCEDIMENTO \n        from \n            db tmp \n        where \n            tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n            and db.smm_num_pai = tmp.NR_ATENDIMENTO\n        ) end as DS_PROCEDIMENTO_PRINCIPAL\n    ,QT_PROCEDIMENTO\n    ,(select \n        sum(VL_PROCEDIMENTO) \n    from \n        db tmp \n    where \n        tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n        and (smm_pacote IS NULL OR ( smm_pacote = 'C' )) \n        and smm_sfat not in ('C')\n    ) AS VL_CONTA \n    ,VL_PROCEDIMENTO\n    ,IE_STATUS_ACERTO\n    ,IE_STATUS_CONTA\n    ,CD_TUSS\n    ,DS_CLASSIF_LIO\n    -- ,smm_rci_serie\n    -- ,smm_rci_num\n    -- ,smm_p_osm_serie\n    -- ,smm_p_osm_num\nfrom \n    db\nwhere\n    1 = 1\n    and VL_PROCEDIMENTO <> 0\n    and (smm_pacote IS NULL OR ( smm_pacote = 'C' )) \n    and smm_sfat not in ('C')",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBatchSize": 10000,
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MARCA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MARCA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_ATENDIMENTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "NR_ATENDIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "NS_REGISTRO_UNICO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_REGISTRO_UNICO",
+											"type": "Int64"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_INTERNO_CONTA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_INTERNO_CONTA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CPF",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CPF",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_SEXO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "IE_SEXO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CEP",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CEP",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_CONVENIO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_ORIGEM_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "IE_ORIGEM_PROCED",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "Int64"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSIF_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSIF_PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Decimal"
+										},
+										"sink": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_CONTA",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_CONTA",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_STATUS_CONTA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "STATUS_CONTA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_TUSS",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_TUSS",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITAIGARA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSqlTEMPTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "SMART_INOB_CopyData",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "WITH db as (\n    select \n        'Smart INOB' as BASE\n        ,3 as CD_MARCA\n        ,'DAYHORC' as DS_MARCA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) AS NS_REGISTRO_UNICO --duvida\n        ,smm_dthr_alter as DT_ATUALIZACAO \n        ,osm_dthr as DT_ENTRADA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_INTERNO_CONTA --duvida\n        ,smm_num as NR_ATENDIMENTO\n        ,case ltrim(str_emp.str_cod) \n            when '18' then 7\n            when '9' then 7\n            when '13' then 7\n            when 'SCL' then 7\n            when '901' then 7\n            when 'IOF' then 7\n            when '13' then 8\n            when 'DHI' then 9\n        end as CD_ESTABELECIMENTO\n        ,case ltrim(str_emp.str_cod) \n            when '18' then 'HBA'\n            when '9' then 'HBA'\n            when '13' then 'HBA'\n            when 'SCL' then 'HBA'\n            when '901' then 'HBA'\n            when 'IOF' then 'HBA'\n            when '13' then 'Itaigara'\n            when 'DHI' then 'Itabuna'\n        end as DS_ESTABELECIMENTO\n        ,osm_pac as CD_PESSOA_FISICA\n        ,pac_nasc as DT_NASCIMENTO\n        ,pac_numcpf as NR_CPF\n        ,pac_sexo as IE_SEXO\n        ,pac_cep as NR_CEP\n        ,case \n            when isnumeric(pac_cid) = 1 then (select cde_nome from cde where cde_cod = pac_cid)\n        else pac_cid end as DS_CIDADE\n        ,pac_nome as DS_PESSOA_FISICA\n        ,cnv_cod as CD_CONVENIO\n        ,cnv_nome as DS_CONVENIO\n        ,psv_exe.psv_cod as CD_MEDICO_EXECUTOR\n        ,psv_exe.psv_apel as DS_MEDICO_EXECUTOR\n        ,psv_req.psv_cod as CD_MEDICO_REQUISITANTE\n        ,psv_req.psv_apel as DS_MEDICO_REQUISITANTE\n        ,isnull(tab_padrao,'') as IE_ORIGEM_PROCEDIMENTO\n        ,smm_cod as CD_PROCEDIMENTO\n        ,smk_rot as DS_PROCEDIMENTO\n        ,case ctf_categ \n            when 'C' then 'Consulta'\n            when 'E' then 'Exames'\n            when 'R' then 'Cirurgia'\n            when 'T' then 'Taxas'\n            when 'A' then 'Terapia'\n            when 'O' then 'Outras'\n            when 'M' then 'Materiais'\n            when 'S' then 'Materiais Especiais'\n            when 'N' then 'Medicamentos'\n            when 'G' then 'Gases'\n            when 'O' then 'Outros'\n        end as DS_CLASSIF_PROCEDIMENTO\n        ,smm_qt as QT_PROCEDIMENTO\n        ,smm_vlr + isnull(smm_ajuste_vlr,0) as VL_PROCEDIMENTO\n        ,case \n            when smm_fat_serie is not null then 2\n        else 1 end AS IE_STATUS_ACERTO\n        ,case \n            when smm_fat_serie is not null then 'Definitivo'\n        else 'Provisório' end as IE_STATUS_CONTA\n        ,'' as CD_TUSS \n        ,'' DS_CLASSIF_LIO\n        ,smm_sfat\n        ,smm_pacote\n        ,smm_num_pai\n        ,smm_p_osm_serie\n        ,smm_p_osm_num\n        ,smm_p_smm_num\n        ,smm_hsp_num\n        ,smm_rci_serie\n        ,smm_rci_num\n    from \n        osm\n        inner join smm on (\n            smm_osm_serie = osm_serie\n            and smm_osm = osm_num\n        )\n        inner join str str_osm on (\n            str_osm.str_cod = osm_str\n        )\n        inner join str str_emp on (\n            str_osm.str_str_cod = str_emp.str_cod\n        )\n        inner join pac on (\n            pac_reg = osm_pac\n        )\n        inner join cnv on (\n            cnv_cod = osm_cnv\n        )\n        inner join psv psv_exe on (\n            psv_exe.psv_cod = smm_med\n        )\n        inner join psv psv_req on (\n            psv_req.psv_cod = smm_med\n        )\n        inner join smk on (\n            smk_cod = smm_cod\n            and smk_tipo = smm_tpcod\n        )\n        inner join ctf on (\n            ctf_cod = smk_ctf\n            and ctf_tipo = smk_tipo\n        )\n        left outer join tab on (\n            tab_cod = smm_tab_cod\n        )\n    where \n        1 = 1\n        and osm_dthr >= '2019-02-26'\n        and osm_dthr <= '2019-02-26 23:59:000'\n)\n\nselect \n    CD_MARCA\n    ,DS_MARCA\n    ,NS_REGISTRO_UNICO\n    ,DT_ATUALIZACAO\n    ,DT_ENTRADA\n    ,NR_INTERNO_CONTA\n    ,NR_ATENDIMENTO\n    ,CD_ESTABELECIMENTO\n    ,DS_ESTABELECIMENTO\n    ,CD_PESSOA_FISICA\n    ,DT_NASCIMENTO\n    ,NR_CPF\n    ,IE_SEXO\n    ,NR_CEP\n    ,DS_CIDADE\n    ,DS_PESSOA_FISICA\n    ,CD_CONVENIO\n    ,DS_CONVENIO\n    ,CD_MEDICO_EXECUTOR\n    ,DS_MEDICO_EXECUTOR\n    ,CD_MEDICO_REQUISITANTE\n    ,DS_MEDICO_REQUISITANTE\n    ,IE_ORIGEM_PROCEDIMENTO\n    ,CD_PROCEDIMENTO\n    ,DS_PROCEDIMENTO\n    ,DS_CLASSIF_PROCEDIMENTO\n    ,case \n        when smm_num_pai is null then DS_PROCEDIMENTO\n    else (select    \n            CD_PROCEDIMENTO \n        from \n            db tmp \n        where \n            tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n            and db.smm_num_pai = tmp.NR_ATENDIMENTO\n        ) end as CD_PROCEDIMENTO_PRINCIPAL\n    ,case \n        when smm_num_pai is null then DS_PROCEDIMENTO\n    else (select \n            DS_PROCEDIMENTO \n        from \n            db tmp \n        where \n            tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n            and db.smm_num_pai = tmp.NR_ATENDIMENTO\n        ) end as DS_PROCEDIMENTO_PRINCIPAL\n    ,QT_PROCEDIMENTO\n    ,(select \n        sum(VL_PROCEDIMENTO) \n    from \n        db tmp \n    where \n        tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n        and (smm_pacote IS NULL OR ( smm_pacote = 'C' )) \n        and smm_sfat not in ('C')\n    ) AS VL_CONTA \n    ,VL_PROCEDIMENTO\n    ,IE_STATUS_ACERTO\n    ,IE_STATUS_CONTA\n    ,CD_TUSS\n    ,DS_CLASSIF_LIO\n    -- ,smm_rci_serie\n    -- ,smm_rci_num\n    -- ,smm_p_osm_serie\n    -- ,smm_p_osm_num\nfrom \n    db\nwhere\n    1 = 1\n    and VL_PROCEDIMENTO <> 0\n    and (smm_pacote IS NULL OR ( smm_pacote = 'C' )) \n    and smm_sfat not in ('C')",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBatchSize": 10000,
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MARCA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MARCA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_ATENDIMENTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "NR_ATENDIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "NS_REGISTRO_UNICO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_REGISTRO_UNICO",
+											"type": "Int64"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_INTERNO_CONTA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_INTERNO_CONTA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CPF",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CPF",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_SEXO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "IE_SEXO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CEP",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CEP",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_CONVENIO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_ORIGEM_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "IE_ORIGEM_PROCED",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "Int64"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSIF_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSIF_PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Decimal"
+										},
+										"sink": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_CONTA",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_CONTA",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_STATUS_CONTA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "STATUS_CONTA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_TUSS",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_TUSS",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_INOB_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSqlTEMPTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "SMART_HOSL_CopyData",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "WITH db as (\n    select \n        'Smart HOSL' as BASE\n        ,3 as CD_MARCA\n        ,'DAYHORC' as DS_MARCA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) AS NS_REGISTRO_UNICO --duvida\n        ,smm_dthr_alter as DT_ATUALIZACAO \n        ,osm_dthr as DT_ENTRADA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_INTERNO_CONTA --duvida\n        ,smm_num as NR_ATENDIMENTO\n        ,case ltrim(str_emp.str_cod) \n            when '18' then 7\n            when '9' then 7\n            when '13' then 7\n            when 'SCL' then 7\n            when '901' then 7\n            when 'IOF' then 7\n            when '13' then 8\n            when 'DHI' then 9\n        end as CD_ESTABELECIMENTO\n        ,case ltrim(str_emp.str_cod) \n            when '18' then 'HBA'\n            when '9' then 'HBA'\n            when '13' then 'HBA'\n            when 'SCL' then 'HBA'\n            when '901' then 'HBA'\n            when 'IOF' then 'HBA'\n            when '13' then 'Itaigara'\n            when 'DHI' then 'Itabuna'\n        end as DS_ESTABELECIMENTO\n        ,osm_pac as CD_PESSOA_FISICA\n        ,pac_nasc as DT_NASCIMENTO\n        ,pac_numcpf as NR_CPF\n        ,pac_sexo as IE_SEXO\n        ,pac_cep as NR_CEP\n        ,case \n            when isnumeric(pac_cid) = 1 then (select cde_nome from cde where cde_cod = pac_cid)\n        else pac_cid end as DS_CIDADE\n        ,pac_nome as DS_PESSOA_FISICA\n        ,cnv_cod as CD_CONVENIO\n        ,cnv_nome as DS_CONVENIO\n        ,psv_exe.psv_cod as CD_MEDICO_EXECUTOR\n        ,psv_exe.psv_apel as DS_MEDICO_EXECUTOR\n        ,psv_req.psv_cod as CD_MEDICO_REQUISITANTE\n        ,psv_req.psv_apel as DS_MEDICO_REQUISITANTE\n        ,isnull(tab_padrao,'') as IE_ORIGEM_PROCEDIMENTO\n        ,smm_cod as CD_PROCEDIMENTO\n        ,smk_rot as DS_PROCEDIMENTO\n        ,case ctf_categ \n            when 'C' then 'Consulta'\n            when 'E' then 'Exames'\n            when 'R' then 'Cirurgia'\n            when 'T' then 'Taxas'\n            when 'A' then 'Terapia'\n            when 'O' then 'Outras'\n            when 'M' then 'Materiais'\n            when 'S' then 'Materiais Especiais'\n            when 'N' then 'Medicamentos'\n            when 'G' then 'Gases'\n            when 'O' then 'Outros'\n        end as DS_CLASSIF_PROCEDIMENTO\n        ,smm_qt as QT_PROCEDIMENTO\n        ,smm_vlr + isnull(smm_ajuste_vlr,0) as VL_PROCEDIMENTO\n        ,case \n            when smm_fat_serie is not null then 2\n        else 1 end AS IE_STATUS_ACERTO\n        ,case \n            when smm_fat_serie is not null then 'Definitivo'\n        else 'Provisório' end as IE_STATUS_CONTA\n        ,'' as CD_TUSS \n        ,'' DS_CLASSIF_LIO\n        ,smm_sfat\n        ,smm_pacote\n        ,smm_num_pai\n        ,smm_p_osm_serie\n        ,smm_p_osm_num\n        ,smm_p_smm_num\n        ,smm_hsp_num\n        ,smm_rci_serie\n        ,smm_rci_num\n    from \n        osm\n        inner join smm on (\n            smm_osm_serie = osm_serie\n            and smm_osm = osm_num\n        )\n        inner join str str_osm on (\n            str_osm.str_cod = osm_str\n        )\n        inner join str str_emp on (\n            str_osm.str_str_cod = str_emp.str_cod\n        )\n        inner join pac on (\n            pac_reg = osm_pac\n        )\n        inner join cnv on (\n            cnv_cod = osm_cnv\n        )\n        inner join psv psv_exe on (\n            psv_exe.psv_cod = smm_med\n        )\n        inner join psv psv_req on (\n            psv_req.psv_cod = smm_med\n        )\n        inner join smk on (\n            smk_cod = smm_cod\n            and smk_tipo = smm_tpcod\n        )\n        inner join ctf on (\n            ctf_cod = smk_ctf\n            and ctf_tipo = smk_tipo\n        )\n        left outer join tab on (\n            tab_cod = smm_tab_cod\n        )\n    where \n        1 = 1\n        and osm_dthr >= '2019-02-26'\n        and osm_dthr <= '2019-02-26 23:59:000'\n)\n\nselect \n    CD_MARCA\n    ,DS_MARCA\n    ,NS_REGISTRO_UNICO\n    ,DT_ATUALIZACAO\n    ,DT_ENTRADA\n    ,NR_INTERNO_CONTA\n    ,NR_ATENDIMENTO\n    ,CD_ESTABELECIMENTO\n    ,DS_ESTABELECIMENTO\n    ,CD_PESSOA_FISICA\n    ,DT_NASCIMENTO\n    ,NR_CPF\n    ,IE_SEXO\n    ,NR_CEP\n    ,DS_CIDADE\n    ,DS_PESSOA_FISICA\n    ,CD_CONVENIO\n    ,DS_CONVENIO\n    ,CD_MEDICO_EXECUTOR\n    ,DS_MEDICO_EXECUTOR\n    ,CD_MEDICO_REQUISITANTE\n    ,DS_MEDICO_REQUISITANTE\n    ,IE_ORIGEM_PROCEDIMENTO\n    ,CD_PROCEDIMENTO\n    ,DS_PROCEDIMENTO\n    ,DS_CLASSIF_PROCEDIMENTO\n    ,case \n        when smm_num_pai is null then DS_PROCEDIMENTO\n    else (select    \n            CD_PROCEDIMENTO \n        from \n            db tmp \n        where \n            tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n            and db.smm_num_pai = tmp.NR_ATENDIMENTO\n        ) end as CD_PROCEDIMENTO_PRINCIPAL\n    ,case \n        when smm_num_pai is null then DS_PROCEDIMENTO\n    else (select \n            DS_PROCEDIMENTO \n        from \n            db tmp \n        where \n            tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n            and db.smm_num_pai = tmp.NR_ATENDIMENTO\n        ) end as DS_PROCEDIMENTO_PRINCIPAL\n    ,QT_PROCEDIMENTO\n    ,(select \n        sum(VL_PROCEDIMENTO) \n    from \n        db tmp \n    where \n        tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n        and (smm_pacote IS NULL OR ( smm_pacote = 'C' )) \n        and smm_sfat not in ('C')\n    ) AS VL_CONTA \n    ,VL_PROCEDIMENTO\n    ,IE_STATUS_ACERTO\n    ,IE_STATUS_CONTA\n    ,CD_TUSS\n    ,DS_CLASSIF_LIO\n    -- ,smm_rci_serie\n    -- ,smm_rci_num\n    -- ,smm_p_osm_serie\n    -- ,smm_p_osm_num\nfrom \n    db\nwhere\n    1 = 1\n    and VL_PROCEDIMENTO <> 0\n    and (smm_pacote IS NULL OR ( smm_pacote = 'C' )) \n    and smm_sfat not in ('C')",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBatchSize": 10000,
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MARCA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MARCA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_ATENDIMENTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "NR_ATENDIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "NS_REGISTRO_UNICO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_REGISTRO_UNICO",
+											"type": "Int64"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_INTERNO_CONTA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_INTERNO_CONTA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CPF",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CPF",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_SEXO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "IE_SEXO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CEP",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CEP",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_CONVENIO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_ORIGEM_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "IE_ORIGEM_PROCED",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "Int64"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSIF_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSIF_PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Decimal"
+										},
+										"sink": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_CONTA",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_CONTA",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_STATUS_CONTA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "STATUS_CONTA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_TUSS",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_TUSS",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_HOSL_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSqlTEMPTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "SMART_ITABUNA_CopyData",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "WITH db as (\n    select \n        'Smart DayHorc Itabuna' as BASE\n        ,3 as CD_MARCA\n        ,'DAYHORC' as DS_MARCA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) AS NS_REGISTRO_UNICO --duvida\n        ,smm_dthr_alter as DT_ATUALIZACAO \n        ,osm_dthr as DT_ENTRADA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_INTERNO_CONTA --duvida\n        ,smm_num as NR_ATENDIMENTO\n        ,case ltrim(str_emp.str_cod) \n            when '18' then 7\n            when '9' then 7\n            when '13' then 7\n            when 'SCL' then 7\n            when '901' then 7\n            when 'IOF' then 7\n            when '13' then 8\n            when 'DHI' then 9\n        end as CD_ESTABELECIMENTO\n        ,case ltrim(str_emp.str_cod) \n            when '18' then 'HBA'\n            when '9' then 'HBA'\n            when '13' then 'HBA'\n            when 'SCL' then 'HBA'\n            when '901' then 'HBA'\n            when 'IOF' then 'HBA'\n            when '13' then 'Itaigara'\n            when 'DHI' then 'Itabuna'\n        end as DS_ESTABELECIMENTO\n        ,osm_pac as CD_PESSOA_FISICA\n        ,pac_nasc as DT_NASCIMENTO\n        ,pac_numcpf as NR_CPF\n        ,pac_sexo as IE_SEXO\n        ,pac_cep as NR_CEP\n        ,case \n            when isnumeric(pac_cid) = 1 then (select cde_nome from cde where cde_cod = pac_cid)\n        else pac_cid end as DS_CIDADE\n        ,pac_nome as DS_PESSOA_FISICA\n        ,cnv_cod as CD_CONVENIO\n        ,cnv_nome as DS_CONVENIO\n        ,psv_exe.psv_cod as CD_MEDICO_EXECUTOR\n        ,psv_exe.psv_apel as DS_MEDICO_EXECUTOR\n        ,psv_req.psv_cod as CD_MEDICO_REQUISITANTE\n        ,psv_req.psv_apel as DS_MEDICO_REQUISITANTE\n        ,isnull(tab_padrao,'') as IE_ORIGEM_PROCEDIMENTO\n        ,smm_cod as CD_PROCEDIMENTO\n        ,smk_rot as DS_PROCEDIMENTO\n        ,case ctf_categ \n            when 'C' then 'Consulta'\n            when 'E' then 'Exames'\n            when 'R' then 'Cirurgia'\n            when 'T' then 'Taxas'\n            when 'A' then 'Terapia'\n            when 'O' then 'Outras'\n            when 'M' then 'Materiais'\n            when 'S' then 'Materiais Especiais'\n            when 'N' then 'Medicamentos'\n            when 'G' then 'Gases'\n            when 'O' then 'Outros'\n        end as DS_CLASSIF_PROCEDIMENTO\n        ,smm_qt as QT_PROCEDIMENTO\n        ,smm_vlr + isnull(smm_ajuste_vlr,0) as VL_PROCEDIMENTO\n        ,case \n            when smm_fat_serie is not null then 2\n        else 1 end AS IE_STATUS_ACERTO\n        ,case \n            when smm_fat_serie is not null then 'Definitivo'\n        else 'Provisório' end as IE_STATUS_CONTA\n        ,'' as CD_TUSS \n        ,'' DS_CLASSIF_LIO\n        ,smm_sfat\n        ,smm_pacote\n        ,smm_num_pai\n        ,smm_p_osm_serie\n        ,smm_p_osm_num\n        ,smm_p_smm_num\n        ,smm_hsp_num\n        ,smm_rci_serie\n        ,smm_rci_num\n    from \n        osm\n        inner join smm on (\n            smm_osm_serie = osm_serie\n            and smm_osm = osm_num\n        )\n        inner join str str_osm on (\n            str_osm.str_cod = osm_str\n        )\n        inner join str str_emp on (\n            str_osm.str_str_cod = str_emp.str_cod\n        )\n        inner join pac on (\n            pac_reg = osm_pac\n        )\n        inner join cnv on (\n            cnv_cod = osm_cnv\n        )\n        inner join psv psv_exe on (\n            psv_exe.psv_cod = smm_med\n        )\n        inner join psv psv_req on (\n            psv_req.psv_cod = smm_med\n        )\n        inner join smk on (\n            smk_cod = smm_cod\n            and smk_tipo = smm_tpcod\n        )\n        inner join ctf on (\n            ctf_cod = smk_ctf\n            and ctf_tipo = smk_tipo\n        )\n        left outer join tab on (\n            tab_cod = smm_tab_cod\n        )\n    where \n        1 = 1\n        and osm_dthr >= '2019-02-26'\n        and osm_dthr <= '2019-02-26 23:59:000'\n)\n\nselect \n    CD_MARCA\n    ,DS_MARCA\n    ,NS_REGISTRO_UNICO\n    ,DT_ATUALIZACAO\n    ,DT_ENTRADA\n    ,NR_INTERNO_CONTA\n    ,NR_ATENDIMENTO\n    ,CD_ESTABELECIMENTO\n    ,DS_ESTABELECIMENTO\n    ,CD_PESSOA_FISICA\n    ,DT_NASCIMENTO\n    ,NR_CPF\n    ,IE_SEXO\n    ,NR_CEP\n    ,DS_CIDADE\n    ,DS_PESSOA_FISICA\n    ,CD_CONVENIO\n    ,DS_CONVENIO\n    ,CD_MEDICO_EXECUTOR\n    ,DS_MEDICO_EXECUTOR\n    ,CD_MEDICO_REQUISITANTE\n    ,DS_MEDICO_REQUISITANTE\n    ,IE_ORIGEM_PROCEDIMENTO\n    ,CD_PROCEDIMENTO\n    ,DS_PROCEDIMENTO\n    ,DS_CLASSIF_PROCEDIMENTO\n    ,case \n        when smm_num_pai is null then DS_PROCEDIMENTO\n    else (select    \n            CD_PROCEDIMENTO \n        from \n            db tmp \n        where \n            tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n            and db.smm_num_pai = tmp.NR_ATENDIMENTO\n        ) end as CD_PROCEDIMENTO_PRINCIPAL\n    ,case \n        when smm_num_pai is null then DS_PROCEDIMENTO\n    else (select \n            DS_PROCEDIMENTO \n        from \n            db tmp \n        where \n            tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n            and db.smm_num_pai = tmp.NR_ATENDIMENTO\n        ) end as DS_PROCEDIMENTO_PRINCIPAL\n    ,QT_PROCEDIMENTO\n    ,(select \n        sum(VL_PROCEDIMENTO) \n    from \n        db tmp \n    where \n        tmp.NR_INTERNO_CONTA = db.NR_INTERNO_CONTA \n        and (smm_pacote IS NULL OR ( smm_pacote = 'C' )) \n        and smm_sfat not in ('C')\n    ) AS VL_CONTA \n    ,VL_PROCEDIMENTO\n    ,IE_STATUS_ACERTO\n    ,IE_STATUS_CONTA\n    ,CD_TUSS\n    ,DS_CLASSIF_LIO\n    -- ,smm_rci_serie\n    -- ,smm_rci_num\n    -- ,smm_p_osm_serie\n    -- ,smm_p_osm_num\nfrom \n    db\nwhere\n    1 = 1\n    and VL_PROCEDIMENTO <> 0\n    and (smm_pacote IS NULL OR ( smm_pacote = 'C' )) \n    and smm_sfat not in ('C')",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBatchSize": 10000,
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MARCA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MARCA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "MARCA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_ATENDIMENTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "NR_ATENDIMENTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "NS_REGISTRO_UNICO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_REGISTRO_UNICO",
+											"type": "Int64"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_ENTRADA",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_INTERNO_CONTA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_INTERNO_CONTA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_PESSOA_FISICA",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										},
+										"sink": {
+											"name": "DT_NASCIMENTO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CPF",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CPF",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_SEXO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "IE_SEXO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_CEP",
+											"type": "String"
+										},
+										"sink": {
+											"name": "NR_CEP",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CIDADE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PESSOA_FISICA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_CONVENIO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CONVENIO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MEDICO_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_EXECUTOR",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "CD_MEDICO_REQUISITANTE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_MEDICO_REQUISITANTE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_ORIGEM_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "IE_ORIGEM_PROCED",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_PROCEDIMENTO",
+											"type": "Int64"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSIF_PROCEDIMENTO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSIF_PROCEDIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Decimal"
+										},
+										"sink": {
+											"name": "QT_PROCEDIMENTO",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_CONTA",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_CONTA",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Double"
+										},
+										"sink": {
+											"name": "VL_PROCEDIMENTO",
+											"type": "Double"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										},
+										"sink": {
+											"name": "IE_STATUS_ACERTO",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_STATUS_CONTA",
+											"type": "String"
+										},
+										"sink": {
+											"name": "STATUS_CONTA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_TUSS",
+											"type": "String"
+										},
+										"sink": {
+											"name": "CD_TUSS",
+											"type": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										},
+										"sink": {
+											"name": "DS_CLASSIF_LIO",
+											"type": "String"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureSqlTEMPTable",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Producao Medica/Produção"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:26Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Posicao_Estoque')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Posicao Estoque HTML",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "select distinct \n    TO_CHAR(SLE.Dt_Mesano_Referencia,'YYYY-MM-DD')           AS MES_REF,\n    TO_CHAR(SLE.cd_estabelecimento)                          AS CD_ESTABELECIMENTO,\n    ESTB.nm_fantasia_estab                                   AS DS_ESTABELECIMENTO,\n    TO_CHAR(SLE.cd_local_estoque)                            AS CD_LOCAL_ESTOQUE,\n    LE.ds_local_estoque,\n    0                                                       AS CD_ALMOXERIFADO,\n    ''                                                      AS DS_ALMOXERIFADO,\n    CAST(SLE.cd_material AS INT)                            AS CD_MATERIAL,\n    MAT.ds_reduzida                                         AS DS_MATERIAL_SHORT,\n    TO_CHAR(MAT_C.CD_CLASSE_MATERIAL)                       AS CD_CLASSE_MATERIAL,    \n    MAT_C.ds_classe_material                                AS DS_CLASSE_MATERIAL,\n    TO_CHAR(MAT_GRP.CD_GRUPO_MATERIAL)                      AS CD_GRUPO_MATERIAL,\n    MAT_GRP.ds_grupo_material                               AS DS_GRUPO_MATERIAL,\n   -- ds_fabricante Fabricante,       \n    SLE.qt_estoque                                          AS QT_ESTOQUE,\n    ROUND(SLE.vl_custo_medio)                               AS VL_MED_UNIT,\n    ROUND(SLE.vl_custo_medio * QT_ESTOQUE,2)                AS VL_TOTAL,\n    TO_CHAR(MAT.IE_CONSIGNADO)                              AS IE_CONSIGNADO\n    from saldo_estoque SLE\n    \n    left join estabelecimento ESTB\n    on (SLE.cd_estabelecimento = ESTB.cd_estabelecimento)\n    \n    left join local_estoque LE\n    on (LE.cd_estabelecimento = SLE.cd_estabelecimento AND\n        LE.cd_local_estoque = SLE.cd_local_estoque)\n        \n    left join material MAT\n    on (SLE.cd_material = MAT.cd_material) \n    \n    left join material_familia MAT_F\n    on (MAT.nr_seq_familia = MAT_F.nr_sequencia)\n    \n    left join classe_material MAT_C\n    on (MAT.cd_classe_material = MAT_C.cd_classe_material)\n    \n    left join subgrupo_material MAT_SUB\n    on (MAT_C.cd_subgrupo_material = MAT_SUB.cd_subgrupo_material)\n    \n    left join grupo_material MAT_GRP\n    on (MAT_SUB.cd_grupo_material = MAT_GRP.cd_grupo_material)\n    \n    left join mat_fabricante MAT_FAB\n    on MAT.nr_seq_fabric =  MAT_FAB.nr_sequencia    \n  \n    --Where To_Char(SLE.Dt_Mesano_Referencia,'DD/MM/YYYY') = TO_CHAR(TRUNC(SYSDATE,'MM')-30,'DD/MM/YYYY')\n    Where To_Char(SLE.Dt_Mesano_Referencia,'DD/MM/YYYY') = TO_CHAR(TRUNC(SYSDATE,'MM'),'DD/MM/YYYY') ",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "DELETE FROM ESTOQUE_POSICAO\nWHERE MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE)",
+								"writeBehavior": "insert",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "MES_REF"
+										},
+										"sink": {
+											"name": "MES_REF",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ALMOXERIFADO"
+										},
+										"sink": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ALMOXERIFADO"
+										},
+										"sink": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_ESTOQUE"
+										},
+										"sink": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MED_UNIT"
+										},
+										"sink": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_TOTAL"
+										},
+										"sink": {
+											"name": "VL_TOTAL",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_CONSIGNADO"
+										},
+										"sink": {
+											"name": "IE_CONSIGNADO",
+											"type": "Int32"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_ESTOQUE_POSICAO",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Posicao Estoque Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Posicao Estoque HTML",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "select distinct \n    TO_CHAR(SLE.Dt_Mesano_Referencia,'YYYY-MM-DD')           AS MES_REF,\n    TO_CHAR(SLE.cd_estabelecimento)                          AS CD_ESTABELECIMENTO,\n    ESTB.nm_fantasia_estab                                   AS DS_ESTABELECIMENTO,\n    TO_CHAR(SLE.cd_local_estoque)                            AS CD_LOCAL_ESTOQUE,\n    LE.ds_local_estoque,\n    0                                                       AS CD_ALMOXERIFADO,\n    ''                                                      AS DS_ALMOXERIFADO,\n    CAST(SLE.cd_material AS INT)                            AS CD_MATERIAL,\n    MAT.ds_reduzida                                         AS DS_MATERIAL_SHORT,\n    TO_CHAR(MAT_C.CD_CLASSE_MATERIAL)                       AS CD_CLASSE_MATERIAL,    \n    MAT_C.ds_classe_material                                AS DS_CLASSE_MATERIAL,\n    TO_CHAR(MAT_GRP.CD_GRUPO_MATERIAL)                      AS CD_GRUPO_MATERIAL,\n    MAT_GRP.ds_grupo_material                               AS DS_GRUPO_MATERIAL,\n   -- ds_fabricante Fabricante,       \n    SLE.qt_estoque                                          AS QT_ESTOQUE,\n    ROUND(SLE.vl_custo_medio)                               AS VL_MED_UNIT,\n    ROUND(SLE.vl_custo_medio * QT_ESTOQUE,2)                AS VL_TOTAL,\n    TO_CHAR(MAT.IE_CONSIGNADO)                              AS IE_CONSIGNADO\n    from saldo_estoque SLE\n    \n    left join estabelecimento ESTB\n    on (SLE.cd_estabelecimento = ESTB.cd_estabelecimento)\n    \n    left join local_estoque LE\n    on (LE.cd_estabelecimento = SLE.cd_estabelecimento AND\n        LE.cd_local_estoque = SLE.cd_local_estoque)\n        \n    left join material MAT\n    on (SLE.cd_material = MAT.cd_material) \n    \n    left join material_familia MAT_F\n    on (MAT.nr_seq_familia = MAT_F.nr_sequencia)\n    \n    left join classe_material MAT_C\n    on (MAT.cd_classe_material = MAT_C.cd_classe_material)\n    \n    left join subgrupo_material MAT_SUB\n    on (MAT_C.cd_subgrupo_material = MAT_SUB.cd_subgrupo_material)\n    \n    left join grupo_material MAT_GRP\n    on (MAT_SUB.cd_grupo_material = MAT_GRP.cd_grupo_material)\n    \n    left join mat_fabricante MAT_FAB\n    on MAT.nr_seq_fabric =  MAT_FAB.nr_sequencia    \n  \n    --Where To_Char(SLE.Dt_Mesano_Referencia,'DD/MM/YYYY') = TO_CHAR(TRUNC(SYSDATE,'MM')-30,'DD/MM/YYYY')\n    Where To_Char(SLE.Dt_Mesano_Referencia,'DD/MM/YYYY') = TO_CHAR(TRUNC(SYSDATE,'MM'),'DD/MM/YYYY') ",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "MES_REF"
+										},
+										"sink": {
+											"name": "MES_REF",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ALMOXERIFADO"
+										},
+										"sink": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ALMOXERIFADO"
+										},
+										"sink": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_ESTOQUE"
+										},
+										"sink": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MED_UNIT"
+										},
+										"sink": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_TOTAL"
+										},
+										"sink": {
+											"name": "VL_TOTAL",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_CONSIGNADO"
+										},
+										"sink": {
+											"name": "IE_CONSIGNADO",
+											"type": "Int32"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_ESTOQUE_POSICAO",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Posicao DH ITG",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Posicao Estoque Sadalla",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\nWITH AUX AS(\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE) AS estoque\n    , ROUND((\n            SUM(CASE \n                    WHEN etq.etq_cml_preco_medio IS NULL\n                        THEN 0\n                    ELSE etq.etq_cml_preco_medio\n                    END * etq.etq_quantidade) / SUM(ETQ.ETQ_QUANTIDADE)\n            ) * 1.0000000000, 10) etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10) AS valor_total\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END AS consignado\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n   \nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) <> 0\n\nUNION ALL\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE)\n    , mat.mat_vlr_pm etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10)\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n\nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) = 0\n\nUNION ALL\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , sum(mma_qtd * mma_tipo_es_fator * - 1)\n    , 0\n    , ROUND(sum(mma_valor * mma_tipo_es_fator * - 1), 10)\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN mma.mma_ind_consig = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END AS consignado\n    , MMA.MMA_IND_APLIC_DIRETA\nFROM MMA (nolock)\nLEFT OUTER JOIN ETQ  (nolock)  ON (mma.mma_mat_cod = etq.etq_mat_cod AND mma.mma_sba_cod = etq.etq_sba_cod)\n        , MAT   (nolock)\n        , cfg   (nolock)\n        , gmm   (nolock)\n        , LMA   (nolock)   \n-- WHERE (cast(mma.mma_data_mov as date) BETWEEN '2021-04-01' and '2021-04-30')\nWHERE (cast(mma.mma_data_mov as date) >= @MES_REF)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (MMA.MMA_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (gmm.gmm_cod = mma.mma_gmm_cod)\n    AND (7 = 7)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN mma.mma_ind_consig = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MMA.MMA_IND_APLIC_DIRETA\n\n)\n\nSELECT \n    @MES_REF                                                                                AS MES_REF,\n    GCC.gcc_cod                                                                             AS CD_ESTABELECIMENTO,\n    GCC.gcc_descr                                                                           AS DS_ESTABELECIMENTO,\n    STR.str_cod                                                                             AS CD_LOCAL_ESTOQUE,\n    STR.str_nome                                                                            AS DS_LOCAL_ESTOQUE,\n    SBA_COD                                                                                 as CD_ALMOXERIFADO,\n    SBA_NOME                                                                                AS DS_ALMOXERIFADO,\n    A.MAT_COD                                                                               AS CD_MATERIAL\n    ,A.MAT_DESC_RESUMIDA                                                                    AS DS_MATERIAL_SHORT\n    ,A.LMA_COD                                                                              AS CD_CLASSE_MATERIAL\n    ,A.LMA_NOME                                                                             AS DS_CLASSE_MATERIAL\n    ,A.gmm_cod                                                                              AS CD_GRUPO_MATERIAL\n    ,A.gmm_nome                                                                             AS DS_GRUPO_MATERIAL\n    ,A.estoque                                                                              AS QT_ESTOQUE\n    ,A.etq_etq_cml_preco_medio                                                              AS VL_MED_UNIT\n    ,A.valor_total                                                                          AS VL_TOTAL\n    ,A.consignado                                                                           AS IE_CONSIGNADO\nFROM AUX A  \nLEFT JOIN SBA SBA (NOLOCK) ON SBA.SBA_COD = A.etq_sba_cod\nLEFT JOIN STR STR (NOLOCK) ON STR.str_cod = SBA.SBA_STR_COD\nLEFT JOIN GCC GCC (NOLOCK) ON GCC.gcc_str_cod = STR.str_str_cod ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "MES_REF",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "MES_REF",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 38
+										},
+										"sink": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 7,
+											"precision": 38
+										},
+										"sink": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_TOTAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 10,
+											"precision": 38
+										},
+										"sink": {
+											"name": "VL_TOTAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "IE_CONSIGNADO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "IE_CONSIGNADO",
+											"type": "Int32",
+											"physicalType": "int"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITAIGARA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_ESTOQUE_POSICAO",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Posicao DH ITB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Posicao DH ITG",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\nWITH AUX AS(\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE) AS estoque\n    , ROUND((\n            SUM(CASE \n                    WHEN etq.etq_cml_preco_medio IS NULL\n                        THEN 0\n                    ELSE etq.etq_cml_preco_medio\n                    END * etq.etq_quantidade) / SUM(ETQ.ETQ_QUANTIDADE)\n            ) * 1.0000000000, 10) etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10) AS valor_total\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END AS consignado\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n   \nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) <> 0\n\nUNION ALL\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE)\n    , mat.mat_vlr_pm etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10)\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n\nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) = 0\n\nUNION ALL\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , sum(mma_qtd * mma_tipo_es_fator * - 1)\n    , 0\n    , ROUND(sum(mma_valor * mma_tipo_es_fator * - 1), 10)\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN mma.mma_ind_consig = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END AS consignado\n    , MMA.MMA_IND_APLIC_DIRETA\nFROM MMA (nolock)\nLEFT OUTER JOIN ETQ  (nolock)  ON (mma.mma_mat_cod = etq.etq_mat_cod AND mma.mma_sba_cod = etq.etq_sba_cod)\n        , MAT   (nolock)\n        , cfg   (nolock)\n        , gmm   (nolock)\n        , LMA   (nolock)   \n-- WHERE (cast(mma.mma_data_mov as date) BETWEEN '2021-04-01' and '2021-04-30')\nWHERE (cast(mma.mma_data_mov as date) >= @MES_REF)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (MMA.MMA_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (gmm.gmm_cod = mma.mma_gmm_cod)\n    AND (7 = 7)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN mma.mma_ind_consig = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MMA.MMA_IND_APLIC_DIRETA\n\n)\n\nSELECT \n    @MES_REF                                                                                AS MES_REF,\n    GCC.gcc_cod                                                                             AS CD_ESTABELECIMENTO,\n    GCC.gcc_descr                                                                           AS DS_ESTABELECIMENTO,\n    STR.str_cod                                                                             AS CD_LOCAL_ESTOQUE,\n    STR.str_nome                                                                            AS DS_LOCAL_ESTOQUE,\n    SBA_COD                                                                                 as CD_ALMOXERIFADO,\n    SBA_NOME                                                                                AS DS_ALMOXERIFADO,\n    A.MAT_COD                                                                               AS CD_MATERIAL\n    ,A.MAT_DESC_RESUMIDA                                                                    AS DS_MATERIAL_SHORT\n    ,A.LMA_COD                                                                              AS CD_CLASSE_MATERIAL\n    ,A.LMA_NOME                                                                             AS DS_CLASSE_MATERIAL\n    ,A.gmm_cod                                                                              AS CD_GRUPO_MATERIAL\n    ,A.gmm_nome                                                                             AS DS_GRUPO_MATERIAL\n    ,A.estoque                                                                              AS QT_ESTOQUE\n    ,A.etq_etq_cml_preco_medio                                                              AS VL_MED_UNIT\n    ,A.valor_total                                                                          AS VL_TOTAL\n    ,A.consignado                                                                           AS IE_CONSIGNADO\nFROM AUX A  \nLEFT JOIN SBA SBA (NOLOCK) ON SBA.SBA_COD = A.etq_sba_cod\nLEFT JOIN STR STR (NOLOCK) ON STR.str_cod = SBA.SBA_STR_COD\nLEFT JOIN GCC GCC (NOLOCK) ON GCC.gcc_str_cod = STR.str_str_cod ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "MES_REF",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "MES_REF",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 38
+										},
+										"sink": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 7,
+											"precision": 38
+										},
+										"sink": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_TOTAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 10,
+											"precision": 38
+										},
+										"sink": {
+											"name": "VL_TOTAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "IE_CONSIGNADO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "IE_CONSIGNADO",
+											"type": "Int32",
+											"physicalType": "int"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_ESTOQUE_POSICAO",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Posicao HOSL",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Posicao DH ITB",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\nWITH AUX AS(\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE) AS estoque\n    , ROUND((\n            SUM(CASE \n                    WHEN etq.etq_cml_preco_medio IS NULL\n                        THEN 0\n                    ELSE etq.etq_cml_preco_medio\n                    END * etq.etq_quantidade) / SUM(ETQ.ETQ_QUANTIDADE)\n            ) * 1.0000000000, 10) etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10) AS valor_total\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END AS consignado\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n   \nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) <> 0\n\nUNION ALL\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE)\n    , mat.mat_vlr_pm etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10)\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n\nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) = 0\n\nUNION ALL\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , sum(mma_qtd * mma_tipo_es_fator * - 1)\n    , 0\n    , ROUND(sum(mma_valor * mma_tipo_es_fator * - 1), 10)\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN mma.mma_ind_consig = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END AS consignado\n    , MMA.MMA_IND_APLIC_DIRETA\nFROM MMA (nolock)\nLEFT OUTER JOIN ETQ  (nolock)  ON (mma.mma_mat_cod = etq.etq_mat_cod AND mma.mma_sba_cod = etq.etq_sba_cod)\n        , MAT   (nolock)\n        , cfg   (nolock)\n        , gmm   (nolock)\n        , LMA   (nolock)   \n-- WHERE (cast(mma.mma_data_mov as date) BETWEEN '2021-04-01' and '2021-04-30')\nWHERE (cast(mma.mma_data_mov as date) >= @MES_REF)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (MMA.MMA_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (gmm.gmm_cod = mma.mma_gmm_cod)\n    AND (7 = 7)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN mma.mma_ind_consig = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MMA.MMA_IND_APLIC_DIRETA\n\n)\n\nSELECT \n    @MES_REF                                                                                AS MES_REF,\n    GCC.gcc_cod                                                                             AS CD_ESTABELECIMENTO,\n    GCC.gcc_descr                                                                           AS DS_ESTABELECIMENTO,\n    STR.str_cod                                                                             AS CD_LOCAL_ESTOQUE,\n    STR.str_nome                                                                            AS DS_LOCAL_ESTOQUE,\n    SBA_COD                                                                                 as CD_ALMOXERIFADO,\n    SBA_NOME                                                                                AS DS_ALMOXERIFADO,\n    A.MAT_COD                                                                               AS CD_MATERIAL\n    ,A.MAT_DESC_RESUMIDA                                                                    AS DS_MATERIAL_SHORT\n    ,A.LMA_COD                                                                              AS CD_CLASSE_MATERIAL\n    ,A.LMA_NOME                                                                             AS DS_CLASSE_MATERIAL\n    ,A.gmm_cod                                                                              AS CD_GRUPO_MATERIAL\n    ,A.gmm_nome                                                                             AS DS_GRUPO_MATERIAL\n    ,A.estoque                                                                              AS QT_ESTOQUE\n    ,A.etq_etq_cml_preco_medio                                                              AS VL_MED_UNIT\n    ,A.valor_total                                                                          AS VL_TOTAL\n    ,A.consignado                                                                           AS IE_CONSIGNADO\nFROM AUX A  \nLEFT JOIN SBA SBA (NOLOCK) ON SBA.SBA_COD = A.etq_sba_cod\nLEFT JOIN STR STR (NOLOCK) ON STR.str_cod = SBA.SBA_STR_COD\nLEFT JOIN GCC GCC (NOLOCK) ON GCC.gcc_str_cod = STR.str_str_cod ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "MES_REF",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "MES_REF",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 38
+										},
+										"sink": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 7,
+											"precision": 38
+										},
+										"sink": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_TOTAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 10,
+											"precision": 38
+										},
+										"sink": {
+											"name": "VL_TOTAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "IE_CONSIGNADO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "IE_CONSIGNADO",
+											"type": "Int32",
+											"physicalType": "int"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_HOSL_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_ESTOQUE_POSICAO",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Posicao Oftalmoclin",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Posicao HOSL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\nWITH AUX AS(\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE) AS estoque\n    , ROUND((\n            SUM(CASE \n                    WHEN etq.etq_cml_preco_medio IS NULL\n                        THEN 0\n                    ELSE etq.etq_cml_preco_medio\n                    END * etq.etq_quantidade) / SUM(ETQ.ETQ_QUANTIDADE)\n            ) * 1.0000000000, 10) etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10) AS valor_total\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END AS consignado\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n   \nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) <> 0\n\nUNION ALL\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE)\n    , mat.mat_vlr_pm etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10)\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n\nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) = 0\n\nUNION ALL\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , sum(mma_qtd * mma_tipo_es_fator * - 1)\n    , 0\n    , ROUND(sum(mma_valor * mma_tipo_es_fator * - 1), 10)\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN mma.mma_ind_consig = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END AS consignado\n    , MMA.MMA_IND_APLIC_DIRETA\nFROM MMA (nolock)\nLEFT OUTER JOIN ETQ  (nolock)  ON (mma.mma_mat_cod = etq.etq_mat_cod AND mma.mma_sba_cod = etq.etq_sba_cod)\n        , MAT   (nolock)\n        , cfg   (nolock)\n        , gmm   (nolock)\n        , LMA   (nolock)   \n-- WHERE (cast(mma.mma_data_mov as date) BETWEEN '2021-04-01' and '2021-04-30')\nWHERE (cast(mma.mma_data_mov as date) >= @MES_REF)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (MMA.MMA_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (gmm.gmm_cod = mma.mma_gmm_cod)\n    AND (7 = 7)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN mma.mma_ind_consig = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MMA.MMA_IND_APLIC_DIRETA\n\n)\n\nSELECT \n    @MES_REF                                                                                AS MES_REF,\n    GCC.gcc_cod                                                                             AS CD_ESTABELECIMENTO,\n    GCC.gcc_descr                                                                           AS DS_ESTABELECIMENTO,\n    STR.str_cod                                                                             AS CD_LOCAL_ESTOQUE,\n    STR.str_nome                                                                            AS DS_LOCAL_ESTOQUE,\n    SBA_COD                                                                                 as CD_ALMOXERIFADO,\n    SBA_NOME                                                                                AS DS_ALMOXERIFADO,\n    A.MAT_COD                                                                               AS CD_MATERIAL\n    ,A.MAT_DESC_RESUMIDA                                                                    AS DS_MATERIAL_SHORT\n    ,A.LMA_COD                                                                              AS CD_CLASSE_MATERIAL\n    ,A.LMA_NOME                                                                             AS DS_CLASSE_MATERIAL\n    ,A.gmm_cod                                                                              AS CD_GRUPO_MATERIAL\n    ,A.gmm_nome                                                                             AS DS_GRUPO_MATERIAL\n    ,A.estoque                                                                              AS QT_ESTOQUE\n    ,A.etq_etq_cml_preco_medio                                                              AS VL_MED_UNIT\n    ,A.valor_total                                                                          AS VL_TOTAL\n    ,A.consignado                                                                           AS IE_CONSIGNADO\nFROM AUX A  \nLEFT JOIN SBA SBA (NOLOCK) ON SBA.SBA_COD = A.etq_sba_cod\nLEFT JOIN STR STR (NOLOCK) ON STR.str_cod = SBA.SBA_STR_COD\nLEFT JOIN GCC GCC (NOLOCK) ON GCC.gcc_str_cod = STR.str_str_cod ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "MES_REF",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "MES_REF",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 38
+										},
+										"sink": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 7,
+											"precision": 38
+										},
+										"sink": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_TOTAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 10,
+											"precision": 38
+										},
+										"sink": {
+											"name": "VL_TOTAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "IE_CONSIGNADO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "IE_CONSIGNADO",
+											"type": "Int32",
+											"physicalType": "int"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_ESTOQUE_POSICAO",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Posicao IOF",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Posicao Oftalmoclin",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF = CAST(SUBSTRING(CAST(CAST(GETDATE() AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE);\n\nWITH AUX AS(\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE) AS estoque\n    , ROUND((\n            SUM(CASE \n                    WHEN etq.etq_cml_preco_medio IS NULL\n                        THEN 0\n                    ELSE etq.etq_cml_preco_medio\n                    END * etq.etq_quantidade) / SUM(ETQ.ETQ_QUANTIDADE)\n            ) * 1.0000000000, 10) etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10) AS valor_total\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END AS consignado\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n   \nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) <> 0\n\nUNION ALL\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE)\n    , mat.mat_vlr_pm etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10)\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n\nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN MAT.MAT_IND_CONSIGNADO = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) = 0\n\nUNION ALL\n\nSELECT \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , sum(mma_qtd * mma_tipo_es_fator * - 1)\n    , 0\n    , ROUND(sum(mma_valor * mma_tipo_es_fator * - 1), 10)\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN mma.mma_ind_consig = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END AS consignado\n    , MMA.MMA_IND_APLIC_DIRETA\nFROM MMA (nolock)\nLEFT OUTER JOIN ETQ  (nolock)  ON (mma.mma_mat_cod = etq.etq_mat_cod AND mma.mma_sba_cod = etq.etq_sba_cod)\n        , MAT   (nolock)\n        , cfg   (nolock)\n        , gmm   (nolock)\n        , LMA   (nolock)   \n-- WHERE (cast(mma.mma_data_mov as date) BETWEEN '2021-04-01' and '2021-04-30')\nWHERE (cast(mma.mma_data_mov as date) >= @MES_REF)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (MMA.MMA_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (gmm.gmm_cod = mma.mma_gmm_cod)\n    AND (7 = 7)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    , CASE \n        WHEN mma.mma_ind_consig = 'S'\n            THEN 'S'\n        ELSE 'N'\n        END\n    , MMA.MMA_IND_APLIC_DIRETA\n\n)\n\nSELECT \n    @MES_REF                                                                                AS MES_REF,\n    GCC.gcc_cod                                                                             AS CD_ESTABELECIMENTO,\n    GCC.gcc_descr                                                                           AS DS_ESTABELECIMENTO,\n    STR.str_cod                                                                             AS CD_LOCAL_ESTOQUE,\n    STR.str_nome                                                                            AS DS_LOCAL_ESTOQUE,\n    SBA_COD                                                                                 as CD_ALMOXERIFADO,\n    SBA_NOME                                                                                AS DS_ALMOXERIFADO,\n    A.MAT_COD                                                                               AS CD_MATERIAL\n    ,A.MAT_DESC_RESUMIDA                                                                    AS DS_MATERIAL_SHORT\n    ,A.LMA_COD                                                                              AS CD_CLASSE_MATERIAL\n    ,A.LMA_NOME                                                                             AS DS_CLASSE_MATERIAL\n    ,A.gmm_cod                                                                              AS CD_GRUPO_MATERIAL\n    ,A.gmm_nome                                                                             AS DS_GRUPO_MATERIAL\n    ,A.estoque                                                                              AS QT_ESTOQUE\n    ,A.etq_etq_cml_preco_medio                                                              AS VL_MED_UNIT\n    ,A.valor_total                                                                          AS VL_TOTAL\n    ,A.consignado                                                                           AS IE_CONSIGNADO\nFROM AUX A  \nLEFT JOIN SBA SBA (NOLOCK) ON SBA.SBA_COD = A.etq_sba_cod\nLEFT JOIN STR STR (NOLOCK) ON STR.str_cod = SBA.SBA_STR_COD\nLEFT JOIN GCC GCC (NOLOCK) ON GCC.gcc_str_cod = STR.str_str_cod ",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "MES_REF",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "MES_REF",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_ALMOXERIFADO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 38
+										},
+										"sink": {
+											"name": "QT_ESTOQUE",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 7,
+											"precision": 38
+										},
+										"sink": {
+											"name": "VL_MED_UNIT",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_TOTAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 10,
+											"precision": 38
+										},
+										"sink": {
+											"name": "VL_TOTAL",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "IE_CONSIGNADO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "IE_CONSIGNADO",
+											"type": "Int32",
+											"physicalType": "int"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_IOF_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_ESTOQUE_POSICAO",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Estoque"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-07-20T18:04:45Z"
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Producao Medica Sadalla')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -7118,261 +11007,6 @@
 				},
 				"annotations": [],
 				"lastPublishTime": "2020-10-23T20:59:08Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Producao Medica Oftalmoclin')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Pipeline desenvolvido para extração de informações de produção medica das unidades com o sistema Tasy e Smart.",
-				"activities": [
-					{
-						"name": "Wait1",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					},
-					{
-						"name": "Producao Procedimentos Oftamoclin",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "select \n        'Oftalmoclin' as BASE\n        ,EMP_CGC as CNPJ\n        ,gcc.gcc_descr as MARCA\n        ,smm_dthr_alter as DT_ATUALIZACAO \n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_ATENDIMENTO --duvida\n        ,osm_dthr as DT_ENTRADA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_INTERNO_CONTA --duvida\n        ,osm_pac as CD_PESSOA_FISICA\n        ,pac_nasc as DT_NASCIMENTO\n        ,pac_numcpf as NR_CPF\n        ,pac_sexo as IE_SEXO\n        ,pac_cep as NR_CEP\n        ,case \n            when isnumeric(pac_cid) = 1 then (select cde_nome from cde where cde_cod = pac_cid)\n        else pac_cid end as DS_CIDADE\n        ,pac_nome as DS_PESSOA_FISICA\n        ,cnv_cod as CD_CONVENIO\n        ,cnv_nome as DS_CONVENIO\n        ,psv_exe.psv_cod as CD_MEDICO_EXECUTOR\n        ,psv_exe.psv_apel as DS_MEDICO_EXECUTOR\n        ,psv_req.psv_cod as CD_MEDICO_REQUISITANTE\n        ,psv_req.psv_apel as DS_MEDICO_REQUISITANTE\n        ,isnull(tab_padrao,0) as IE_ORIGEM_PROCEDIMENTO\n        ,smm_cod as CD_PROCEDIMENTO\n        ,smk_rot as DS_PROCEDIMENTO\n        ,case ctf_categ \n            when 'C' then 'Consulta'\n            when 'E' then 'Exames'\n            when 'R' then 'Cirurgia'\n            when 'T' then 'Taxas'\n            when 'A' then 'Terapia'\n            when 'O' then 'Outras'\n            when 'M' then 'Materiais'\n            when 'S' then 'Materiais Especiais'\n            when 'N' then 'Medicamentos'\n            when 'G' then 'Gases'\n            when 'O' then 'Outros'\n        end as DS_CLASSIFICACAO\n        ,smm_qt as QT_PROCEDIMENTO\n        ,smm_vlr + isnull(smm_ajuste_vlr,0) as VL_PROCEDIMENTO\n        ,case \n            when smm_fat_serie is not null then 2\n        else 1 end AS IE_STATUS_ACERTO\n        ,case \n            when smm_fat_serie is not null then 'Definitivo'\n        else 'Provisório' end as STATUS_CONTA\n        ,0 as CD_TUSS,\n        0 as NR_SEQ_PROC_INTERNO\n    from \n        osm\n        inner join smm on (smm_osm_serie = osm_serie and smm_osm = osm_num)\n        inner join str str_osm on (str_osm.str_cod = osm_str)\n        inner join str str_emp on (str_osm.str_str_cod = str_emp.str_cod)\n        inner join pac on (pac_reg = osm_pac)\n        inner join cnv on (cnv_cod = osm_cnv)\n        inner join psv psv_exe on (psv_exe.psv_cod = smm_med)\n        inner join psv psv_req on (psv_req.psv_cod = smm_med)\n        inner join smk on (smk_cod = smm_cod and smk_tipo = smm_tpcod)\n        inner join ctf on (ctf_cod = smk_ctf and ctf_tipo = smk_tipo)\n        \n        inner join emp ON (emp_cod = str_emp.str_emp_cod)\n        inner join gcc ON (gcc_str_cod = str_emp.str_cod)\n\n        left outer join tab on (tab_cod = smm_tab_cod)\n        \n    where \n        1 = 1\n        and convert(varchar(10), osm_dthr, 103) = convert(varchar(10), getdate(), 103)\nand osm_dthr between GETDATE() - 730 and GETDATE()",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Unidade_Producao_Medica",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Convenios",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "select cnv_cod AS CD_CONVENIO, cnv.cnv_nome AS DS_CONVENIO, gcc.gcc_cod AS CD_ESTABELECIMENTO, emp.emp_cgc AS CNPJ\nfrom cnv,\n     gcc,\n     str,\n     emp\nwhere gcc.gcc_str_cod = str_cod\nand str_emp_cod = emp_cod\nand emp_cgc <> '-'\nand cnv_cod <> '999'\nand cnv_stat = 'A'",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Convenio",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Setor",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "SELECT STR_COD AS CD_SETOR_ATENDIMENTO, \nSTR_NOME AS DS_SETOR_ATENDIMENTO, \nEMP_CGC AS CNPJ\nFROM STR, EMP\nWHERE STR_EMP_COD = EMP_COD\nAND EMP_CGC <> '-'\nAND STR_COD <> '999'",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Setor",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Execute Sadalla",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "Producao Procedimentos Oftamoclin",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Convenios",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Setor",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "Producao Medica Sadalla",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Produção Médica CSI"
-				},
-				"annotations": [],
-				"lastPublishTime": "2020-02-10T20:56:26Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Producao Medica Sadalla')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Daily 00 AM')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "OFTALMODIAGNOSE_ADF",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					},
-					{
-						"pipelineReference": {
-							"referenceName": "CARGA_DINAMICA_ADF_SMART_IRIS",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					},
-					{
-						"pipelineReference": {
-							"referenceName": "CARGA_DINAMICA_ADF_SMART",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					}
-				],
-				"type": "ScheduleTrigger",
-				"typeProperties": {
-					"recurrence": {
-						"frequency": "Day",
-						"interval": 1,
-						"startTime": "2022-10-11T00:00:00",
-						"timeZone": "E. South America Standard Time",
-						"schedule": {
-							"minutes": [
-								0
-							],
-							"hours": [
-								0
-							]
-						}
-					}
-				}
 			},
 			"dependsOn": []
 		}
