@@ -660,6 +660,47 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Kill_Sessions_Sql')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Kill_Sessions_Sql",
+						"type": "Script",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "declare @dsql nvarchar(max)=''\n\nselect @dsql = 'kill ' + cast(session_id as varchar(20)) + ';' from SYS.dm_exec_sessions\n\nwhere LOGIN_NAME = 'OPTY_RO_LOGIN'\n\nexec(@dsql)"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Procedure_Marca')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -1564,90 +1605,6 @@
 				],
 				"typeProperties": {
 					"tableName": "[[dbo].[Nexcore_BilheteLigacoes]"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_NC_BilheteLigacoes_Temp')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Tabela Azure SQL Server Procedimentos.dbo.BilheteLigacoes",
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/Azure"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "DATA",
-						"type": "date"
-					},
-					{
-						"name": "HORA",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "USUARIO",
-						"type": "varchar"
-					},
-					{
-						"name": "TIPO",
-						"type": "varchar"
-					},
-					{
-						"name": "ORIGEM",
-						"type": "varchar"
-					},
-					{
-						"name": "DESTINO",
-						"type": "varchar"
-					},
-					{
-						"name": "STATUS",
-						"type": "varchar"
-					},
-					{
-						"name": "CENTRO_DE_CUSTO",
-						"type": "varchar"
-					},
-					{
-						"name": "TEMPO_TARIFADO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "TEMPO_DECORRIDO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CAMPANHA",
-						"type": "varchar"
-					},
-					{
-						"name": "FILA",
-						"type": "varchar"
-					},
-					{
-						"name": "UNIQUE_ID",
-						"type": "float",
-						"precision": 15
-					},
-					{
-						"name": "LINKED_ID",
-						"type": "float",
-						"precision": 15
-					}
-				],
-				"typeProperties": {
-					"tableName": "[[dbo].[Nexcore_BilheteLigacoes_temp]"
 				}
 			},
 			"dependsOn": []
