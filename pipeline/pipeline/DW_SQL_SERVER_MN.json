@@ -3,42 +3,6 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Busca Tabelas",
-				"type": "Lookup",
-				"dependsOn": [
-					{
-						"activity": "Dig Tabela NM_ORIGEM",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "7.00:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "AzureSqlSource",
-						"sqlReaderQuery": {
-							"value": "@concat('SELECT * FROM adf.ctr_origem_destino WHERE NOME_TABELA_ORIGEM = ', '''', variables('nm_tabela'),'''')",
-							"type": "Expression"
-						},
-						"queryTimeout": "02:00:00",
-						"partitionOption": "None"
-					},
-					"dataset": {
-						"referenceName": "SQL_DIN",
-						"type": "DatasetReference"
-					},
-					"firstRowOnly": false
-				}
-			},
-			{
 				"name": "Dig Tabela NM_ORIGEM",
 				"type": "SetVariable",
 				"dependsOn": [],
@@ -143,7 +107,7 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "Busca Tabelas",
+						"activity": "If Condition1",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -186,10 +150,110 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Dig Tabela NM_ORIGEM",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Origem",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@greater(length(variables('keyvault')),1)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Busca Tabelas todas origens",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('SELECT * FROM adf.ctr_origem_destino WHERE NOME_TABELA_ORIGEM = ', '''', variables('nm_tabela'),'''')",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "SQL_DIN",
+									"type": "DatasetReference"
+								},
+								"firstRowOnly": false
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Busca Tabelas Origem Especifica",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('SELECT * FROM adf.ctr_origem_destino WHERE HABILITA_ETL = ''S'' and NOME_KEYVAULT_SECRET = ', '''', variables('keyvault'),'''')",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "SQL_DIN",
+									"type": "DatasetReference"
+								},
+								"firstRowOnly": false
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Origem",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "keyvault",
+					"value": ""
+				}
 			}
 		],
 		"variables": {
 			"nm_tabela": {
+				"type": "String"
+			},
+			"keyvault": {
 				"type": "String"
 			}
 		},
