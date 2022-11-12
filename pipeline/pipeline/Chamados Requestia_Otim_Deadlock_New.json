@@ -63,7 +63,7 @@
 				"type": "IfCondition",
 				"dependsOn": [
 					{
-						"activity": "Check request file exists",
+						"activity": "Copy table answers_copy1",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1639,6 +1639,220 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "Check table answers file exists_copy1",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "Check request file exists",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "FILE_ACTION",
+						"type": "DatasetReference"
+					},
+					"fieldList": [
+						"exists"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings"
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "Copy table answers_copy1",
+				"description": "Copy anwers table data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Check table answers file exists_copy1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": {
+							"value": "TRUNCATE TABLE DBO.REQUESTIA_ACTIONS",
+							"type": "Expression"
+						},
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"enableSkipIncompatibleRow": true,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "QSESSION",
+									"type": "String"
+								},
+								"sink": {
+									"name": "QSESSION",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TABLE_NAME",
+									"type": "String"
+								},
+								"sink": {
+									"name": "TABLE_NAME",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TABLE_ROWID",
+									"type": "String"
+								},
+								"sink": {
+									"name": "TABLE_ROWID",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TABLE_ROWNUM",
+									"type": "String"
+								},
+								"sink": {
+									"name": "TABLE_ROWNUM",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "COLUMN_NAME",
+									"type": "String"
+								},
+								"sink": {
+									"name": "COLUMN_NAME",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "COLUMN_VALUE",
+									"type": "String"
+								},
+								"sink": {
+									"name": "COLUMN_VALUE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "COLUMN_POSITION",
+									"type": "String"
+								},
+								"sink": {
+									"name": "COLUMN_POSITION",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "COLUMN_ANSWERED",
+									"type": "String"
+								},
+								"sink": {
+									"name": "COLUMN_ANSWERED",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "COLUMN_ANSWERDATE",
+									"type": "String"
+								},
+								"sink": {
+									"name": "COLUMN_ANSWERDATE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "COLUMN_UPDATED",
+									"type": "String"
+								},
+								"sink": {
+									"name": "COLUMN_UPDATED",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "COLUMN_VISIBLE",
+									"type": "String"
+								},
+								"sink": {
+									"name": "COLUMN_VISIBLE",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "FILE_ACTION",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_SQL_STG",
+						"type": "DatasetReference",
+						"parameters": {
+							"SCHEMA": "dbo",
+							"TABELA": {
+								"value": "REQUESTIA_ACTIONS",
+								"type": "Expression"
+							}
+						}
+					}
+				]
 			}
 		],
 		"folder": {
