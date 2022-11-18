@@ -13,6 +13,346 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/UPO')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lista arquivos",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.02:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "upo"
+								}
+							},
+							"fieldList": [
+								"childItems",
+								"itemType",
+								"itemName",
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filtro",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Lista arquivos",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista arquivos').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'csv')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filtro",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filtro').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Copia dados para a STG",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": {
+												"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[upo]') AND type in (N'U'))\nDROP TABLE [stg].[upo]",
+												"type": "Expression"
+											},
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_SQL_STG",
+											"type": "DatasetReference",
+											"parameters": {
+												"SCHEMA": "stg",
+												"TABELA": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Move arquivo para PROCESSADOS",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "STG DW",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@concat(item().name,'-',utcnow())",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Apaga arquivo",
+									"type": "Delete",
+									"dependsOn": [
+										{
+											"activity": "Move arquivo para PROCESSADOS",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataset": {
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										},
+										"logStorageSettings": {
+											"linkedServiceName": {
+												"referenceName": "sv_hmaisbrasildatadriven",
+												"type": "LinkedServiceReference"
+											},
+											"path": "ceop/logs"
+										},
+										"enableLogging": true,
+										"storeSettings": {
+											"type": "AzureBlobFSReadSettings",
+											"recursive": true,
+											"enablePartitionDiscovery": false
+										}
+									}
+								},
+								{
+									"name": "STG DW",
+									"type": "Script",
+									"dependsOn": [
+										{
+											"activity": "Copia dados para a STG",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "SQL_DESTINO",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": "MERGE\t           \n\tdw.upo AS destino           \nUSING            \n\tstg.upo AS origem           \n           \n    ON\t(        \norigem.Pedido\t\t\t=\tdestino.Pedido\t\tAND\norigem.PedidoSeq\t\t=\tdestino.PedidoSeq\tAND\norigem.Tipo \t\t\t=\tdestino.Tipo\t\tAND\norigem.CodPrest \t\t=\tdestino.CodPrest\tAND\norigem.num_crm_medico \t=\tdestino.num_crm_medico\t\n\t\t)        \n\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \n\ndestino.CdUnidade=origem.CdUnidade,\ndestino.Unidade=origem.Unidade,\ndestino.Pedido=origem.Pedido,\ndestino.TipoPedido=origem.TipoPedido,\ndestino.Conta=origem.Conta,\ndestino.CodPac=origem.CodPac,\ndestino.Paciente=origem.Paciente,\ndestino.data_nascimento=origem.data_nascimento,\ndestino.CodConv=origem.CodConv,\ndestino.ConvPlano=origem.ConvPlano,\ndestino.GrupoConv=origem.GrupoConv,\ndestino.cnpj=origem.cnpj,\ndestino.CodPrest=origem.CodPrest,\ndestino.NomePrestador=origem.NomePrestador,\ndestino.conselho_medico=origem.conselho_medico,\ndestino.num_crm_medico=origem.num_crm_medico,\ndestino.data_abertura=origem.data_abertura,\ndestino.Tipo=origem.Tipo,\ndestino.SubTipo=origem.SubTipo,\ndestino.datahora_cadastro=origem.datahora_cadastro,\ndestino.PedidoSeq=origem.PedidoSeq,\ndestino.Cod=origem.Cod,\ndestino.Item=origem.Item,\ndestino.quantidade=origem.quantidade,\ndestino.ValorParticular=origem.ValorParticular,\ndestino.ValorConvenio=origem.ValorConvenio\n\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.CdUnidade,\norigem.Unidade,\norigem.Pedido,\norigem.TipoPedido,\norigem.Conta,\norigem.CodPac,\norigem.Paciente,\norigem.data_nascimento,\norigem.CodConv,\norigem.ConvPlano,\norigem.GrupoConv,\norigem.cnpj,\norigem.CodPrest,\norigem.NomePrestador,\norigem.conselho_medico,\norigem.num_crm_medico,\norigem.data_abertura,\norigem.Tipo,\norigem.SubTipo,\norigem.datahora_cadastro,\norigem.PedidoSeq,\norigem.Cod,\norigem.Item,\norigem.quantidade,\norigem.ValorParticular,\norigem.ValorConvenio\n); "
+											}
+										]
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/UROBRASIL')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -2714,224 +3054,6 @@
 					"quoteChar": "\""
 				},
 				"schema": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_SF_PESSOA_FISICA')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Salesforce_Sharepoint",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Salesforce"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "CadastroPessoa.csv"
-					},
-					"columnDelimiter": ",",
-					"rowDelimiter": "\n",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"name": "CD_PESSOA_FISICA",
-						"type": "String"
-					},
-					{
-						"name": "NR_PRONTUARIO",
-						"type": "String"
-					},
-					{
-						"name": "CD_ESTABELECIMENTO",
-						"type": "String"
-					},
-					{
-						"name": "NM_PESSOA_FISICA",
-						"type": "String"
-					},
-					{
-						"name": "DT_NASCIMENTO",
-						"type": "String"
-					},
-					{
-						"name": "IE_SEXO",
-						"type": "String"
-					},
-					{
-						"name": "CD_NACIONALIDADE",
-						"type": "String"
-					},
-					{
-						"name": "NR_CPF",
-						"type": "String"
-					},
-					{
-						"name": "NR_MATRICULA_NASC",
-						"type": "String"
-					},
-					{
-						"name": "NR_REG_GERAL_ESTRANG",
-						"type": "String"
-					},
-					{
-						"name": "NR_TELEFONE_CELULAR",
-						"type": "String"
-					},
-					{
-						"name": "NR_TELEFONE",
-						"type": "String"
-					},
-					{
-						"name": "DS_FONE_ADIC",
-						"type": "String"
-					},
-					{
-						"name": "NM_CONTATO",
-						"type": "String"
-					},
-					{
-						"name": "CD_CEP",
-						"type": "String"
-					},
-					{
-						"name": "DS_ENDERECO",
-						"type": "String"
-					},
-					{
-						"name": "NR_ENDERECO",
-						"type": "String"
-					},
-					{
-						"name": "DS_COMPLEMENTO",
-						"type": "String"
-					},
-					{
-						"name": "DS_BAIRRO",
-						"type": "String"
-					},
-					{
-						"name": "CD_MUNICIPIO_IBGE",
-						"type": "String"
-					},
-					{
-						"name": "SG_ESTADO",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_PAIS",
-						"type": "String"
-					},
-					{
-						"name": "DS_EMAIL",
-						"type": "String"
-					},
-					{
-						"name": "IE_NAO_POSSUI_EMAIL",
-						"type": "String"
-					},
-					{
-						"name": "IE_OBRIGA_EMAIL",
-						"type": "String"
-					},
-					{
-						"name": "CD_CONVENIO",
-						"type": "String"
-					},
-					{
-						"name": "CD_CATEGORIA",
-						"type": "String"
-					},
-					{
-						"name": "CD_PLANO_CONVENIO",
-						"type": "String"
-					},
-					{
-						"name": "CD_USUARIO_CONVENIO",
-						"type": "String"
-					},
-					{
-						"name": "DT_VALIDADE_CARTEIRA",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_COR_PELE",
-						"type": "String"
-					},
-					{
-						"name": "CD_PROFISSAO",
-						"type": "String"
-					},
-					{
-						"name": "DS_CATEGORIA_CNH",
-						"type": "String"
-					},
-					{
-						"name": "DS_MEDIC_NAO_CAD",
-						"type": "String"
-					},
-					{
-						"name": "IE_INTENSIDADE",
-						"type": "String"
-					},
-					{
-						"name": "CD_MATERIAL",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_FICHA_TECNICA",
-						"type": "String"
-					},
-					{
-						"name": "IE_CONFIRMACAO",
-						"type": "String"
-					},
-					{
-						"name": "DT_REGISTRO",
-						"type": "String"
-					},
-					{
-						"name": "IE_NEGA_ALERGIAS",
-						"type": "String"
-					},
-					{
-						"name": "DT_REVISAO",
-						"type": "String"
-					},
-					{
-						"name": "NM_USUARIO_REVISAO",
-						"type": "String"
-					},
-					{
-						"name": "IE_ESTADO_CIVIL",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_TIPO_DEF",
-						"type": "String"
-					},
-					{
-						"name": "IE_NEGA_DEFICIENCIA",
-						"type": "String"
-					},
-					{
-						"name": "IE_ALERTA",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_PERFIL",
-						"type": "String"
-					}
-				]
 			},
 			"dependsOn": []
 		}
