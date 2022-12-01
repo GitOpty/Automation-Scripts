@@ -18031,6 +18031,91 @@
 								}
 							]
 						}
+					},
+					{
+						"name": "LISTA INDEX DISABLE",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "ForEach1",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.05:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT \nCONCAT('ALTER INDEX  ', A.index_name , ' ON ' ,a.schema_nm , '.' , A.table_nm, ' DISABLE ') as DISABLE_INDEX , \nCONCAT('ALTER INDEX  ', A.index_name  , ' ON ' ,a.schema_nm , '.' , A.table_nm, ' REBUILD ') as REBUILD_INDEX ,\nA.index_name ,a.schema_nm + '.' + A.table_nm as tb\nFROM index_aj_dw A\nINNER JOIN ADF.ctr_origem_destino B WITH(NOLOCK) ON A.TABLE_NM = B.NOME_TABELA_DESTINO\nWHERE A.schema_nm = 'dw'  AND B.TIPO_CARGA = 'COMPLETA' AND NOME_PLATAFORMA = 'TASY'\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "LISTA_TABELAS_ADF",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "FOR EACH REBUILD INDEX",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LISTA INDEX DISABLE",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LISTA INDEX DISABLE').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "REBUILD INDEX",
+									"type": "Script",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": {
+													"value": "@item().REBUILD_INDEX",
+													"type": "Expression"
+												}
+											}
+										],
+										"scriptBlockExecutionTimeout": "02:00:00"
+									}
+								}
+							]
+						}
 					}
 				],
 				"concurrency": 5,
@@ -18992,7 +19077,14 @@
 					{
 						"name": "LISTA ORIGEM DESTINO",
 						"type": "Lookup",
-						"dependsOn": [],
+						"dependsOn": [
+							{
+								"activity": "FOR EACH DISABLE INDEX",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
 						"policy": {
 							"timeout": "0.05:00:00",
 							"retry": 0,
@@ -19961,6 +20053,84 @@
 									"linkedServiceName": {
 										"referenceName": "AzureSQL_DB_Procedimentos",
 										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "LISTA INDEX DISABLE",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.05:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT \nCONCAT('ALTER INDEX  ', A.index_name , ' ON ' ,a.schema_nm , '.' , A.table_nm, ' DISABLE ') as DISABLE_INDEX , \nCONCAT('ALTER INDEX  ', A.index_name  , ' ON ' ,a.schema_nm , '.' , A.table_nm, ' REBUILD ') as REBUILD_INDEX ,\nA.index_name ,a.schema_nm + '.' + A.table_nm as tb\nFROM index_aj_dw A\nINNER JOIN ADF.ctr_origem_destino B WITH(NOLOCK) ON A.TABLE_NM = B.NOME_TABELA_DESTINO\nWHERE A.schema_nm = 'dw'  AND B.TIPO_CARGA = 'COMPLETA' AND NOME_PLATAFORMA = 'TASY'\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "LISTA_TABELAS_ADF",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "FOR EACH DISABLE INDEX",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LISTA INDEX DISABLE",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LISTA INDEX DISABLE').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "DISABLE INDEX",
+									"type": "Script",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": {
+													"value": "@item().DISABLE_INDEX",
+													"type": "Expression"
+												}
+											}
+										],
+										"scriptBlockExecutionTimeout": "02:00:00"
 									}
 								}
 							]
@@ -56885,6 +57055,33 @@
 								}
 							],
 							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "SP_MAPPING_INDEX",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Kill_Sessions_Sql",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_MAPPING_INDEX]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
 						}
 					}
 				],
