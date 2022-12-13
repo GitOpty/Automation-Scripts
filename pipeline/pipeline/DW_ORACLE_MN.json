@@ -59,7 +59,7 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "LIMPAR TABELA",
+						"activity": "ForEach2",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -75,7 +75,7 @@
 					"batchCount": 50,
 					"activities": [
 						{
-							"name": "Copy data",
+							"name": "Copy data Stage",
 							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
@@ -189,8 +189,8 @@
 				}
 			},
 			{
-				"name": "LIMPAR TABELA",
-				"type": "Script",
+				"name": "ForEach2",
+				"type": "ForEach",
 				"dependsOn": [
 					{
 						"activity": "Busca Tabelas",
@@ -199,29 +199,43 @@
 						]
 					}
 				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
 				"userProperties": [],
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase",
-					"type": "LinkedServiceReference"
-				},
 				"typeProperties": {
-					"scripts": [
+					"items": {
+						"value": "@activity('Busca Tabelas').output.value",
+						"type": "Expression"
+					},
+					"activities": [
 						{
-							"type": "NonQuery",
-							"text": {
-								"value": "@concat('TRUNCATE TABLE DW.TBL_',replace(toUpper(variables('nm_tabela')),'VW_','' ))",
-								"type": "Expression"
+							"name": "LIMPAR TABELA",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "NonQuery",
+										"text": {
+											"value": "@concat('TRUNCATE TABLE ',item().NOME_SCHEMA_DESTINO,'.',item().NOME_TABELA_DESTINO)",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
 							}
 						}
-					],
-					"scriptBlockExecutionTimeout": "02:00:00"
+					]
 				}
 			}
 		],
