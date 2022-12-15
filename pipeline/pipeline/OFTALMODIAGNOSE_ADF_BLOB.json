@@ -69,7 +69,7 @@
 					"isSequential": true,
 					"activities": [
 						{
-							"name": "SE CARGA COMPLETA_copy1",
+							"name": "SE CARGA COMPLETA",
 							"type": "IfCondition",
 							"dependsOn": [],
 							"userProperties": [],
@@ -78,9 +78,74 @@
 									"value": "@equals(item().TIPO_CARGA,'COMPLETA')",
 									"type": "Expression"
 								},
+								"ifFalseActivities": [
+									{
+										"name": "GERA ARQUIVOS_PARCIAL",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.05:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "OdbcSource",
+												"query": {
+													"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00"
+											},
+											"sink": {
+												"type": "DelimitedTextSink",
+												"storeSettings": {
+													"type": "AzureBlobStorageWriteSettings"
+												},
+												"formatSettings": {
+													"type": "DelimitedTextWriteSettings",
+													"quoteAllText": true,
+													"fileExtension": ".txt"
+												}
+											},
+											"enableStaging": false
+										},
+										"inputs": [
+											{
+												"referenceName": "DS_OFTALMODIAGNOSE_ODBC_WITH_PARAM",
+												"type": "DatasetReference",
+												"parameters": {
+													"schema_name": {
+														"value": "@item().NOME_SCHEMA_ORIGEM",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@item().NOME_TABELA_ORIGEM",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "CSV_OFTALMODIAGNOSE",
+												"type": "DatasetReference",
+												"parameters": {
+													"nome_tabela": {
+														"value": "@concat(item().NOME_TABELA_DESTINO,'.csv')",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								],
 								"ifTrueActivities": [
 									{
-										"name": "GERA ARQUIVOS",
+										"name": "GERA ARQUIVOS_COMPLETA",
 										"type": "Copy",
 										"dependsOn": [],
 										"policy": {
