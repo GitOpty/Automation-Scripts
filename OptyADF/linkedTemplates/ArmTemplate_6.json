@@ -13,6 +13,120 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/AZ_SQL_TB_Notas_Fiscais')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Nota Fiscal"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "CNPJ",
+						"type": "varchar"
+					},
+					{
+						"name": "DS_UNIDADE",
+						"type": "varchar"
+					},
+					{
+						"name": "DT_EMISSAO",
+						"type": "date"
+					},
+					{
+						"name": "DT_ENTRADA_SAIDA",
+						"type": "date"
+					},
+					{
+						"name": "NR_SEQUENCIA",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "NR_NOTA_FISCAL",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "CD_CONTA_CONTABIL",
+						"type": "varchar"
+					},
+					{
+						"name": "DS_CONTA_CONTABIL",
+						"type": "varchar"
+					},
+					{
+						"name": "FORNECEDOR",
+						"type": "varchar"
+					},
+					{
+						"name": "VL_TOTAL_ITEM_NF",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "DS_OBSERVACAO",
+						"type": "varchar"
+					}
+				],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Nota_Fiscal_Unidade"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AZ_SQL_TB_Ordens_Servico_Hist')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Ordens de Serviço"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Ordem_Servico_Terc_Hist"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AZ_SQL_TB_Ordens_Servico_Terceiro')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Ordens de Serviço"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Ordem_Servico_Terceiros"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/AZ_SQL_TB_Orientacao_Cirurgia_Unidade')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -1519,11 +1633,20 @@
 					"referenceName": "AzureBlobStorage_Oftalmodiagnose",
 					"type": "LinkedServiceReference"
 				},
+				"parameters": {
+					"nome_tabela": {
+						"type": "string"
+					}
+				},
 				"annotations": [],
 				"type": "DelimitedText",
 				"typeProperties": {
 					"location": {
 						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@dataset().nome_tabela",
+							"type": "Expression"
+						},
 						"container": "oftalmodiagnose"
 					},
 					"columnDelimiter": ",",
@@ -1587,96 +1710,6 @@
 					"table": {
 						"value": "@dataset().Tabela_Destino",
 						"type": "Expression"
-					}
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DS_Five9')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Five9",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "RestResource",
-				"typeProperties": {
-					"relativeUrl": {
-						"value": "\\99 - Relatorios ESP\\ESP0001",
-						"type": "Expression"
-					}
-				},
-				"schema": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DS_HMAISDATADRIVEN')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "sv_hmaisbrasildatadriven",
-					"type": "LinkedServiceReference"
-				},
-				"parameters": {
-					"Filesystem": {
-						"type": "string"
-					},
-					"File": {
-						"type": "string"
-					}
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobFSLocation",
-						"fileName": {
-							"value": "@dataset().File",
-							"type": "Expression"
-						},
-						"fileSystem": {
-							"value": "@dataset().Filesystem",
-							"type": "Expression"
-						}
-					},
-					"columnDelimiter": ";",
-					"encodingName": "ISO-8859-1",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DS_HMAISDATADRIVEN_BINARY')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "sv_hmaisbrasildatadriven",
-					"type": "LinkedServiceReference"
-				},
-				"parameters": {
-					"FileSystem": {
-						"type": "string"
-					}
-				},
-				"annotations": [],
-				"type": "Binary",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobFSLocation",
-						"fileSystem": {
-							"value": "@dataset().FileSystem",
-							"type": "Expression"
-						}
 					}
 				}
 			},

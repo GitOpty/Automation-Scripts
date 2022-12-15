@@ -13,6 +13,2495 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/CEOP_CSV')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lista arquivos",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.02:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "ceop"
+								}
+							},
+							"fieldList": [
+								"childItems",
+								"itemType",
+								"itemName",
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filtro",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Lista arquivos",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista arquivos').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'csv')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filtro",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filtro').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copia dados para a STG",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": {
+												"value": "@{concat('Truncate table stg.',activity('Lista arquivos').output.itemName)}",
+												"type": "Expression"
+											},
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_SQL_STG",
+											"type": "DatasetReference",
+											"parameters": {
+												"SCHEMA": "stg",
+												"TABELA": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Move arquivo para PROCESSADOS",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "Copia dados para a STG",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@concat(item().name,'-',utcnow())",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Apaga arquivo",
+									"type": "Delete",
+									"dependsOn": [
+										{
+											"activity": "Move arquivo para PROCESSADOS",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataset": {
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										},
+										"logStorageSettings": {
+											"linkedServiceName": {
+												"referenceName": "sv_hmaisbrasildatadriven",
+												"type": "LinkedServiceReference"
+											},
+											"path": "ceop/logs"
+										},
+										"enableLogging": true,
+										"storeSettings": {
+											"type": "AzureBlobFSReadSettings",
+											"recursive": true,
+											"enablePartitionDiscovery": false
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/P&P"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Chamados Requestia_Otim_Deadlock')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Clear all tables",
+						"description": "Truncate all Requestia's tables",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[sp_TRUNCATEREQUESTS]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Check request file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Clear all tables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_REQUESTS_NEW",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Requests file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check request file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check request file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send requests failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "csi.ti@opty.com.br",
+											"Subject": "Arquivo Requestia\\REQUESTS não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\REQUESTS não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Calculate fields",
+									"description": "Update calculated fields (for example, SLA formula, datetime conversions, business hours difference) for time saving in queries",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Copy requests",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_CALCULATEREQUESTS]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "Altera chamado em pausa",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Calculate fields",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_ALTERACHAMADOSPAUSADOS]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "Copy requests",
+									"description": "Copy requests data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "REQUEST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQUEST",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CLIENT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLIENT",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CURRANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CURRANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "GROUPANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "GROUPANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTANLGRP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTANLGRP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CURRGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CURRGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "GRGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "GRGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CATEGORY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CATEGORY",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "RPRIORITY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RPRIORITY",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "PRODUCT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PRODUCT",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "PROCESS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PROCESS",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "PROBLEM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PROBLEM",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "RSTATUS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RSTATUS"
+													}
+												},
+												{
+													"source": {
+														"name": "REQTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQTYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "REQSOURCE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQSOURCE"
+													}
+												},
+												{
+													"source": {
+														"name": "LOCATION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQLOCATION"
+													}
+												},
+												{
+													"source": {
+														"name": "ORGUNIT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORGUNIT"
+													}
+												},
+												{
+													"source": {
+														"name": "ORGUNIT_ROOT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORGUNIT_ROOT"
+													}
+												},
+												{
+													"source": {
+														"name": "CHARGE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CHARGE"
+													}
+												},
+												{
+													"source": {
+														"name": "SLEVEL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "SLEVEL"
+													}
+												},
+												{
+													"source": {
+														"name": "EQUIP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "EQUIP"
+													}
+												},
+												{
+													"source": {
+														"name": "RESOURCEID",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESOURCEID"
+													}
+												},
+												{
+													"source": {
+														"name": "REQUESTOR",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQUESTOR"
+													}
+												},
+												{
+													"source": {
+														"name": "OPENDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "OPENDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "CLOSEDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLOSEDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "CLOSED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLOSED"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTACTION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTACTION"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTANALYST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTANALYST"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTSTATUS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTSTATUS"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTPRIORITY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTPRIORITY"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTREOPEN",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTREOPEN"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTACTIONATEND",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTACTIONATEND"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTACTTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTACTTYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPTIME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPTIME"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLTIME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLTIME"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPMINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPMINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLMINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLMINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPREMAINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPREMAINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLREMAINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLREMAINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPMODE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPMODE"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLMODE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLMODE"
+													}
+												},
+												{
+													"source": {
+														"name": "NOCOMPUTE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "NOCOMPUTE"
+													}
+												},
+												{
+													"source": {
+														"name": "RLOCKED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RLOCKED"
+													}
+												},
+												{
+													"source": {
+														"name": "ESTIMCOST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ESTIMCOST"
+													}
+												},
+												{
+													"source": {
+														"name": "TOTALCOST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TOTALCOST"
+													}
+												},
+												{
+													"source": {
+														"name": "APROVANLTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "APROVANLTYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "APROVCLITYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "APROVCLITYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "MLEVELAPROV",
+														"type": "String"
+													},
+													"sink": {
+														"name": "MLEVELAPROV"
+													}
+												},
+												{
+													"source": {
+														"name": "CLIENTAPROV",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLIENTAPROV"
+													}
+												},
+												{
+													"source": {
+														"name": "PACKAGE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PACKAGE"
+													}
+												},
+												{
+													"source": {
+														"name": "PROJECT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PROJECT"
+													}
+												},
+												{
+													"source": {
+														"name": "WORKFLOW",
+														"type": "String"
+													},
+													"sink": {
+														"name": "WORKFLOW"
+													}
+												},
+												{
+													"source": {
+														"name": "REQWORKFLOW",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQWORKFLOW"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGCATEGORY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGCATEGORY"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGPRODUCT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGPRODUCT"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGPROCESS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGPROCESS"
+													}
+												},
+												{
+													"source": {
+														"name": "TOTALATTACH",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TOTALATTACH"
+													}
+												},
+												{
+													"source": {
+														"name": "TOTALATTACHACT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TOTALATTACHACT"
+													}
+												},
+												{
+													"source": {
+														"name": "INSERTDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "INSERTDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "QFORM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QFORM"
+													}
+												},
+												{
+													"source": {
+														"name": "QSURVEY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSURVEY"
+													}
+												},
+												{
+													"source": {
+														"name": "QSESSIONFORM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSIONFORM"
+													}
+												},
+												{
+													"source": {
+														"name": "QSESSIONSURVEY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSIONSURVEY"
+													}
+												},
+												{
+													"source": {
+														"name": "TEMPO_RESOLUCAO",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TEMPO_RESOLUCAO"
+													}
+												},
+												{
+													"source": {
+														"name": "PRAZO_RESL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PRAZO_RESL"
+													}
+												},
+												{
+													"source": {
+														"name": "TEMPO_REPOSTA",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TEMPO_REPOSTA"
+													}
+												},
+												{
+													"source": {
+														"name": "PRAZO_RESP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PRAZO_RESP"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_REQUESTS_NEW",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_REQUESTS",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Check sessions file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Requests file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_QSESSION_NEW",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Sessions file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check sessions file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check sessions file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send session failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "sergio.queiroz@opty.com.br",
+											"Subject": "Arquivo Requestia\\QSESSION não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\QSESSION não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Copy sessions",
+									"description": "Copy sessions data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"enableSkipIncompatibleRow": true,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "QSESSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSION"
+													}
+												},
+												{
+													"source": {
+														"name": "QSESSIONTITLE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSIONTITLE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QCLIENT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QCLIENT",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QFORM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QFORM",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QVERSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QVERSION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QSTATUS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSTATUS",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QEXPDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QEXPDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QAPPLICATION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QAPPLICATION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QSURVEYTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSURVEYTYPE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "REQLOCATION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQLOCATION",
+														"type": "String"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_QSESSION_NEW",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_QSESSION",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Check answers file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Sessions file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_QANSWER_NEW",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Answers file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check answers file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check answers file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send answers failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "sergio.queiroz@opty.com.br",
+											"Subject": "Arquivo Requestia\\QANSWER não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\QANSWER não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Copy answers",
+									"description": "Copy answers data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"enableSkipIncompatibleRow": true,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "QSESSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QUESTION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QUESTION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWER",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWER",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWERED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWERED",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QSHOW",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSHOW",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QORDER",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QORDER",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QUPDATED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QUPDATED",
+														"type": "String"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_QANSWER_NEW",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_QANSWER",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								},
+								{
+									"name": "Update clients",
+									"description": "Transport [UNIDADE ATENDIMENTO] field from answers table to requests table, for time saving in queries",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Copy answers",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_UPDATEREQUESTCLIENT]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "Regionais",
+									"description": "",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Update clients",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_REGIONALREQUESTIA]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Check table answers file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Answers file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_QTABLEANSWER_NEW",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Table answers file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check table answers file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check table answers file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send table answer failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "sergio.queiroz@opty.com.br",
+											"Subject": "Arquivo Requestia\\QTABLEANSWER não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\QTABLEANSWER não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Copy table answers",
+									"description": "Copy anwers table data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"enableSkipIncompatibleRow": true,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "QSESSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "TABLE_NAME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TABLE_NAME",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "TABLE_ROWID",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TABLE_ROWID",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "TABLE_ROWNUM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TABLE_ROWNUM",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_NAME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_NAME",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_VALUE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_VALUE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_POSITION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_POSITION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_ANSWERED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_ANSWERED",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_ANSWERDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_ANSWERDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_UPDATED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_UPDATED",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_VISIBLE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_VISIBLE",
+														"type": "String"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_QTABLEANSWER_NEW",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_QTABLEANSWER",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Check table Actions",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Table answers file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_ACTION",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Copy table Actions",
+						"description": "",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Check table Actions",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": {
+									"value": "TRUNCATE TABLE STG.REQUESTIA_ACTIONS",
+									"type": "Expression"
+								},
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"enableSkipIncompatibleRow": true
+						},
+						"inputs": [
+							{
+								"referenceName": "FILE_ACTION",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": {
+										"value": "REQUESTIA_ACTIONS",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Apoio"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-02-17T17:43:08Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Databricks Five9 API')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "F9 ESP0001",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:25:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Five9/F9_ESP0001"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureDatabricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "STG DW FIVE9_ESP0001",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "F9 ESP0004",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SQL_DESTINO",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "WITH ESP0001 AS (\n\n    SELECT \nCAST(ID_LIGACAO AS VARCHAR(255)) AS ID_LIGACAO\n,CAST(DATA AS VARCHAR(255)) AS DATA\n,CAST(REGISTRO_DATA_HORA AS VARCHAR(255)) AS REGISTRO_DATA_HORA\n,CAST(CAMPANHA AS VARCHAR(255)) AS CAMPANHA\n,CAST(COMPETENCIA AS VARCHAR(255)) AS COMPETENCIA\n,CAST(AGENTE AS VARCHAR(255)) AS AGENTE\n,CAST(NOME_AGENTE AS VARCHAR(255)) AS NOME_AGENTE\n,CAST(POSICAO AS VARCHAR(255)) AS POSICAO\n,CAST(ANI AS VARCHAR(255)) AS ANI\n,CAST(NOME_CLIENTE AS VARCHAR(255)) AS NOME_CLIENTE\n,CAST(DNIS AS VARCHAR(255)) AS DNIS\n,CAST(TEMPO_LIGACAO AS VARCHAR(255)) AS TEMPO_LIGACAO\n,CAST(TEMPO_FATURAMENTO_ARRED AS VARCHAR(255)) AS TEMPO_FATURAMENTO_ARRED\n,CAST(TEMPO_IVR AS VARCHAR(255)) AS TEMPO_IVR\n,CAST(CAMINHO_IVR AS VARCHAR(255)) AS CAMINHO_IVR\n,CAST(TEMPO_ESPERA_FILA AS VARCHAR(255)) AS TEMPO_ESPERA_FILA\n,CAST(TEMPO_TOQUE AS VARCHAR(255)) AS TEMPO_TOQUE\n,CAST(TEMPO_CONVERSA AS VARCHAR(255)) AS TEMPO_CONVERSA\n,CAST(TEMPO_RETENCAO AS VARCHAR(255)) AS TEMPO_RETENCAO\n,CAST(TEMPO_ESPERA AS VARCHAR(255)) AS TEMPO_ESPERA\n,CAST(TEMPO_ABANDONAR AS VARCHAR(255)) AS TEMPO_ABANDONAR\n,CAST(TEMPO_TOTAL_FILA AS VARCHAR(255)) AS TEMPO_TOTAL_FILA\n,CAST(AP_TEMPO_ATIVIDADE_LIGACAO AS VARCHAR(255)) AS AP_TEMPO_ATIVIDADE_LIGACAO\n,CAST(TRANSFERENCIAS AS VARCHAR(255)) AS TRANSFERENCIAS\n,CAST(CONFERENCIAS AS VARCHAR(255)) AS CONFERENCIAS\n,CAST(RETENCOES AS VARCHAR(255)) AS RETENCOES\n,CAST(ABANDONADA AS VARCHAR(255)) AS ABANDONADA\n,CAST(GRAVACOES AS VARCHAR(255)) AS GRAVACOES\n,CAST(TIPO_CAMPANHA AS VARCHAR(255)) AS TIPO_CAMPANHA\n,CAST(TIPO_LIGACAO AS VARCHAR(255)) AS TIPO_LIGACAO\n,CAST(GRUPO_AGENTES AS VARCHAR(255)) AS GRUPO_AGENTES\n\n    FROM STG.FIVE9_ESP0001\n)\n\n\nMERGE\t           \n\tdw.FIVE9_ESP0001 AS destino           \nUSING            \n\tESP0001 AS origem           \n           \n    ON(        \n        destino.id_ligacao = origem.id_ligacao        \n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.DATA\t\t\t\t\t=origem.DATA,\ndestino.REGISTRO_DATA_HORA\t\t=origem.REGISTRO_DATA_HORA,\ndestino.CAMPANHA\t\t\t\t=origem.CAMPANHA,\ndestino.COMPETENCIA\t\t\t\t=origem.COMPETENCIA,\ndestino.AGENTE\t\t\t\t\t=origem.AGENTE,\ndestino.NOME_AGENTE\t\t\t\t=origem.NOME_AGENTE,\ndestino.POSICAO\t\t\t\t\t=origem.POSICAO,\ndestino.ANI\t\t\t\t\t\t=origem.ANI,\ndestino.NOME_CLIENTE\t\t\t=origem.NOME_CLIENTE,\ndestino.DNIS\t\t\t\t\t=origem.DNIS,\ndestino.TEMPO_LIGACAO\t\t\t=origem.TEMPO_LIGACAO,\ndestino.TEMPO_FATURAMENTO_ARRED\t=origem.TEMPO_FATURAMENTO_ARRED,\ndestino.TEMPO_IVR\t\t\t\t=origem.TEMPO_IVR,\ndestino.CAMINHO_IVR\t\t\t\t=origem.CAMINHO_IVR,\ndestino.TEMPO_ESPERA_FILA\t\t=origem.TEMPO_ESPERA_FILA,\ndestino.TEMPO_TOQUE\t\t\t\t=origem.TEMPO_TOQUE,\ndestino.TEMPO_CONVERSA\t\t\t=origem.TEMPO_CONVERSA,\ndestino.TEMPO_RETENCAO\t\t\t=origem.TEMPO_RETENCAO,\ndestino.TEMPO_ESPERA\t\t\t=origem.TEMPO_ESPERA,\ndestino.TEMPO_ABANDONAR\t\t\t=origem.TEMPO_ABANDONAR,\ndestino.TEMPO_TOTAL_FILA\t\t\t=origem.TEMPO_TOTAL_FILA,\ndestino.AP_TEMPO_ATIVIDADE_LIGACAO\t=origem.AP_TEMPO_ATIVIDADE_LIGACAO,\ndestino.TRANSFERENCIAS\t\t\t\t=origem.TRANSFERENCIAS,\ndestino.CONFERENCIAS\t\t\t\t=origem.CONFERENCIAS,\ndestino.RETENCOES\t\t\t\t\t=origem.RETENCOES,\ndestino.ABANDONADA\t\t\t\t\t=origem.ABANDONADA,\ndestino.GRAVACOES\t\t\t\t\t=origem.GRAVACOES,\ndestino.TIPO_CAMPANHA\t\t\t\t=origem.TIPO_CAMPANHA,\ndestino.TIPO_LIGACAO\t\t\t\t=origem.TIPO_LIGACAO,\ndestino.GRUPO_AGENTES\t\t\t\t=origem.GRUPO_AGENTES\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.id_ligacao\t\n,origem.DATA\n,origem.REGISTRO_DATA_HORA\n,origem.CAMPANHA\n,origem.COMPETENCIA\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.POSICAO\n,origem.ANI\n,origem.NOME_CLIENTE\n,origem.DNIS\n,origem.TEMPO_LIGACAO\n,origem.TEMPO_FATURAMENTO_ARRED\n,origem.TEMPO_IVR\n,origem.CAMINHO_IVR\n,origem.TEMPO_ESPERA_FILA\n,origem.TEMPO_TOQUE\n,origem.TEMPO_CONVERSA\n,origem.TEMPO_RETENCAO\n,origem.TEMPO_ESPERA\n,origem.TEMPO_ABANDONAR\n,origem.TEMPO_TOTAL_FILA\n,origem.AP_TEMPO_ATIVIDADE_LIGACAO\n,origem.TRANSFERENCIAS\n,origem.CONFERENCIAS\n,origem.RETENCOES\n,origem.ABANDONADA\n,origem.GRAVACOES\n,origem.TIPO_CAMPANHA\n,origem.TIPO_LIGACAO\n,origem.GRUPO_AGENTES\n);        "
+								}
+							]
+						}
+					},
+					{
+						"name": "STG DW FIVE9_ESP0002",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "STG DW FIVE9_ESP0001",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SQL_DESTINO",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "MERGE\t           \n\tdw.FIVE9_ESP0002 AS destino           \nUSING            \n\tstg.FIVE9_ESP0002 AS origem           \n           \n    ON(        \n        destino.agente = origem.agente \n\t\tAND destino.REGISTRO_HORA_DATA_ACESSO = origem.REGISTRO_HORA_DATA_ACESSO\n\t\tAND destino.REGISTRO_HORA_DATA_SAIDA = origem.REGISTRO_HORA_DATA_SAIDA\n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.DATA_HORA\t\t\t\t\t=origem.DATA_HORA,\ndestino.NOME_AGENTE\t\t\t\t\t=origem.NOME_AGENTE,\ndestino.GRUPO_AGENTES\t\t\t\t=origem.GRUPO_AGENTES,\ndestino.REGISTRO_HORA_DATA_SAIDA\t=origem.REGISTRO_HORA_DATA_SAIDA,\ndestino.TEMPO_LOGIN\t\t\t\t\t=origem.TEMPO_LOGIN,\ndestino.DATA\t\t\t\t\t\t=origem.DATA\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.DATA_HORA\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.GRUPO_AGENTES\n,origem.REGISTRO_HORA_DATA_ACESSO\n,origem.REGISTRO_HORA_DATA_SAIDA\n,origem.TEMPO_LOGIN\n,origem.DATA\n);        "
+								}
+							]
+						}
+					},
+					{
+						"name": "STG DW FIVE9_ESP0003",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "STG DW FIVE9_ESP0002",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SQL_DESTINO",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "WITH ESP0003 AS (\n    SELECT\n        TMP.*\n    FROM(\n        SELECT\n            A.*\n            ,ROW_NUMBER()OVER(PARTITION BY A.ID_LIGACAO ORDER BY A.ID_LIGACAO DESC) ID_LINHA\n        FROM STG.FIVE9_ESP0003 A\n    )TMP\n    WHERE TMP.ID_LINHA = 1  \n)\n\n\n\nMERGE\t           \n\tdw.FIVE9_ESP0003 AS destino           \nUSING            \n\tESP0003 AS origem           \n           \n    ON(        \n        destino.id_ligacao = origem.id_ligacao \n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.ID_LIGACAO\t\t\t\t\t\t\t=origem.ID_LIGACAO,\ndestino.CAMPANHA\t\t\t\t\t\t\t=origem.CAMPANHA,\ndestino.TIPO_LIGACAO\t\t\t\t\t\t=origem.TIPO_LIGACAO,\ndestino.AGENTE\t\t\t\t\t\t\t\t=origem.AGENTE,\ndestino.NOME_AGENTE\t\t\t\t\t\t\t=origem.NOME_AGENTE,\ndestino.POSICAO\t\t\t\t\t\t\t\t=origem.POSICAO,\ndestino.ANI\t\t\t\t\t\t\t\t\t=origem.ANI,\ndestino.TEMPO_LIGACAO\t\t\t\t\t\t=origem.TEMPO_LIGACAO,\ndestino.TEMPO_FATURAMENTO_ARRENDONDADO\t\t=origem.TEMPO_FATURAMENTO_ARRENDONDADO,\ndestino.TEMPO_RETENCAO\t\t\t\t\t\t=origem.TEMPO_RETENCAO,\ndestino.TEMPO_ESPERA\t\t\t\t\t\t=origem.TEMPO_ESPERA,\ndestino.APÓS_TEMPO_ATIVIDADE_LIGACAO\t\t=origem.APÓS_TEMPO_ATIVIDADE_LIGACAO,\ndestino.TRANSFERENCIAS\t\t\t\t\t\t=origem.TRANSFERENCIAS,\ndestino.CONFERENCIAS\t\t\t\t\t\t=origem.CONFERENCIAS,\ndestino.ABANDONADA\t\t\t\t\t\t\t=origem.ABANDONADA,\ndestino.DATA\t\t\t\t\t\t\t\t=origem.DATA,\ndestino.HORA\t\t\t\t\t\t\t\t=origem.HORA,\ndestino.COMPETENCIA\t\t\t\t\t\t\t=origem.COMPETENCIA,\ndestino.TEMPO_CONVERSA\t\t\t\t\t\t=origem.TEMPO_CONVERSA\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.ID_LIGACAO\n,origem.CAMPANHA\n,origem.TIPO_LIGACAO\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.POSICAO\n,origem.ANI\n,origem.TEMPO_LIGACAO\n,origem.TEMPO_FATURAMENTO_ARRENDONDADO\n,origem.TEMPO_RETENCAO\n,origem.TEMPO_ESPERA\n,origem.APÓS_TEMPO_ATIVIDADE_LIGACAO\n,origem.TRANSFERENCIAS\n,origem.CONFERENCIAS\n,origem.ABANDONADA\n,origem.DATA\n,origem.HORA\n,origem.COMPETENCIA\n,origem.TEMPO_CONVERSA\n\n);        \n"
+								}
+							]
+						}
+					},
+					{
+						"name": "STG DW FIVE9_ESP0004",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "STG DW FIVE9_ESP0003",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SQL_DESTINO",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "MERGE\t           \n\tdw.FIVE9_ESP0004 AS destino           \nUSING            \n\tstg.FIVE9_ESP0004 AS origem           \n           \n    ON(        \ndestino.CAMPANHA\t\t\t\t\t=origem.CAMPANHA\t\t\tAND\ndestino.TIPO_LIGACAO\t\t\t\t=origem.TIPO_LIGACAO\t\tAND\ndestino.AGENTE\t\t\t\t\t\t=origem.AGENTE\t\t\t\tAND\ndestino.NOME_AGENTE\t\t\t\t\t=origem.NOME_AGENTE\t\t\tAND\ndestino.POSICAO\t\t\t\t\t\t=origem.POSICAO\t\t\t\tAND\ndestino.ANI\t\t\t\t\t\t\t=origem.ANI\t\t\t\t\tAND\ndestino.DNIS\t\t\t\t\t\t=origem.DNIS\t\t\t\tAND\ndestino.TEMPO_LIGACAO\t\t\t\t=origem.TEMPO_LIGACAO\t\tAND\ndestino.TEMPO_ESPERA_FILA\t\t\t=origem.TEMPO_ESPERA_FILA\tAND\ndestino.TEMPO_CONVERSA\t\t\t\t=origem.TEMPO_CONVERSA\t\tAND\ndestino.TEMPO_ESPERA\t\t\t\t=origem.TEMPO_ESPERA\t\tAND\ndestino.ABANDONADA\t\t\t\t\t=origem.ABANDONADA\t\t\tAND\ndestino.DATA\t\t\t\t\t\t=origem.DATA\t\t\t\tAND\ndestino.HORA\t\t\t\t\t\t=origem.HORA\n          )        \n       \n      \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.CAMPANHA\t\t\t\t\t=origem.CAMPANHA,\ndestino.TIPO_LIGACAO\t\t\t\t=origem.TIPO_LIGACAO,\ndestino.AGENTE\t\t\t\t\t\t=origem.AGENTE,\ndestino.NOME_AGENTE\t\t\t\t\t=origem.NOME_AGENTE,\ndestino.POSICAO\t\t\t\t\t\t=origem.POSICAO,\ndestino.ANI\t\t\t\t\t\t\t=origem.ANI,\ndestino.DNIS\t\t\t\t\t\t=origem.DNIS,\ndestino.TEMPO_LIGACAO\t\t\t\t=origem.TEMPO_LIGACAO,\ndestino.TEMPO_ESPERA_FILA\t\t\t=origem.TEMPO_ESPERA_FILA,\ndestino.TEMPO_CONVERSA\t\t\t\t=origem.TEMPO_CONVERSA,\ndestino.TEMPO_ESPERA\t\t\t\t=origem.TEMPO_ESPERA,\ndestino.ABANDONADA\t\t\t\t\t=origem.ABANDONADA,\ndestino.DATA\t\t\t\t\t\t=origem.DATA,\ndestino.HORA\t\t\t\t\t\t=origem.HORA\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.CAMPANHA\n,origem.TIPO_LIGACAO\n,origem.AGENTE\n,origem.NOME_AGENTE\n,origem.POSICAO\n,origem.ANI\n,origem.DNIS\n,origem.TEMPO_LIGACAO\n,origem.TEMPO_ESPERA_FILA\n,origem.TEMPO_CONVERSA\n,origem.TEMPO_ESPERA\n,origem.ABANDONADA\n,origem.DATA\n,origem.HORA\n);"
+								}
+							]
+						}
+					},
+					{
+						"name": "F9 ESP0002",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "F9 ESP0001",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:25:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Five9/F9_ESP0002"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureDatabricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "F9 ESP0003",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "F9 ESP0002",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:25:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Five9/F9_ESP0003"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureDatabricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "F9 ESP0004",
+						"type": "DatabricksNotebook",
+						"dependsOn": [
+							{
+								"activity": "F9 ESP0003",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.00:25:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Five9/F9_ESP0004"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureDatabricks",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Five9"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataMart')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Verifica Start Datamart",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT\n    COUNT(1) as QT_REGISTRO \nFROM(\n    SELECT \n        A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n        ,MAX(A.DT_INICIO_PROCESS) DT_INICIO_PROCESS \n        ,CAST(MAX(A.DT_FIM_PROCESS) AS DATE) DT_FIM_PROCESS         \n    FROM DBO.LOG_PROCESSAMENTO_DW A\n    INNER JOIN DBO.cfg_plataforma_dw B ON B.ID_PLATAFORMA = A.ID_PLATAFORMA\n    WHERE UPPER(A.NOME_PROCESSO) LIKE '%CARGA_DW'\n    GROUP BY A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n)TMP    \nWHERE TMP.DT_FIM_PROCESS = CAST(GETDATE() AS DATE)\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Processo",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Verifica Start Datamart",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Verifica Start Datamart').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Inicia Atualizacao Datamart",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@greaterOrEquals(item().QT_REGISTRO,2 )",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "Busca Email",
+												"type": "Lookup",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "7.00:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "AzureSqlSource",
+														"sqlReaderQuery": "SELECT * FROM ADF.OWNER",
+														"queryTimeout": "02:00:00",
+														"partitionOption": "None"
+													},
+													"dataset": {
+														"referenceName": "AZ_SQL",
+														"type": "DatasetReference",
+														"parameters": {}
+													}
+												}
+											},
+											{
+												"name": "Variable Email",
+												"type": "SetVariable",
+												"dependsOn": [
+													{
+														"activity": "Busca Email",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "email",
+													"value": {
+														"value": "@activity('Busca Email').output.firstRow['Email']",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "Disparado de Erro Datamart Receb",
+												"type": "ExecutePipeline",
+												"dependsOn": [
+													{
+														"activity": "Variable Email",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "Send email",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true,
+													"parameters": {
+														"EmailTo": {
+															"value": "@variables('email')",
+															"type": "Expression"
+														},
+														"Subject": {
+															"value": "@pipeline().Pipeline",
+															"type": "Expression"
+														},
+														"ErrorMessage": "Falha na atualização do Datamart Recebimento"
+													}
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "Processa Datamart",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "7.00:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "SP_PROCESSA_RECEBIMENTO_SYS_LEG"
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"variables": {
+					"email": {
+						"type": "String"
+					},
+					"qt_registro": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/INSTITUTO_DR_OSMAR')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -2169,6 +4658,206 @@
 				},
 				"folder": {
 					"name": "Data Warehouse/P&P"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Parametros Repasse Medico')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Get Metadata1",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Parametro_Repasse",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							}
+						}
+					},
+					{
+						"name": "Lookup_Datetime SQL",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Get Metadata1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT DISTINCT DT_ATUALIZACAO\nFROM DBO.PARAMETRO_REPASSE_PG",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "If Condition1",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Lookup_Datetime SQL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(activity('Get Metadata1').output.lastModified,activity('Lookup_Datetime SQL').output.firstRow.DT_ATUALIZACAO)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Copy Data",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "ExcelSource",
+											"additionalColumns": [
+												{
+													"name": "DT_ATUALIZACAO",
+													"value": {
+														"value": "@activity('Get Metadata1').output.lastModified",
+														"type": "Expression"
+													}
+												}
+											],
+											"storeSettings": {
+												"type": "AzureBlobStorageReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": "TRUNCATE TABLE DBO.PARAMETRO_REPASSE_PG",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "PK_CD_ESTABELECIMENTO",
+														"type": "String",
+														"physicalType": "String"
+													},
+													"sink": {
+														"name": "PK_CD_ESTABELECIMENTO",
+														"type": "String",
+														"physicalType": "nvarchar"
+													}
+												},
+												{
+													"source": {
+														"name": "TIPO_PAGAMENTO",
+														"type": "String",
+														"physicalType": "String"
+													},
+													"sink": {
+														"name": "TIPO_PAGAMENTO",
+														"type": "String",
+														"physicalType": "nvarchar"
+													}
+												},
+												{
+													"source": {
+														"name": "DT_ATUALIZACAO",
+														"type": "String"
+													},
+													"sink": {
+														"name": "DT_ATUALIZACAO",
+														"type": "DateTime",
+														"physicalType": "datetime"
+													}
+												}
+											],
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "Parametro_Repasse",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_P_REPASSE",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Repasse Médico"
 				},
 				"annotations": []
 			},
@@ -4894,182 +7583,6 @@
 				},
 				"schema": [
 					{
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSI_CSV_NC_FilasPorHora')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Nexcore_Consolidado",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/CSI"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "FilasPorHoraCSI.csv"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "",
-					"firstRowAsHeader": true,
-					"quoteChar": ""
-				},
-				"schema": [
-					{
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSI_CSV_NC_FilasporHora_Temp')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Historicos_FIlasPorHoras_CSI",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/CSI/Históricos"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "",
-					"firstRowAsHeader": true,
-					"quoteChar": ""
-				},
-				"schema": [
-					{
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_CNPJ_PY_AZ_FINAL')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_StorageVM",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "CNPJ"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "RETURN_CNPJ_CONV.csv",
-						"folderPath": "CNPJ"
-					},
-					"columnDelimiter": ",",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"name": "CGC_CONVENIO",
-						"type": "String"
-					},
-					{
-						"name": "DS_RAZAO_SOCIAL",
-						"type": "String"
-					},
-					{
-						"name": "UF",
-						"type": "String"
-					},
-					{
-						"name": "CEP",
-						"type": "String"
-					},
-					{
-						"name": "SITUACAO_REG",
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_CNPJ_SYS')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_StorageVM",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "CNPJ"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "CNPJ_SYS.csv",
-						"folderPath": "CNPJ"
-					},
-					"columnDelimiter": ",",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_CONVENIO_DEPARA')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_StorageVM",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Data Warehouse/DEPARA"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "depara_sys_regra_convenio.csv",
-						"folderPath": "Depara"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"name": "CONVENIO;CONVENIO_DEPARA;MODALIDADE;TP_CONVENIO",
 						"type": "String"
 					}
 				]

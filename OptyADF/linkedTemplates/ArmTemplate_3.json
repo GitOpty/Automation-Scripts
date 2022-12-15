@@ -13,6 +13,16 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/IRIS')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "SelfHosted",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/IROFTALMODIAGNOSE')]",
 			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
 			"apiVersion": "2018-06-01",
@@ -462,6 +472,12 @@
 								"dependencyConditions": [
 									"Succeeded"
 								]
+							},
+							{
+								"activity": "Delete Datamart Tasy",
+								"dependencyConditions": [
+									"Succeeded"
+								]
 							}
 						],
 						"policy": {
@@ -478,6 +494,32 @@
 						"linkedServiceName": {
 							"referenceName": "AzureSQL_DB_Procedimentos",
 							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Delete Datamart Tasy",
+						"type": "Script",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "DELETE FROM DM.tbl_fprodiaria   \nWHERE ESTABELECIMENTO IN (1,2)"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
 						}
 					}
 				],
@@ -955,6 +997,22 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/AZ')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_Agendamentos_Futuros_Unidade')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -1312,284 +1370,6 @@
 				],
 				"typeProperties": {
 					"tableName": "[[dbo].[Nexcore_AgentesPorDia_temp]"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_NC_AgentesPorHora')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/Azure"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "Usuario",
-						"type": "varchar"
-					},
-					{
-						"name": "Intervalo",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Atendidas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Recusas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Recebidas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Internas_Recebidas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Transferencias",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Efetuadas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Efetuadas_Tratados",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Taxa_de_Contato",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Atendidas",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Internas_Recebidas",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Efetuadas",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Medio_Falado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Total_Falado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Toque_Agente",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Toque_Cliente",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Pausa",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Estouro",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Disponivel",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Indisponivel",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Logado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Deslogado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Falado_x_Logado",
-						"type": "time",
-						"scale": 7
-					}
-				],
-				"typeProperties": {
-					"tableName": "[[dbo].[Nexcore_AgentesPorHora]"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_NC_AgentesPorHora_Temp')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/Azure"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "Usuario",
-						"type": "varchar"
-					},
-					{
-						"name": "Intervalo",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Atendidas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Recusas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Recebidas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Internas_Recebidas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Transferencias",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Efetuadas",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Efetuadas_Tratados",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "Taxa_de_Contato",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Atendidas",
-						"type": "varchar"
-					},
-					{
-						"name": "Tempo_Internas_Recebidas",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Efetuadas",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Medio_Falado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Total_Falado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Toque_Agente",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Toque_Cliente",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Pausa",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Estouro",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Disponivel",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Indisponivel",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Logado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Tempo_Deslogado",
-						"type": "time",
-						"scale": 7
-					},
-					{
-						"name": "Falado_x_Logado",
-						"type": "time",
-						"scale": 7
-					}
-				],
-				"typeProperties": {
-					"tableName": "[[dbo].[Nexcore_AgentesPorHora_temp]"
 				}
 			},
 			"dependsOn": []

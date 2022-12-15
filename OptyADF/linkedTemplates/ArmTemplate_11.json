@@ -15,6 +15,14 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'DEV_SMART_ITAIGARA'"
 		},
+		"AzureDatabricks_properties_typeProperties_existingClusterId": {
+			"type": "string",
+			"defaultValue": "0914-173138-dl7s1vxp"
+		},
+		"CloudTasyProd_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "CLOUDTASY"
+		},
 		"Con_Files_VM_properties_typeProperties_host": {
 			"type": "string",
 			"defaultValue": "C:\\Pasta repositório BI\\"
@@ -122,44 +130,158 @@
 		"Historicos_AgentesPorHora_CSI_properties_typeProperties_userId": {
 			"type": "string",
 			"defaultValue": "hobrasil\\sa.automation"
-		},
-		"Historicos_AgentesPorHora_DAYHORC_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Historicos NEXCORE\\DAYHORC\\AgentesPorHora"
-		},
-		"Historicos_AgentesPorHora_DAYHORC_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\sa.automation"
-		},
-		"Historicos_AgentesPorHora_HOBL2_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Historicos NEXCORE\\HOBL2\\AgentesPorHora"
-		},
-		"Historicos_AgentesPorHora_HOBL2_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\sa.automation"
-		},
-		"Historicos_AgentesPorHora_HOSL_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Historicos NEXCORE\\HOSL\\AgentesPorHora"
-		},
-		"Historicos_AgentesPorHora_HOSL_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\sa.automation"
-		},
-		"Historicos_AgentesPorHora_INOB_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Historicos NEXCORE\\INOB\\AgentesPorHora"
-		},
-		"Historicos_AgentesPorHora_INOB_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\sa.automation"
 		}
 	},
 	"variables": {
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/stage_tca')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "tca_cod",
+						"type": "char"
+					},
+					{
+						"name": "tca_descr",
+						"type": "varchar"
+					},
+					{
+						"name": "tca_qt_dias_vcto",
+						"type": "decimal",
+						"precision": 5,
+						"scale": 0
+					},
+					{
+						"name": "tca_ind_cr",
+						"type": "char"
+					},
+					{
+						"name": "tca_del_logica",
+						"type": "char"
+					},
+					{
+						"name": "tca_valor_padrao",
+						"type": "decimal",
+						"precision": 14,
+						"scale": 2
+					}
+				],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "bi_stg_tca"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/stage_udp')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "udp_mte_serie_quita",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "udp_mte_seq_quita",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "udp_mte_serie_dep",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "udp_mte_seq_dep",
+						"type": "int",
+						"precision": 10
+					},
+					{
+						"name": "udp_valor",
+						"type": "decimal",
+						"precision": 12,
+						"scale": 2
+					}
+				],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "bi_stg_udp"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureDatabricks')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureDatabricks",
+				"typeProperties": {
+					"domain": "https://adb-4986612633596064.4.azuredatabricks.net",
+					"accessToken": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "DatabricksTokenHmaisBrasil"
+					},
+					"existingClusterId": "[parameters('AzureDatabricks_properties_typeProperties_existingClusterId')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CloudTasyProd')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "[parameters('CloudTasyProd_properties_typeProperties_connectionString_secretName')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/CloudTasyProd_NEW')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -548,114 +670,6 @@
 				"typeProperties": {
 					"host": "[parameters('Historicos_AgentesPorHora_CSI_properties_typeProperties_host')]",
 					"userId": "[parameters('Historicos_AgentesPorHora_CSI_properties_typeProperties_userId')]",
-					"password": {
-						"type": "AzureKeyVaultSecret",
-						"store": {
-							"referenceName": "SV_OptyKeyVault",
-							"type": "LinkedServiceReference"
-						},
-						"secretName": "vmSA"
-					}
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Historicos_AgentesPorHora_DAYHORC')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Historicos_AgentesPorHora_DAYHORC",
-				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('Historicos_AgentesPorHora_DAYHORC_properties_typeProperties_host')]",
-					"userId": "[parameters('Historicos_AgentesPorHora_DAYHORC_properties_typeProperties_userId')]",
-					"password": {
-						"type": "AzureKeyVaultSecret",
-						"store": {
-							"referenceName": "SV_OptyKeyVault",
-							"type": "LinkedServiceReference"
-						},
-						"secretName": "vmSA"
-					}
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Historicos_AgentesPorHora_HOBL2')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Historicos_AgentesPorHora_HOBL2\n",
-				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('Historicos_AgentesPorHora_HOBL2_properties_typeProperties_host')]",
-					"userId": "[parameters('Historicos_AgentesPorHora_HOBL2_properties_typeProperties_userId')]",
-					"password": {
-						"type": "AzureKeyVaultSecret",
-						"store": {
-							"referenceName": "SV_OptyKeyVault",
-							"type": "LinkedServiceReference"
-						},
-						"secretName": "vmSA"
-					}
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Historicos_AgentesPorHora_HOSL')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Historicos_AgentesPorHora_HOSL",
-				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('Historicos_AgentesPorHora_HOSL_properties_typeProperties_host')]",
-					"userId": "[parameters('Historicos_AgentesPorHora_HOSL_properties_typeProperties_userId')]",
-					"password": {
-						"type": "AzureKeyVaultSecret",
-						"store": {
-							"referenceName": "SV_OptyKeyVault",
-							"type": "LinkedServiceReference"
-						},
-						"secretName": "vmSA"
-					}
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Historicos_AgentesPorHora_INOB')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Historicos_AgentesPorHora_INOB",
-				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('Historicos_AgentesPorHora_INOB_properties_typeProperties_host')]",
-					"userId": "[parameters('Historicos_AgentesPorHora_INOB_properties_typeProperties_userId')]",
 					"password": {
 						"type": "AzureKeyVaultSecret",
 						"store": {
