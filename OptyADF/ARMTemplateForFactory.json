@@ -20574,6 +20574,61 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Carga Datamart TASY')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Datamart Recebimento",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_DATAMART_RECEBIMENTO_TASY]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Call Prod Diaria",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "DM_ProdDiaria_TasyV2",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/1_Inicializador"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_TasyV2')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Chamados Philips')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -97815,7 +97870,7 @@
 					},
 					{
 						"pipelineReference": {
-							"referenceName": "DM_ProdDiaria_TasyV2",
+							"referenceName": "Carga Datamart TASY",
 							"type": "PipelineReference"
 						},
 						"parameters": {}
@@ -97842,7 +97897,7 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/Agendas Projesi Testes')]",
 				"[concat(variables('factoryId'), '/pipelines/ORTOCITY_STORAGE_ACCOUNT')]",
-				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_TasyV2')]"
+				"[concat(variables('factoryId'), '/pipelines/Carga Datamart TASY')]"
 			]
 		},
 		{
