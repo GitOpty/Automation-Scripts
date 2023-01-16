@@ -1,0 +1,735 @@
+{
+	"name": "TEST_ORTOCITY",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lista Tabelas",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[adf].[sp_origem_destino]",
+						"storedProcedureParameters": {
+							"COD_TABELA": {
+								"type": "String",
+								"value": null
+							},
+							"Dt_inicio_manual": {
+								"type": "DateTime",
+								"value": null
+							},
+							"manual": {
+								"type": "String",
+								"value": "N"
+							},
+							"plataforma": {
+								"type": "String",
+								"value": "SLFW"
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "LISTA_TABELAS_ADF",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "PROCESSA ETL",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LIMPAR TABELA DESTINO",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lista Tabelas').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "SE CARGA COMPLETA",
+							"type": "IfCondition",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"expression": {
+									"value": "@equals(item().TIPO_CARGA,'COMPLETA')",
+									"type": "Expression"
+								},
+								"ifFalseActivities": [
+									{
+										"name": "CARGA PARCIAL",
+										"type": "Copy",
+										"dependsOn": [
+											{
+												"activity": "DATA_INICIO_CARGA_PARCIAL",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "OracleSource",
+												"oracleReaderQuery": {
+													"value": "@concat(\n'select * from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' where ', item().nome_coluna_referencia,' >= ''',\nitem().Data_Inicio, ''' and  ', item().nome_coluna_referencia,' <= ''', item().Data_Fim, ''''\n)",
+													"type": "Expression"
+												},
+												"partitionOption": "None",
+												"convertDecimalToInteger": false,
+												"queryTimeout": "02:00:00"
+											},
+											"sink": {
+												"type": "AzureSqlSink",
+												"writeBehavior": "insert",
+												"sqlWriterUseTableLock": false,
+												"tableOption": "autoCreate",
+												"disableMetricsCollection": false
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "SLFW_Dinamico",
+												"type": "DatasetReference",
+												"parameters": {
+													"schema_name": "@item().NOME_SCHEMA_ORIGEM",
+													"table_name": "@item().NOME_TABELA_ORIGEM",
+													"NOME_KEY_VAULT_SECRET": "@item().NOME_KEYVAULT_SECRET"
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "DESTINO_TABELAS_ADF",
+												"type": "DatasetReference",
+												"parameters": {
+													"Schema_Destino": {
+														"value": "@item().NOME_SCHEMA_DESTINO",
+														"type": "Expression"
+													},
+													"Tabela_Destino": {
+														"value": "@item().NOME_TABELA_DESTINO",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"name": "DATA_INICIO_CARGA_PARCIAL",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "Starttime",
+											"value": {
+												"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "LOG PROCESSAMENTO COMPLETA SUCESSO_copy1",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [
+											{
+												"activity": "CARGA PARCIAL",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "[adf].[SP_LOG_PROCESSAMENTO]",
+											"storedProcedureParameters": {
+												"CODIGO_TABELA": {
+													"value": "@item().codigo_tabela",
+													"type": "String"
+												},
+												"COMANDO_SQL": {
+													"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+													"type": "String"
+												},
+												"DATA_FIM": {
+													"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+													"type": "String"
+												},
+												"DATA_HORA_EXECUCAO": {
+													"value": {
+														"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"DATA_INICIO": {
+													"value": {
+														"value": "@variables('Starttime')",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"ID_EXECUCAO": {
+													"value": "@pipeline().RunId",
+													"type": "String"
+												},
+												"ID_TRIGGER": {
+													"value": "@pipeline().TriggerId",
+													"type": "String"
+												},
+												"MENSAGEM_ERRO": {
+													"value": null,
+													"type": "String"
+												},
+												"NOME_ADF": {
+													"value": "@pipeline().DataFactory",
+													"type": "String"
+												},
+												"NOME_CONTAINER": {
+													"value": "CARGA PARCIAL",
+													"type": "String"
+												},
+												"NOME_ORIGEM": {
+													"value": "@item().NOME_KEYVAULT_SECRET",
+													"type": "String"
+												},
+												"NOME_PIPELINE": {
+													"value": "@pipeline().Pipeline",
+													"type": "String"
+												},
+												"NOME_PROCESSO": {
+													"value": null,
+													"type": "String"
+												},
+												"NOME_TABELA_ORIGEM": {
+													"value": "@item().nome_tabela_origem",
+													"type": "String"
+												},
+												"NOME_TRIGGER": {
+													"value": "@pipeline().TriggerName",
+													"type": "String"
+												},
+												"QUANTIDADE_REGISTROS": {
+													"value": "@activity('CARGA PARCIAL').output.rowsCopied",
+													"type": "String"
+												},
+												"TIPO_FINALIZACAO": {
+													"value": "SUCESSO",
+													"type": "String"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "AzureSQL_DB_Procedimentos",
+											"type": "LinkedServiceReference"
+										}
+									},
+									{
+										"name": "LOG PROCESSAMENTO COMPLETA ERRO_copy1",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [
+											{
+												"activity": "CARGA PARCIAL",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "[adf].[SP_LOG_PROCESSAMENTO]",
+											"storedProcedureParameters": {
+												"CODIGO_TABELA": {
+													"value": "@item().codigo_tabela",
+													"type": "String"
+												},
+												"COMANDO_SQL": {
+													"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+													"type": "String"
+												},
+												"DATA_FIM": {
+													"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+													"type": "String"
+												},
+												"DATA_HORA_EXECUCAO": {
+													"value": {
+														"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"DATA_INICIO": {
+													"value": {
+														"value": "@variables('Starttime')",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"ID_EXECUCAO": {
+													"value": "@pipeline().RunId",
+													"type": "String"
+												},
+												"ID_TRIGGER": {
+													"value": "@pipeline().TriggerId",
+													"type": "String"
+												},
+												"MENSAGEM_ERRO": {
+													"value": null,
+													"type": "String"
+												},
+												"NOME_ADF": {
+													"value": "@pipeline().DataFactory",
+													"type": "String"
+												},
+												"NOME_CONTAINER": {
+													"value": "CARGA PARCIAL",
+													"type": "String"
+												},
+												"NOME_ORIGEM": {
+													"value": "@item().NOME_KEYVAULT_SECRET",
+													"type": "String"
+												},
+												"NOME_PIPELINE": {
+													"value": "@pipeline().Pipeline",
+													"type": "String"
+												},
+												"NOME_PROCESSO": {
+													"value": null,
+													"type": "String"
+												},
+												"NOME_TABELA_ORIGEM": {
+													"value": "@item().nome_tabela_origem",
+													"type": "String"
+												},
+												"NOME_TRIGGER": {
+													"value": "@pipeline().TriggerName",
+													"type": "String"
+												},
+												"QUANTIDADE_REGISTROS": {
+													"value": "@activity('CARGA PARCIAL').output.rowsCopied",
+													"type": "String"
+												},
+												"TIPO_FINALIZACAO": {
+													"value": "ERRO",
+													"type": "String"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "AzureSQL_DB_Procedimentos",
+											"type": "LinkedServiceReference"
+										}
+									}
+								],
+								"ifTrueActivities": [
+									{
+										"name": "CARGA COMPLETA",
+										"type": "Copy",
+										"dependsOn": [
+											{
+												"activity": "DATA_INICIO_CARGA",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "OracleSource",
+												"oracleReaderQuery": {
+													"value": "@concat(' select 50 AS ESTABELECIMENTO, * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+													"type": "Expression"
+												},
+												"partitionOption": "None",
+												"convertDecimalToInteger": false,
+												"queryTimeout": "02:00:00"
+											},
+											"sink": {
+												"type": "AzureSqlSink",
+												"writeBehavior": "insert",
+												"sqlWriterUseTableLock": false,
+												"tableOption": "autoCreate",
+												"disableMetricsCollection": false
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "SLFW_Dinamico",
+												"type": "DatasetReference",
+												"parameters": {
+													"schema_name": "@item().NOME_SCHEMA_ORIGEM",
+													"table_name": "@item().NOME_TABELA_ORIGEM",
+													"NOME_KEY_VAULT_SECRET": "@item()NOME_KEYVAULT_SECRET"
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "DESTINO_TABELAS_ADF",
+												"type": "DatasetReference",
+												"parameters": {
+													"Schema_Destino": {
+														"value": "@item().NOME_SCHEMA_DESTINO",
+														"type": "Expression"
+													},
+													"Tabela_Destino": {
+														"value": "@item().NOME_TABELA_DESTINO",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"name": "DATA_INICIO_CARGA",
+										"type": "SetVariable",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"variableName": "Starttime",
+											"value": {
+												"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+												"type": "Expression"
+											}
+										}
+									},
+									{
+										"name": "LOG PROCESSAMENTO COMPLETA SUCESSO",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [
+											{
+												"activity": "CARGA COMPLETA",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "[adf].[SP_LOG_PROCESSAMENTO]",
+											"storedProcedureParameters": {
+												"CODIGO_TABELA": {
+													"value": "@item().codigo_tabela",
+													"type": "String"
+												},
+												"COMANDO_SQL": {
+													"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+													"type": "String"
+												},
+												"DATA_FIM": {
+													"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+													"type": "String"
+												},
+												"DATA_HORA_EXECUCAO": {
+													"value": {
+														"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"DATA_INICIO": {
+													"value": {
+														"value": "@variables('Starttime')",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"ID_EXECUCAO": {
+													"value": "@pipeline().RunId",
+													"type": "String"
+												},
+												"ID_TRIGGER": {
+													"value": "@pipeline().TriggerId",
+													"type": "String"
+												},
+												"MENSAGEM_ERRO": {
+													"value": null,
+													"type": "String"
+												},
+												"NOME_ADF": {
+													"value": "@pipeline().DataFactory",
+													"type": "String"
+												},
+												"NOME_CONTAINER": {
+													"value": "CARGA COMPLETA",
+													"type": "String"
+												},
+												"NOME_ORIGEM": {
+													"value": "@item().NOME_KEYVAULT_SECRET",
+													"type": "String"
+												},
+												"NOME_PIPELINE": {
+													"value": "@pipeline().Pipeline",
+													"type": "String"
+												},
+												"NOME_PROCESSO": {
+													"value": null,
+													"type": "String"
+												},
+												"NOME_TABELA_ORIGEM": {
+													"value": "@item().nome_tabela_origem",
+													"type": "String"
+												},
+												"NOME_TRIGGER": {
+													"value": "@pipeline().TriggerName",
+													"type": "String"
+												},
+												"QUANTIDADE_REGISTROS": {
+													"value": "@activity('CARGA COMPLETA').output.rowsCopied",
+													"type": "String"
+												},
+												"TIPO_FINALIZACAO": {
+													"value": "SUCESSO",
+													"type": "String"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "AzureSQL_DB_Procedimentos",
+											"type": "LinkedServiceReference"
+										}
+									},
+									{
+										"name": "LOG PROCESSAMENTO COMPLETA ERRO",
+										"type": "SqlServerStoredProcedure",
+										"dependsOn": [
+											{
+												"activity": "CARGA COMPLETA",
+												"dependencyConditions": [
+													"Failed"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"storedProcedureName": "[adf].[SP_LOG_PROCESSAMENTO]",
+											"storedProcedureParameters": {
+												"CODIGO_TABELA": {
+													"value": "@item().codigo_tabela",
+													"type": "String"
+												},
+												"COMANDO_SQL": {
+													"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+													"type": "String"
+												},
+												"DATA_FIM": {
+													"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+													"type": "String"
+												},
+												"DATA_HORA_EXECUCAO": {
+													"value": {
+														"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"DATA_INICIO": {
+													"value": {
+														"value": "@variables('Starttime')",
+														"type": "Expression"
+													},
+													"type": "String"
+												},
+												"ID_EXECUCAO": {
+													"value": "@pipeline().RunId",
+													"type": "String"
+												},
+												"ID_TRIGGER": {
+													"value": "@pipeline().TriggerId",
+													"type": "String"
+												},
+												"MENSAGEM_ERRO": {
+													"value": null,
+													"type": "String"
+												},
+												"NOME_ADF": {
+													"value": "@pipeline().DataFactory",
+													"type": "String"
+												},
+												"NOME_CONTAINER": {
+													"value": "CARGA COMPLETA",
+													"type": "String"
+												},
+												"NOME_ORIGEM": {
+													"value": "@item().NOME_KEYVAULT_SECRET",
+													"type": "String"
+												},
+												"NOME_PIPELINE": {
+													"value": "@pipeline().Pipeline",
+													"type": "String"
+												},
+												"NOME_PROCESSO": {
+													"value": null,
+													"type": "String"
+												},
+												"NOME_TABELA_ORIGEM": {
+													"value": "@item().nome_tabela_origem",
+													"type": "String"
+												},
+												"NOME_TRIGGER": {
+													"value": "@pipeline().TriggerName",
+													"type": "String"
+												},
+												"QUANTIDADE_REGISTROS": {
+													"value": "@activity('CARGA COMPLETA').output.rowsCopied",
+													"type": "String"
+												},
+												"TIPO_FINALIZACAO": {
+													"value": "ERRO",
+													"type": "String"
+												}
+											}
+										},
+										"linkedServiceName": {
+											"referenceName": "AzureSQL_DB_Procedimentos",
+											"type": "LinkedServiceReference"
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "LIMPAR TABELA DESTINO",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lista Tabelas",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lista Tabelas').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Limpa Tabela",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "Query",
+										"text": {
+											"value": "@concat('TRUNCATE TABLE ',item().NOME_SCHEMA_DESTINO,'.',item().NOME_TABELA_DESTINO)",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"Starttime": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Data Warehouse/2_Pipeline_Cargas_DW"
+		},
+		"annotations": []
+	}
+}
