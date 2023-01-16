@@ -15,37 +15,6 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"source": {
-						"type": "AzureSqlSource",
-						"sqlReaderStoredProcedureName": "[adf].[sp_origem_destino]",
-						"storedProcedureParameters": {
-							"Dt_inicio_manual": {
-								"type": "DateTime",
-								"value": null
-							},
-							"manual": {
-								"type": "String",
-								"value": "N"
-							},
-							"plataforma": {
-								"type": "String",
-								"value": {
-									"value": "SMART_OFTALMODIAGONOSE",
-									"type": "Expression"
-								}
-							},
-							"COD_TABELA": {
-								"type": "String",
-								"value": null
-							}
-						},
-						"queryTimeout": "02:00:00",
-						"partitionOption": "None"
-					},
-					"dataset": {
-						"referenceName": "LISTA_TABELAS_ADF",
-						"type": "DatasetReference"
-					},
 					"firstRowOnly": false
 				}
 			},
@@ -54,7 +23,7 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "LISTA ORIGEM DESTINO",
+						"activity": "Apaga Arquivos Blob",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1103,6 +1072,58 @@
 				"linkedServiceName": {
 					"referenceName": "AzureSQL_DB_Procedimentos",
 					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Apaga Arquivos Blob",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LISTA ORIGEM DESTINO",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LISTA ORIGEM DESTINO').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Delete1",
+							"type": "Delete",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "CSV_OFTALMODIAGNOSE",
+									"type": "DatasetReference",
+									"parameters": {
+										"nome_tabela": {
+											"value": "@concat(item().NOME_TABELA_DESTINO,'.csv')",
+											"type": "Expression"
+										}
+									}
+								},
+								"enableLogging": false,
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							}
+						}
+					]
 				}
 			}
 		],
