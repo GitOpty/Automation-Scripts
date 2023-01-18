@@ -290,6 +290,39 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "Convenio",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "ForEach1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "DECLARE @ESTABELECIMENTO VARCHAR(10)\n\nSELECT @ESTABELECIMENTO = ID_SYSTEM FROM v_plataforma_dw WHERE UPPER(DS_SYSTEM) LIKE '%CEOP%'\n\nTRUNCATE TABLE DW.CEOP_CONVENIO\n\nINSERT INTO DW.CEOP_CONVENIO\nSELECT DISTINCT\n    @ESTABELECIMENTO AS ESTABELECIMENTO\n    ,@ESTABELECIMENTO + '|' + CAST(A.[Cnv.Id] AS VARCHAR(50)) AS FK_CONVENIO\n    ,A.[Cnv.Id] AS CD_CONVENIO\n    ,A.Convênio AS DS_CONVENIO   \nFROM STG.CEOP A"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
 			}
 		],
 		"folder": {
