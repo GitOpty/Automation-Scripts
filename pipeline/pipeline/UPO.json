@@ -323,6 +323,72 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "Stg Convenio",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "ForEach1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "DECLARE @ESTABELECIMENTO VARCHAR(10)\n\nTRUNCATE TABLE STG.UPO_CONVENIO\n\nSELECT @ESTABELECIMENTO = ID_SYSTEM \nFROM v_plataforma_dw WHERE UPPER(DS_SYSTEM) = 'UPO' \n\n;\n\nWITH LST_CONV AS(\nSELECT DISTINCT\n    A.CodConv AS CD_CONVENIO\n    ,A.GrupoConv AS DS_CONVENIO   \nFROM DW.upo A WITH(NOLOCK) \n)\n\n,REF AS(\n\nSELECT\n    @ESTABELECIMENTO + '|' + CAST(TMP.CD_CONVENIO AS VARCHAR(100)) AS FK_CONVENIO\n    ,TMP.CD_CONVENIO\n    ,TMP.DS_CONVENIO\n    ,CASE\n        WHEN UPPER(TMP.DS_CONVENIO) LIKE '%PARTICULAR%' THEN 'PARTICULAR'\n        WHEN UPPER(TMP.DS_CONVENIO) LIKE '%SUS%' THEN 'SUS'\n        ELSE 'CONVÊNIO'\n     END TIPO_CONVENIO\n    ,TMP.CD_CGC    \nFROM(\n\nSELECT\n    A.*\n    ,CNPJ.cnpj AS CD_CGC\n    ,ROW_NUMBER()OVER(PARTITION BY A.CD_CONVENIO ORDER BY A.CD_CONVENIO) ID_LINHA\nFROM LST_CONV A\nOUTER APPLY(\n        SELECT TOP 1\n            X.CodConv\n            ,X.cnpj\n        FROM DW.UPO X WITH(NOLOCK) \n        WHERE X.CodConv = A.CD_CONVENIO\n        ) CNPJ\n) TMP\nWHERE TMP.ID_LINHA = 1)\n\nINSERT INTO STG.UPO_CONVENIO\nSELECT * FROM REF\n"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "CARGA DW",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Stg Convenio",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "EXEC SP_UPO_CARGA_DW"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
 			}
 		],
 		"folder": {
