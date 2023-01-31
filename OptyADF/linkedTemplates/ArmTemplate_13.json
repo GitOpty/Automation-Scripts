@@ -7,6 +7,14 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		},
+		"LS_OFTALMODIAGNOSE_ODBC_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'LS_OFTALMODIAGNOSE_ODBC'"
+		},
+		"LS_OFTALMODIAGNOSE_ODBC_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'LS_OFTALMODIAGNOSE_ODBC'"
+		},
 		"SMART_HOSL_NEW_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'SMART_HOSL_NEW'"
@@ -59,6 +67,10 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'SadallaTasyTeste'"
 		},
+		"LS_OFTALMODIAGNOSE_ODBC_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "DBA"
+		},
 		"LS_Otorrinocenter_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
 			"defaultValue": "otorrinocenter"
@@ -71,19 +83,49 @@
 			"type": "string",
 			"defaultValue": "Ortocity"
 		},
+		"SLFW_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "@linkedService().NOME_KEYVAULT_SECRET"
+		},
 		"Smart_Connections_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
 			"defaultValue": "@linkedService().NOME_KEYVAULT_SECRET"
 		},
-		"Tasy_Connections_properties_typeProperties_connectionString_secretName": {
+		"TECHSALLUS_DINAMICO_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
-			"defaultValue": "@linkedService().NOME_KEYVAULT_SECRET"
+			"defaultValue": "otorrinocenter"
 		}
 	},
 	"variables": {
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_OFTALMODIAGNOSE_ODBC')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Odbc",
+				"typeProperties": {
+					"connectionString": {
+						"type": "SecureString",
+						"value": "[parameters('LS_OFTALMODIAGNOSE_ODBC_connectionString')]"
+					},
+					"authenticationType": "Basic",
+					"userName": "[parameters('LS_OFTALMODIAGNOSE_ODBC_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('LS_OFTALMODIAGNOSE_ODBC_password')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "IROFTALMODIAGNOSE",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/LS_Otorrinocenter')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -147,6 +189,38 @@
 							"type": "LinkedServiceReference"
 						},
 						"secretName": "[parameters('Ortoity_Oracle_properties_typeProperties_connectionString_secretName')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SLFW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"NOME_KEYVAULT_SECRET": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": {
+							"value": "[parameters('SLFW_properties_typeProperties_connectionString_secretName')]",
+							"type": "Expression"
+						}
 					}
 				},
 				"connectVia": {
@@ -410,7 +484,7 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/Tasy_Connections')]",
+			"name": "[concat(parameters('factoryName'), '/TECHSALLUS_DINAMICO')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
 			"properties": {
@@ -420,7 +494,7 @@
 					}
 				},
 				"annotations": [],
-				"type": "Oracle",
+				"type": "SqlServer",
 				"typeProperties": {
 					"connectionString": {
 						"type": "AzureKeyVaultSecret",
@@ -428,300 +502,13 @@
 							"referenceName": "SV_OptyKeyVault",
 							"type": "LinkedServiceReference"
 						},
-						"secretName": {
-							"value": "[parameters('Tasy_Connections_properties_typeProperties_connectionString_secretName')]",
-							"type": "Expression"
-						},
-						"secretVersion": ""
+						"secretName": "[parameters('TECHSALLUS_DINAMICO_properties_typeProperties_connectionString_secretName')]"
 					}
 				},
 				"connectVia": {
 					"referenceName": "ServidorArquivosBI",
 					"type": "IntegrationRuntimeReference"
 				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/2_Processa_DataMart')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Verifica Start Datamart",
-						"type": "Lookup",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT\n    COUNT(1) as QT_REGISTRO \nFROM(\n    SELECT \n        A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n        ,MAX(A.DT_INICIO_PROCESS) DT_INICIO_PROCESS \n        ,CAST(MAX(A.DT_FIM_PROCESS) AS DATE) DT_FIM_PROCESS         \n    FROM DBO.LOG_PROCESSAMENTO_DW A\n    INNER JOIN DBO.cfg_plataforma_dw B ON B.ID_PLATAFORMA = A.ID_PLATAFORMA\n    WHERE UPPER(A.NOME_PROCESSO) LIKE '%CARGA_DW'\n    GROUP BY A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n)TMP    \nWHERE TMP.DT_FIM_PROCESS = CAST(GETDATE() AS DATE)\n",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "AZ_SQL",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "Processo",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Verifica Start Datamart",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Verifica Start Datamart').output.value",
-								"type": "Expression"
-							},
-							"activities": [
-								{
-									"name": "Inicia Atualizacao Datamart",
-									"type": "IfCondition",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"expression": {
-											"value": "@greaterOrEquals(item().QT_REGISTRO,2 )",
-											"type": "Expression"
-										},
-										"ifFalseActivities": [
-											{
-												"name": "Busca Email",
-												"type": "Lookup",
-												"dependsOn": [],
-												"policy": {
-													"timeout": "7.00:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"source": {
-														"type": "AzureSqlSource",
-														"sqlReaderQuery": "SELECT * FROM ADF.OWNER",
-														"queryTimeout": "02:00:00",
-														"partitionOption": "None"
-													},
-													"dataset": {
-														"referenceName": "AZ_SQL",
-														"type": "DatasetReference",
-														"parameters": {}
-													}
-												}
-											},
-											{
-												"name": "Variable Email",
-												"type": "SetVariable",
-												"dependsOn": [
-													{
-														"activity": "Busca Email",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"userProperties": [],
-												"typeProperties": {
-													"variableName": "email",
-													"value": {
-														"value": "@activity('Busca Email').output.firstRow['Email']",
-														"type": "Expression"
-													}
-												}
-											},
-											{
-												"name": "Disparado de Erro Datamart Receb",
-												"type": "ExecutePipeline",
-												"dependsOn": [
-													{
-														"activity": "Variable Email",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "Send email",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {
-														"EmailTo": {
-															"value": "@variables('email')",
-															"type": "Expression"
-														},
-														"Subject": {
-															"value": "@pipeline().Pipeline",
-															"type": "Expression"
-														},
-														"ErrorMessage": "Falha na atualização do Datamart "
-													}
-												}
-											}
-										],
-										"ifTrueActivities": [
-											{
-												"name": "Execute Datamart Recebimento",
-												"type": "ExecutePipeline",
-												"dependsOn": [],
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "DM_Recebimento",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {}
-												}
-											},
-											{
-												"name": "Exec Datamart Prod Diaria Tasy",
-												"type": "ExecutePipeline",
-												"dependsOn": [],
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "DM_ProdDiaria_TasyV2",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {}
-												}
-											},
-											{
-												"name": "Exec Datamart Prod Diaria Smart",
-												"type": "ExecutePipeline",
-												"dependsOn": [],
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "DM_ProdDiariaSMARTV2",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {}
-												}
-											}
-										]
-									}
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"variables": {
-					"email": {
-						"type": "String"
-					},
-					"qt_registro": {
-						"type": "String"
-					}
-				},
-				"folder": {
-					"name": "Data Warehouse/1_Inicializador"
-				},
-				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CEOP')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Copy data1",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "CEOP_DS_EXCEL",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "ceop"
-								}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/P&P"
-				},
-				"annotations": []
 			},
 			"dependsOn": []
 		}
