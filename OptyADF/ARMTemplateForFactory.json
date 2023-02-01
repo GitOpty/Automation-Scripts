@@ -23,6 +23,10 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'AzureSqlDatabase'"
 		},
+		"AzureTableStorage_Oftalmodiagnose_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureTableStorage_Oftalmodiagnose'"
+		},
 		"CloudTasyProd_NEW_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'CloudTasyProd_NEW'"
@@ -119,9 +123,9 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'accountKey' of 'sv_hmaisbrasildatadriven'"
 		},
-		"AzureTableStorage_Oftalmodiagnose_connectionString": {
+		"AzureBlobStorage_Recebimento_connectionString": {
 			"type": "secureString",
-			"metadata": "Secure string for 'connectionString' of 'AzureTableStorage_Oftalmodiagnose'"
+			"metadata": "Secure string for 'connectionString' of 'AzureBlobStorage_Recebimento'"
 		},
 		"AzureDatabricks_properties_typeProperties_existingClusterId": {
 			"type": "string",
@@ -57093,6 +57097,11 @@
 					"elapsedTimeMetric": {},
 					"cancelAfter": {}
 				},
+				"variables": {
+					"modif_dt": {
+						"type": "Array"
+					}
+				},
 				"folder": {
 					"name": "Data Warehouse/P&P"
 				},
@@ -76720,77 +76729,6 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/Smart MaxDB')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Copy data1",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OdbcSource",
-								"query": "SELECT *\nFROM V_BI_STR\nLIMIT 10",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "OdbcTable1",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "OFT_DATASET",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/Outros"
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/OdbcTable1')]",
-				"[concat(variables('factoryId'), '/datasets/OFT_DATASET')]"
-			]
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/TEST_ORTOCITY')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -95849,6 +95787,39 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Parquet_Oftalmodiagnose')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage_Oftalmodiagnose",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"nome_tabela": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@dataset().nome_tabela",
+							"type": "Expression"
+						},
+						"container": "oftalmodiagnose"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage_Oftalmodiagnose')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/SLFW_Dinamico')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -98311,6 +98282,19 @@
 				"type": "AzureSqlDatabase",
 				"typeProperties": {
 					"connectionString": "[parameters('AzureSqlDatabase_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureTableStorage_Oftalmodiagnose')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureTableStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureTableStorage_Oftalmodiagnose_connectionString')]"
 				}
 			},
 			"dependsOn": []
@@ -101244,50 +101228,453 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/Parquet_Oftalmodiagnose')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
+			"name": "[concat(parameters('factoryName'), '/Plan_Recebimento')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureBlobStorage_Oftalmodiagnose",
-					"type": "LinkedServiceReference"
+				"description": "Planilha de Recebimento enviado pela área do contas à receber",
+				"activities": [
+					{
+						"name": "Get Metadata1",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Binary_ContasReceber",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "contasreceber"
+								}
+							},
+							"fieldList": [
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filter1",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Get Metadata1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get Metadata1').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'xlsx')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filter1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filter1').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Data_File",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "modif_dt",
+										"value": {
+											"value": "@split(replace(replace(item().name,'Consolidado_Plan_RecebimentoW',''),'.xlsx','N'),'M')\n\n",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ForEach2",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "ForEach1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@variables('modif_dt')",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "If Condition1",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@startswith(item(),'C')",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "DtModificao",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "dt_modif",
+													"value": {
+														"value": "@concat(substring(replace(item(),'N',''),0,4)\n,'-',substring(replace(item(),'N',''),4,2)\n,'-',substring(replace(item(),'N',''),6,2)\n,' ',substring(replace(item(),'N',''),9,2)\n,':',substring(replace(item(),'N',''),12,2)\n,':',substring(replace(item(),'N',''),15,2)\n)",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "DtCriacao",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "dt_criacao",
+													"value": {
+														"value": "@concat(substring(replace(item(),'C',''),0,4)\n,'-',substring(replace(item(),'C',''),4,2)\n,'-',substring(replace(item(),'C',''),6,2)\n,' ',substring(replace(item(),'C',''),9,2)\n,':',substring(replace(item(),'C',''),12,2)\n,':',substring(replace(item(),'C',''),15,2)\n)",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ForEach3",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "ForEach2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filter1').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "ExcelSource",
+											"additionalColumns": [
+												{
+													"name": "DT_CRIACAO_ARQUIVO",
+													"value": {
+														"value": "@variables('dt_criacao')",
+														"type": "Expression"
+													}
+												},
+												{
+													"name": "DT_MODIFICAO_ARQUIVO",
+													"value": {
+														"value": "@variables('dt_modif')",
+														"type": "Expression"
+													}
+												}
+											],
+											"storeSettings": {
+												"type": "AzureBlobStorageReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": "--TRUNCATE TABLE STG.plan_recebimento_cta_receber",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "Excel_Recebimento",
+											"type": "DatasetReference",
+											"parameters": {
+												"FileBlob": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_Plan_Recebimento",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Delete File Blob",
+						"type": "Delete",
+						"dependsOn": [
+							{
+								"activity": "ForEach3",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Binary_ContasReceber",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "contasreceber"
+								}
+							},
+							"enableLogging": false,
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							}
+						}
+					},
+					{
+						"name": "Merge",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Delete File Blob",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "WITH REF AS(\n\nSELECT \nESTABELECIMENTO + '|' + RTRIM(LTRIM(ISNULL([CONVÊNIOS],''))) +'|' + ISNULL([CNPJ],'0') + '|' + [DT CRÉDITO] AS FK_PLAN\n,[ESTABELECIMENTO]\n,RTRIM(LTRIM([CONVÊNIOS])) AS CONVÊNIOS\n,[CNPJ]\n,[DT CRÉDITO]\n,[DT_CRIACAO_ARQUIVO]\n,[DT_MODIFICAO_ARQUIVO]\n,SUM(CAST([VL DO CRÉDITO] AS money)) AS VL_CREDITO\nFROM STG.plan_recebimento_cta_receber\nGROUP BY\nESTABELECIMENTO + '|' + RTRIM(LTRIM(ISNULL([CONVÊNIOS],''))) +'|' + ISNULL([CNPJ],'0') + '|' + [DT CRÉDITO] \n,[ESTABELECIMENTO]\n,RTRIM(LTRIM([CONVÊNIOS])) \n,[CNPJ]\n,[DT CRÉDITO]\n,[DT_CRIACAO_ARQUIVO]\n,[DT_MODIFICAO_ARQUIVO]\n\n)\n\nMERGE\n    dw.PLAN_RECEBIMENTO_CTA_RECEBER as DESTINO\nUSING\n    REF as ORIGEM\non (DESTINO.FK_PLAN = ORIGEM.FK_PLAN)\n\nWHEN MATCHED  \nTHEN UPDATE SET\ndestino.FK_PLAN = origem.FK_PLAN\n,destino.ESTABELECIMENTO = origem.ESTABELECIMENTO\n,destino.CONVÊNIOS = origem.CONVÊNIOS\n,destino.CNPJ = origem.CNPJ\n,destino.[DT CRÉDITO] = origem.[DT CRÉDITO]\n,destino.DT_CRIACAO_ARQUIVO = origem.DT_CRIACAO_ARQUIVO\n,destino.DT_MODIFICAO_ARQUIVO = origem.DT_MODIFICAO_ARQUIVO\n,destino.VL_CREDITO = origem.VL_CREDITO  \n\nWHEN NOT MATCHED BY TARGET  \nTHEN INSERT  \n        Values(            \n            origem.FK_PLAN\n            ,origem.ESTABELECIMENTO\n            ,origem.CONVÊNIOS\n            ,origem.CNPJ\n            ,origem.[DT CRÉDITO]\n            ,origem.DT_CRIACAO_ARQUIVO\n            ,origem.DT_MODIFICAO_ARQUIVO\n            ,origem.VL_CREDITO\n        );"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
 				},
-				"parameters": {
-					"nome_tabela": {
-						"type": "string"
+				"variables": {
+					"modif_dt": {
+						"type": "Array"
+					},
+					"dt_modif": {
+						"type": "String"
+					},
+					"dt_criacao": {
+						"type": "String"
 					}
 				},
-				"annotations": [],
-				"type": "Parquet",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobStorageLocation",
-						"fileName": {
-							"value": "@dataset().nome_tabela",
-							"type": "Expression"
-						},
-						"container": "oftalmodiagnose"
-					},
-					"compressionCodec": "snappy"
+				"folder": {
+					"name": "Data Warehouse/Outros"
 				},
-				"schema": []
+				"annotations": []
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage_Oftalmodiagnose')]"
+				"[concat(variables('factoryId'), '/datasets/Binary_ContasReceber')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/datasets/Excel_Recebimento')]",
+				"[concat(variables('factoryId'), '/datasets/AZ_Plan_Recebimento')]"
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/AzureTableStorage_Oftalmodiagnose')]",
+			"name": "[concat(parameters('factoryName'), '/AzureBlobStorage_Recebimento')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"annotations": [],
-				"type": "AzureTableStorage",
+				"type": "AzureBlobStorage",
 				"typeProperties": {
-					"connectionString": "[parameters('AzureTableStorage_Oftalmodiagnose_connectionString')]"
+					"connectionString": "[parameters('AzureBlobStorage_Recebimento_connectionString')]"
 				}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Binary_ContasReceber')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage_Recebimento",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FileSystem": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"container": {
+							"value": "@dataset().FileSystem",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage_Recebimento')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Excel_Recebimento')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage_Recebimento",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FileBlob": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Excel",
+				"typeProperties": {
+					"sheetName": "Recebimentos Consolidado",
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@dataset().FileBlob",
+							"type": "Expression"
+						},
+						"container": "contasreceber"
+					},
+					"firstRowAsHeader": true
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage_Recebimento')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AZ_Plan_Recebimento')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "plan_recebimento_cta_receber"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
 		}
 	]
 }
