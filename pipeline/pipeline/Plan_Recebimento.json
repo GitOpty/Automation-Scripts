@@ -284,6 +284,39 @@
 						"enablePartitionDiscovery": false
 					}
 				}
+			},
+			{
+				"name": "Merge",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Delete File Blob",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "WITH REF AS(\n\nSELECT \nESTABELECIMENTO + '|' + RTRIM(LTRIM(ISNULL([CONVÊNIOS],''))) +'|' + ISNULL([CNPJ],'0') + '|' + [DT CRÉDITO] AS FK_PLAN\n,[ESTABELECIMENTO]\n,RTRIM(LTRIM([CONVÊNIOS])) AS CONVÊNIOS\n,[CNPJ]\n,[DT CRÉDITO]\n,[DT_CRIACAO_ARQUIVO]\n,[DT_MODIFICAO_ARQUIVO]\n,SUM(CAST([VL DO CRÉDITO] AS money)) AS VL_CREDITO\nFROM STG.plan_recebimento_cta_receber\nGROUP BY\nESTABELECIMENTO + '|' + RTRIM(LTRIM(ISNULL([CONVÊNIOS],''))) +'|' + ISNULL([CNPJ],'0') + '|' + [DT CRÉDITO] \n,[ESTABELECIMENTO]\n,RTRIM(LTRIM([CONVÊNIOS])) \n,[CNPJ]\n,[DT CRÉDITO]\n,[DT_CRIACAO_ARQUIVO]\n,[DT_MODIFICAO_ARQUIVO]\n\n)\n\nMERGE\n    dw.PLAN_RECEBIMENTO_CTA_RECEBER as DESTINO\nUSING\n    REF as ORIGEM\non (DESTINO.FK_PLAN = ORIGEM.FK_PLAN)\n\nWHEN MATCHED  \nTHEN UPDATE SET\ndestino.FK_PLAN = origem.FK_PLAN\n,destino.ESTABELECIMENTO = origem.ESTABELECIMENTO\n,destino.CONVÊNIOS = origem.CONVÊNIOS\n,destino.CNPJ = origem.CNPJ\n,destino.[DT CRÉDITO] = origem.[DT CRÉDITO]\n,destino.DT_CRIACAO_ARQUIVO = origem.DT_CRIACAO_ARQUIVO\n,destino.DT_MODIFICAO_ARQUIVO = origem.DT_MODIFICAO_ARQUIVO\n,destino.VL_CREDITO = origem.VL_CREDITO  \n\nWHEN NOT MATCHED BY TARGET  \nTHEN INSERT  \n        Values(            \n            origem.FK_PLAN\n            ,origem.ESTABELECIMENTO\n            ,origem.CONVÊNIOS\n            ,origem.CNPJ\n            ,origem.[DT CRÉDITO]\n            ,origem.DT_CRIACAO_ARQUIVO\n            ,origem.DT_MODIFICAO_ARQUIVO\n            ,origem.VL_CREDITO\n        );"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
 			}
 		],
 		"variables": {
