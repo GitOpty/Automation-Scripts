@@ -7,6 +7,18 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		},
+		"SadallaTasyProd_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SadallaTasyProd'"
+		},
+		"SadallaTasyProd_NEW_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SadallaTasyProd_NEW'"
+		},
+		"SadallaTasyTeste_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SadallaTasyTeste'"
+		},
 		"Smart_Connections_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
 			"defaultValue": "@linkedService().NOME_KEYVAULT_SECRET"
@@ -24,6 +36,57 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/SadallaTasyProd')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": "[parameters('SadallaTasyProd_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SadallaTasyProd_NEW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": "[parameters('SadallaTasyProd_NEW_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SadallaTasyTeste')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": "[parameters('SadallaTasyTeste_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Smart_Connections')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -114,85 +177,6 @@
 				"connectVia": {
 					"referenceName": "ServidorArquivosBI",
 					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Binary_ContasReceber')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureBlobStorage_Recebimento",
-					"type": "LinkedServiceReference"
-				},
-				"parameters": {
-					"FileSystem": {
-						"type": "string"
-					}
-				},
-				"annotations": [],
-				"type": "Binary",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobStorageLocation",
-						"container": {
-							"value": "@dataset().FileSystem",
-							"type": "Expression"
-						}
-					}
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Excel_Recebimento')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureBlobStorage_Recebimento",
-					"type": "LinkedServiceReference"
-				},
-				"parameters": {
-					"FileBlob": {
-						"type": "string"
-					}
-				},
-				"annotations": [],
-				"type": "Excel",
-				"typeProperties": {
-					"sheetName": "Recebimentos Consolidado",
-					"location": {
-						"type": "AzureBlobStorageLocation",
-						"fileName": {
-							"value": "@dataset().FileBlob",
-							"type": "Expression"
-						},
-						"container": "contasreceber"
-					},
-					"firstRowAsHeader": true
-				},
-				"schema": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZ_Plan_Recebimento')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [],
-				"typeProperties": {
-					"schema": "stg",
-					"table": "plan_recebimento_cta_receber"
 				}
 			},
 			"dependsOn": []
@@ -5417,6 +5401,353 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Plan_Recebimento')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Planilha de Recebimento enviado pela área do contas à receber",
+				"activities": [
+					{
+						"name": "Get Metadata1",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Binary_ContasReceber",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "contasreceber"
+								}
+							},
+							"fieldList": [
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filter1",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Get Metadata1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get Metadata1').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'xlsx')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filter1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filter1').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Data_File",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "modif_dt",
+										"value": {
+											"value": "@split(replace(replace(item().name,'Consolidado_Plan_RecebimentoW',''),'.xlsx','N'),'M')\n\n",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ForEach2",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "ForEach1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@variables('modif_dt')",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "If Condition1",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@startswith(item(),'C')",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "DtModificao",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "dt_modif",
+													"value": {
+														"value": "@concat(substring(replace(item(),'N',''),0,4)\n,'-',substring(replace(item(),'N',''),4,2)\n,'-',substring(replace(item(),'N',''),6,2)\n,' ',substring(replace(item(),'N',''),9,2)\n,':',substring(replace(item(),'N',''),12,2)\n,':',substring(replace(item(),'N',''),15,2)\n)",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "DtCriacao",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "dt_criacao",
+													"value": {
+														"value": "@concat(substring(replace(item(),'C',''),0,4)\n,'-',substring(replace(item(),'C',''),4,2)\n,'-',substring(replace(item(),'C',''),6,2)\n,' ',substring(replace(item(),'C',''),9,2)\n,':',substring(replace(item(),'C',''),12,2)\n,':',substring(replace(item(),'C',''),15,2)\n)",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ForEach3",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "ForEach2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filter1').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "ExcelSource",
+											"additionalColumns": [
+												{
+													"name": "DT_CRIACAO_ARQUIVO",
+													"value": {
+														"value": "@variables('dt_criacao')",
+														"type": "Expression"
+													}
+												},
+												{
+													"name": "DT_MODIFICAO_ARQUIVO",
+													"value": {
+														"value": "@variables('dt_modif')",
+														"type": "Expression"
+													}
+												}
+											],
+											"storeSettings": {
+												"type": "AzureBlobStorageReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": "--TRUNCATE TABLE STG.plan_recebimento_cta_receber",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "Excel_Recebimento",
+											"type": "DatasetReference",
+											"parameters": {
+												"FileBlob": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_Plan_Recebimento",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Delete File Blob",
+						"type": "Delete",
+						"dependsOn": [
+							{
+								"activity": "ForEach3",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Binary_ContasReceber",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "contasreceber"
+								}
+							},
+							"enableLogging": false,
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							}
+						}
+					},
+					{
+						"name": "Merge",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Delete File Blob",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "WITH REF AS(\n\nSELECT \nESTABELECIMENTO + '|' + RTRIM(LTRIM(ISNULL([CONVÊNIOS],''))) +'|' + ISNULL([CNPJ],'0') + '|' + [DT CRÉDITO] AS FK_PLAN\n,[ESTABELECIMENTO]\n,RTRIM(LTRIM([CONVÊNIOS])) AS CONVÊNIOS\n,[CNPJ]\n,[DT CRÉDITO]\n,[DT_CRIACAO_ARQUIVO]\n,[DT_MODIFICAO_ARQUIVO]\n,SUM(CAST([VL DO CRÉDITO] AS money)) AS VL_CREDITO\nFROM STG.plan_recebimento_cta_receber\nGROUP BY\nESTABELECIMENTO + '|' + RTRIM(LTRIM(ISNULL([CONVÊNIOS],''))) +'|' + ISNULL([CNPJ],'0') + '|' + [DT CRÉDITO] \n,[ESTABELECIMENTO]\n,RTRIM(LTRIM([CONVÊNIOS])) \n,[CNPJ]\n,[DT CRÉDITO]\n,[DT_CRIACAO_ARQUIVO]\n,[DT_MODIFICAO_ARQUIVO]\n\n)\n\nMERGE\n    dw.PLAN_RECEBIMENTO_CTA_RECEBER as DESTINO\nUSING\n    REF as ORIGEM\non (DESTINO.FK_PLAN = ORIGEM.FK_PLAN)\n\nWHEN MATCHED  \nTHEN UPDATE SET\ndestino.FK_PLAN = origem.FK_PLAN\n,destino.ESTABELECIMENTO = origem.ESTABELECIMENTO\n,destino.CONVÊNIOS = origem.CONVÊNIOS\n,destino.CNPJ = origem.CNPJ\n,destino.[DT CRÉDITO] = origem.[DT CRÉDITO]\n,destino.DT_CRIACAO_ARQUIVO = origem.DT_CRIACAO_ARQUIVO\n,destino.DT_MODIFICAO_ARQUIVO = origem.DT_MODIFICAO_ARQUIVO\n,destino.VL_CREDITO = origem.VL_CREDITO  \n\nWHEN NOT MATCHED BY TARGET  \nTHEN INSERT  \n        Values(            \n            origem.FK_PLAN\n            ,origem.ESTABELECIMENTO\n            ,origem.CONVÊNIOS\n            ,origem.CNPJ\n            ,origem.[DT CRÉDITO]\n            ,origem.DT_CRIACAO_ARQUIVO\n            ,origem.DT_MODIFICAO_ARQUIVO\n            ,origem.VL_CREDITO\n        );"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"variables": {
+					"modif_dt": {
+						"type": "Array"
+					},
+					"dt_modif": {
+						"type": "String"
+					},
+					"dt_criacao": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "Data Warehouse/Outros"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/UPO')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -7228,345 +7559,6 @@
 				},
 				"folder": {
 					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
-				},
-				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/VISAO CENTER')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Lista arquivos",
-						"type": "GetMetadata",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.02:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataset": {
-								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "urobrasil"
-								}
-							},
-							"fieldList": [
-								"childItems",
-								"itemType",
-								"itemName",
-								"lastModified"
-							],
-							"storeSettings": {
-								"type": "AzureBlobFSReadSettings",
-								"recursive": true,
-								"enablePartitionDiscovery": false
-							},
-							"formatSettings": {
-								"type": "BinaryReadSettings"
-							}
-						}
-					},
-					{
-						"name": "Filtro",
-						"type": "Filter",
-						"dependsOn": [
-							{
-								"activity": "Lista arquivos",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Lista arquivos').output.childItems",
-								"type": "Expression"
-							},
-							"condition": {
-								"value": "@endsWith(item().name, 'csv')",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "ForEach1",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Filtro",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Filtro').output.value",
-								"type": "Expression"
-							},
-							"activities": [
-								{
-									"name": "Copia dados para a STG",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "AzureBlobFSReadSettings",
-												"recursive": true,
-												"enablePartitionDiscovery": false
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"preCopyScript": {
-												"value": "@{concat('Drop table stg.',activity('Lista arquivos').output.itemName)}",
-												"type": "Expression"
-											},
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"tableOption": "autoCreate",
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZ_SQL_STG",
-											"type": "DatasetReference",
-											"parameters": {
-												"SCHEMA": "stg",
-												"TABELA": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												}
-											}
-										}
-									]
-								},
-								{
-									"name": "Move arquivo para PROCESSADOS",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "STG DW",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "AzureBlobFSReadSettings",
-												"recursive": true,
-												"enablePartitionDiscovery": false
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "DelimitedTextSink",
-											"storeSettings": {
-												"type": "AzureBlobFSWriteSettings"
-											},
-											"formatSettings": {
-												"type": "DelimitedTextWriteSettings",
-												"quoteAllText": true,
-												"fileExtension": ".txt"
-											}
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@concat(item().name,'-',utcnow())",
-													"type": "Expression"
-												}
-											}
-										}
-									]
-								},
-								{
-									"name": "Apaga arquivo",
-									"type": "Delete",
-									"dependsOn": [
-										{
-											"activity": "Move arquivo para PROCESSADOS",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"dataset": {
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										},
-										"logStorageSettings": {
-											"linkedServiceName": {
-												"referenceName": "sv_hmaisbrasildatadriven",
-												"type": "LinkedServiceReference"
-											},
-											"path": "ceop/logs"
-										},
-										"enableLogging": true,
-										"storeSettings": {
-											"type": "AzureBlobFSReadSettings",
-											"recursive": true,
-											"enablePartitionDiscovery": false
-										}
-									}
-								},
-								{
-									"name": "STG DW",
-									"type": "Script",
-									"dependsOn": [
-										{
-											"activity": "Copia dados para a STG",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"linkedServiceName": {
-										"referenceName": "SQL_DESTINO",
-										"type": "LinkedServiceReference"
-									},
-									"typeProperties": {
-										"scripts": [
-											{
-												"type": "NonQuery",
-												"text": "MERGE\t           \n\tdw.ortocity AS destino           \nUSING            \n\tstg.ortocity AS origem           \n           \n    ON(        \ndestino.CD_ESTABELECIMENTO\t\t= origem.CD_ESTABELECIMENTO AND\ndestino.DS_ESTABELECIMENTO\t\t= origem.DS_ESTABELECIMENTO AND\ndestino.NR_ATENDIMENTO\t\t\t= origem.NR_ATENDIMENTO AND\ndestino.NR_INTERNO_CONTA\t\t= origem.NR_INTERNO_CONTA AND\ndestino.CD_PESSOA_FISICA\t\t= origem.CD_PESSOA_FISICA AND\ndestino.CD_CONVENIO\t\t\t\t= origem.CD_CONVENIO AND\ndestino.CD_MEDICO_EXECUTANTE\t=\torigem.CD_MEDICO_EXECUTANTE \n)        \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.CD_ESTABELECIMENTO=origem.CD_ESTABELECIMENTO ,\ndestino.DS_ESTABELECIMENTO=origem.DS_ESTABELECIMENTO ,\ndestino.NR_ATENDIMENTO=origem.NR_ATENDIMENTO ,\ndestino.NR_INTERNO_CONTA=origem.NR_INTERNO_CONTA ,\ndestino.CD_PESSOA_FISICA=origem.CD_PESSOA_FISICA ,\ndestino.NM_PESSOA_FISICA=origem.NM_PESSOA_FISICA ,\ndestino.DT_NASCIMENTO=origem.DT_NASCIMENTO ,\ndestino.CD_CONVENIO=origem.CD_CONVENIO ,\ndestino.DS_CONVENIO=origem.DS_CONVENIO ,\ndestino.CD_MEDICO_EXECUTANTE=origem.CD_MEDICO_EXECUTANTE ,\ndestino.NM_MEDICO_EXECUTANTE=origem.NM_MEDICO_EXECUTANTE ,\ndestino.CD_SETOR_EXECUTANTE=origem.CD_SETOR_EXECUTANTE ,\ndestino.DS_SETOR_EXECUTANTE=origem.DS_SETOR_EXECUTANTE ,\ndestino.DT_ENTRADA=origem.DT_ENTRADA ,\ndestino.CD_ITEM=origem.CD_ITEM ,\ndestino.DS_ITEM=origem.DS_ITEM ,\ndestino.DT_LANC_ITEM=origem.DT_LANC_ITEM ,\ndestino.QT=origem.QT ,\ndestino.VALOR=origem.VALOR \n\n\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.CD_ESTABELECIMENTO,\norigem.DS_ESTABELECIMENTO,\norigem.NR_ATENDIMENTO,\norigem.NR_INTERNO_CONTA,\norigem.CD_PESSOA_FISICA,\norigem.NM_PESSOA_FISICA,\norigem.DT_NASCIMENTO,\norigem.CD_CONVENIO,\norigem.DS_CONVENIO,\norigem.CD_MEDICO_EXECUTANTE,\norigem.NM_MEDICO_EXECUTANTE,\norigem.CD_SETOR_EXECUTANTE,\norigem.DS_SETOR_EXECUTANTE,\norigem.DT_ENTRADA,\norigem.CD_ITEM,\norigem.DS_ITEM,\norigem.DT_LANC_ITEM,\norigem.QT,\norigem.VALOR\n); "
-											}
-										]
-									}
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/P&P"
 				},
 				"annotations": []
 			},
