@@ -17,7 +17,10 @@
 				"typeProperties": {
 					"dataset": {
 						"referenceName": "Binary_ANS",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"folder": "tuss"
+						}
 					},
 					"fieldList": [
 						"itemName",
@@ -74,7 +77,7 @@
 					},
 					"activities": [
 						{
-							"name": "Copy data1",
+							"name": "Carga Dados ANS TUSS",
 							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
@@ -99,6 +102,10 @@
 								},
 								"sink": {
 									"type": "AzureSqlSink",
+									"preCopyScript": {
+										"value": "@{concat('TRUNCATE TABLE stg.',activity('Get Metadata1').output.itemName,'_tuss')}",
+										"type": "Expression"
+									},
 									"writeBehavior": "insert",
 									"sqlWriterUseTableLock": false,
 									"tableOption": "autoCreate",
@@ -141,6 +148,39 @@
 							]
 						}
 					]
+				}
+			},
+			{
+				"name": "Merge DW",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "ForEach1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "EXEC SP_CARGA_ANS_TUSS"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
 				}
 			}
 		],
