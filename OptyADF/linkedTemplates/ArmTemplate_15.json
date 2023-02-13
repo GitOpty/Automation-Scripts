@@ -13,6 +13,2370 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/Plan_Recebimento')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Planilha de Recebimento enviado pela área do contas à receber",
+				"activities": [
+					{
+						"name": "Get Metadata1",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Binary_ContasReceber",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "contasreceber"
+								}
+							},
+							"fieldList": [
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filter1",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Get Metadata1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get Metadata1').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'xlsx')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filter1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filter1').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Data_File",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "modif_dt",
+										"value": {
+											"value": "@split(replace(replace(item().name,'Consolidado_Plan_RecebimentoW',''),'.xlsx','N'),'M')\n\n",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ForEach2",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "ForEach1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@variables('modif_dt')",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "If Condition1",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@startswith(item(),'C')",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "DtModificao",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "dt_modif",
+													"value": {
+														"value": "@concat(substring(replace(item(),'N',''),0,4)\n,'-',substring(replace(item(),'N',''),4,2)\n,'-',substring(replace(item(),'N',''),6,2)\n,' ',substring(replace(item(),'N',''),9,2)\n,':',substring(replace(item(),'N',''),12,2)\n,':',substring(replace(item(),'N',''),15,2)\n)",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "DtCriacao",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "dt_criacao",
+													"value": {
+														"value": "@concat(substring(replace(item(),'C',''),0,4)\n,'-',substring(replace(item(),'C',''),4,2)\n,'-',substring(replace(item(),'C',''),6,2)\n,' ',substring(replace(item(),'C',''),9,2)\n,':',substring(replace(item(),'C',''),12,2)\n,':',substring(replace(item(),'C',''),15,2)\n)",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ForEach3",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "ForEach2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filter1').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "ExcelSource",
+											"additionalColumns": [
+												{
+													"name": "DT_CRIACAO_ARQUIVO",
+													"value": {
+														"value": "@variables('dt_criacao')",
+														"type": "Expression"
+													}
+												},
+												{
+													"name": "DT_MODIFICAO_ARQUIVO",
+													"value": {
+														"value": "@variables('dt_modif')",
+														"type": "Expression"
+													}
+												}
+											],
+											"storeSettings": {
+												"type": "AzureBlobStorageReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": "--TRUNCATE TABLE STG.plan_recebimento_cta_receber",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "Excel_Recebimento",
+											"type": "DatasetReference",
+											"parameters": {
+												"FileBlob": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_Plan_Recebimento",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Delete File Blob",
+						"type": "Delete",
+						"dependsOn": [
+							{
+								"activity": "ForEach3",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Binary_ContasReceber",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "contasreceber"
+								}
+							},
+							"enableLogging": false,
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							}
+						}
+					},
+					{
+						"name": "Merge",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Delete File Blob",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "WITH REF AS(\n\nSELECT \nESTABELECIMENTO + '|' + RTRIM(LTRIM(ISNULL([CONVÊNIOS],''))) +'|' + ISNULL([CNPJ],'0') + '|' + [DT CRÉDITO] AS FK_PLAN\n,[ESTABELECIMENTO]\n,RTRIM(LTRIM([CONVÊNIOS])) AS CONVÊNIOS\n,[CNPJ]\n,[DT CRÉDITO]\n,[DT_CRIACAO_ARQUIVO]\n,[DT_MODIFICAO_ARQUIVO]\n,SUM(CAST([VL DO CRÉDITO] AS money)) AS VL_CREDITO\nFROM STG.plan_recebimento_cta_receber\nGROUP BY\nESTABELECIMENTO + '|' + RTRIM(LTRIM(ISNULL([CONVÊNIOS],''))) +'|' + ISNULL([CNPJ],'0') + '|' + [DT CRÉDITO] \n,[ESTABELECIMENTO]\n,RTRIM(LTRIM([CONVÊNIOS])) \n,[CNPJ]\n,[DT CRÉDITO]\n,[DT_CRIACAO_ARQUIVO]\n,[DT_MODIFICAO_ARQUIVO]\n\n)\n\nMERGE\n    dw.PLAN_RECEBIMENTO_CTA_RECEBER as DESTINO\nUSING\n    REF as ORIGEM\non (DESTINO.FK_PLAN = ORIGEM.FK_PLAN)\n\nWHEN MATCHED  \nTHEN UPDATE SET\ndestino.FK_PLAN = origem.FK_PLAN\n,destino.ESTABELECIMENTO = origem.ESTABELECIMENTO\n,destino.CONVÊNIOS = origem.CONVÊNIOS\n,destino.CNPJ = origem.CNPJ\n,destino.[DT CRÉDITO] = origem.[DT CRÉDITO]\n,destino.DT_CRIACAO_ARQUIVO = origem.DT_CRIACAO_ARQUIVO\n,destino.DT_MODIFICAO_ARQUIVO = origem.DT_MODIFICAO_ARQUIVO\n,destino.VL_CREDITO = origem.VL_CREDITO  \n\nWHEN NOT MATCHED BY TARGET  \nTHEN INSERT  \n        Values(            \n            origem.FK_PLAN\n            ,origem.ESTABELECIMENTO\n            ,origem.CONVÊNIOS\n            ,origem.CNPJ\n            ,origem.[DT CRÉDITO]\n            ,origem.DT_CRIACAO_ARQUIVO\n            ,origem.DT_MODIFICAO_ARQUIVO\n            ,origem.VL_CREDITO\n        );"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"variables": {
+					"modif_dt": {
+						"type": "Array"
+					},
+					"dt_modif": {
+						"type": "String"
+					},
+					"dt_criacao": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "Data Warehouse/Outros"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TUSS')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Get Metadata1",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "Binary_ANS",
+								"type": "DatasetReference",
+								"parameters": {
+									"folder": "tuss"
+								}
+							},
+							"fieldList": [
+								"itemName",
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filter1",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Get Metadata1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Get Metadata1').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endswith(item().name,'csv')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filter1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filter1').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Carga Dados ANS TUSS",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobStorageReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": {
+												"value": "@{concat('TRUNCATE TABLE stg.',activity('Get Metadata1').output.itemName,'_tuss')}",
+												"type": "Expression"
+											},
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "CSV_ANS_TUSS",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filename": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_SQL_STG",
+											"type": "DatasetReference",
+											"parameters": {
+												"SCHEMA": "stg",
+												"TABELA": {
+													"value": "@concat(activity('Get Metadata1').output.itemName,'_tuss')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Merge DW",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "ForEach1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "EXEC SP_CARGA_ANS_TUSS"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "ANS"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/UPO')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lista arquivos",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.02:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "upo"
+								}
+							},
+							"fieldList": [
+								"childItems",
+								"itemType",
+								"itemName",
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filtro",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Lista arquivos",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista arquivos').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'csv')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filtro",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filtro').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Copia dados para a STG",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": {
+												"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[upo]') AND type in (N'U'))\nDROP TABLE [stg].[upo]",
+												"type": "Expression"
+											},
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_SQL_STG",
+											"type": "DatasetReference",
+											"parameters": {
+												"SCHEMA": "stg",
+												"TABELA": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Move arquivo para PROCESSADOS",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "STG DW",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@concat(item().name,'-',utcnow())",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Apaga arquivo",
+									"type": "Delete",
+									"dependsOn": [
+										{
+											"activity": "Move arquivo para PROCESSADOS",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataset": {
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										},
+										"logStorageSettings": {
+											"linkedServiceName": {
+												"referenceName": "sv_hmaisbrasildatadriven",
+												"type": "LinkedServiceReference"
+											},
+											"path": "ceop/logs"
+										},
+										"enableLogging": true,
+										"storeSettings": {
+											"type": "AzureBlobFSReadSettings",
+											"recursive": true,
+											"enablePartitionDiscovery": false
+										}
+									}
+								},
+								{
+									"name": "STG DW",
+									"type": "Script",
+									"dependsOn": [
+										{
+											"activity": "Copia dados para a STG",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "SQL_DESTINO",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": "MERGE\t           \n\tdw.upo AS destino           \nUSING            \n\tstg.upo AS origem           \n           \n    ON\t(        \norigem.Pedido\t\t\t=\tdestino.Pedido\t\tAND\norigem.PedidoSeq\t\t=\tdestino.PedidoSeq\tAND\norigem.Tipo \t\t\t=\tdestino.Tipo\t\tAND\norigem.CodPrest \t\t=\tdestino.CodPrest\tAND\norigem.num_crm_medico \t=\tdestino.num_crm_medico\t\n\t\t)        \n\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \n\ndestino.CdUnidade=origem.CdUnidade,\ndestino.Unidade=origem.Unidade,\ndestino.Pedido=origem.Pedido,\ndestino.TipoPedido=origem.TipoPedido,\ndestino.Conta=origem.Conta,\ndestino.CodPac=origem.CodPac,\ndestino.Paciente=origem.Paciente,\ndestino.data_nascimento=origem.data_nascimento,\ndestino.CodConv=origem.CodConv,\ndestino.ConvPlano=origem.ConvPlano,\ndestino.GrupoConv=origem.GrupoConv,\ndestino.cnpj=origem.cnpj,\ndestino.CodPrest=origem.CodPrest,\ndestino.NomePrestador=origem.NomePrestador,\ndestino.conselho_medico=origem.conselho_medico,\ndestino.num_crm_medico=origem.num_crm_medico,\ndestino.data_abertura=origem.data_abertura,\ndestino.Tipo=origem.Tipo,\ndestino.SubTipo=origem.SubTipo,\ndestino.datahora_cadastro=origem.datahora_cadastro,\ndestino.PedidoSeq=origem.PedidoSeq,\ndestino.Cod=origem.Cod,\ndestino.Item=origem.Item,\ndestino.quantidade=origem.quantidade,\ndestino.ValorParticular=origem.ValorParticular,\ndestino.ValorConvenio=origem.ValorConvenio\n\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.CdUnidade,\norigem.Unidade,\norigem.Pedido,\norigem.TipoPedido,\norigem.Conta,\norigem.CodPac,\norigem.Paciente,\norigem.data_nascimento,\norigem.CodConv,\norigem.ConvPlano,\norigem.GrupoConv,\norigem.cnpj,\norigem.CodPrest,\norigem.NomePrestador,\norigem.conselho_medico,\norigem.num_crm_medico,\norigem.data_abertura,\norigem.Tipo,\norigem.SubTipo,\norigem.datahora_cadastro,\norigem.PedidoSeq,\norigem.Cod,\norigem.Item,\norigem.quantidade,\norigem.ValorParticular,\norigem.ValorConvenio\n); "
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Stg Convenio",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "ForEach1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "DECLARE @ESTABELECIMENTO VARCHAR(10)\n\nTRUNCATE TABLE STG.UPO_CONVENIO\n\nSELECT @ESTABELECIMENTO = ID_SYSTEM \nFROM v_plataforma_dw WHERE UPPER(DS_SYSTEM) = 'UPO' \n\n;\n\nWITH LST_CONV AS(\nSELECT DISTINCT\n    A.CodConv AS CD_CONVENIO\n    ,A.GrupoConv AS DS_CONVENIO   \nFROM DW.upo A WITH(NOLOCK) \n)\n\n,REF AS(\n\nSELECT\n    @ESTABELECIMENTO + '|' + CAST(TMP.CD_CONVENIO AS VARCHAR(100)) AS FK_CONVENIO\n    ,TMP.CD_CONVENIO\n    ,TMP.DS_CONVENIO\n    ,CASE\n        WHEN UPPER(TMP.DS_CONVENIO) LIKE '%PARTICULAR%' THEN 'PARTICULAR'\n        WHEN UPPER(TMP.DS_CONVENIO) LIKE '%SUS%' THEN 'SUS'\n        ELSE 'CONVÊNIO'\n     END TIPO_CONVENIO\n    ,TMP.CD_CGC    \nFROM(\n\nSELECT\n    A.*\n    ,CNPJ.cnpj AS CD_CGC\n    ,ROW_NUMBER()OVER(PARTITION BY A.CD_CONVENIO ORDER BY A.CD_CONVENIO) ID_LINHA\nFROM LST_CONV A\nOUTER APPLY(\n        SELECT TOP 1\n            X.CodConv\n            ,X.cnpj\n        FROM DW.UPO X WITH(NOLOCK) \n        WHERE X.CodConv = A.CD_CONVENIO\n        ) CNPJ\n) TMP\nWHERE TMP.ID_LINHA = 1)\n\nINSERT INTO STG.UPO_CONVENIO\nSELECT * FROM REF\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "CARGA DW",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Stg Convenio",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "EXEC SP_UPO_CARGA_DW"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/UROBRASIL')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Agendamento",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Agendamento]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Agendamento]\n\n\n",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "Urobrasil_Agendamento",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Agendamento"
+								}
+							}
+						]
+					},
+					{
+						"name": "Agendamento_Diario",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Agendamento",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Agendamento_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Agendamento_Diario]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "Urobrasil_Agendamento_Diario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Agendamento_Diario"
+								}
+							}
+						]
+					},
+					{
+						"name": "Atendimento",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Agendamento_Diario",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Atendimento]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Atendimento]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Atendimento",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Atendimento"
+								}
+							}
+						]
+					},
+					{
+						"name": "Atendimento_Diario",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Atendimento",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Atendimento_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Atendimento_Diario]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Atendimento_Diario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Atendimento_Diario"
+								}
+							}
+						]
+					},
+					{
+						"name": "Faturamento",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Atendimento_Diario",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Faturamento]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Faturamento]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Faturamento",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Faturamento"
+								}
+							}
+						]
+					},
+					{
+						"name": "Faturamento_Diario",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Faturamento",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Faturamento_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Faturamento_Diario]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Faturamento_Diario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Faturamento_Diario"
+								}
+							}
+						]
+					},
+					{
+						"name": "Financeiro",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Faturamento_Diario",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Financeiro]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Financeiro]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Financeiro",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Financeiro"
+								}
+							}
+						]
+					},
+					{
+						"name": "Financeiro_Diario",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Financeiro",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Financeiro_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Financeiro_Diario]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Financeiro_Diario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Financeiro_Diario"
+								}
+							}
+						]
+					},
+					{
+						"name": "Repasse",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Financeiro_Diario",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Repasse]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Repasse]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Repasse",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Repasse"
+								}
+							}
+						]
+					},
+					{
+						"name": "Repasse_Diario",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Repasse",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Repasse_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Repasse_Diario]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Repasse_Diario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Repasse_Diario"
+								}
+							}
+						]
+					},
+					{
+						"name": "Questionario",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Repasse_Diario",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Questionario]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Questionario]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Questionario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_questionario"
+								}
+							}
+						]
+					},
+					{
+						"name": "Questionario_Diario",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Questionario",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Questionario_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Questionario_Diario]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Questionario_Diario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_questionario_diario"
+								}
+							}
+						]
+					},
+					{
+						"name": "ContasPagarReceber",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Questionario_Diario",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_ContasPagarReceber]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_ContasPagarReceber]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_ContasPagarReceber",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_ContasPagarReceber"
+								}
+							}
+						]
+					},
+					{
+						"name": "ContasPagarReceber_Diarias",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "ContasPagarReceber",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_ContasPagarReceber_Diarias]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_ContasPagarReceber_Diarias]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_ContasPagarReceberDiarias",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_ContasPagarReceber_Diarias"
+								}
+							}
+						]
+					},
+					{
+						"name": "Caixa",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "ContasPagarReceber_Diarias",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Caixa]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Caixa]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Caixa",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Caixa"
+								}
+							}
+						]
+					},
+					{
+						"name": "Caixa_Diario",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Caixa",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Caixa_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Caixa_Diario]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Caixa_DIario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Caixa_Diario"
+								}
+							}
+						]
+					},
+					{
+						"name": "Paciente",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Caixa_Diario",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Paciente]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Paciente]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Paciente",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Paciente"
+								}
+							}
+						]
+					},
+					{
+						"name": "Paciente_Diario",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Paciente",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Paciente_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Paciente_Diario]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Paciente_Diario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Paciente_Diario"
+								}
+							}
+						]
+					},
+					{
+						"name": "Teleorientacao",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Paciente_Diario",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Teleorientacao]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Teleorientacao]\n",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Teleorientacao",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Teleorientacao"
+								}
+							}
+						]
+					},
+					{
+						"name": "Teleorientacao_Diario",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Teleorientacao",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Teleorientacao_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Teleorientacao_Diario]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Teleorientacao_Diario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Teleorientacao_Diaria"
+								}
+							}
+						]
+					},
+					{
+						"name": "Venda",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Teleorientacao_Diario",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Venda]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Venda]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Venda",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Venda"
+								}
+							}
+						]
+					},
+					{
+						"name": "Venda_Diaria",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Venda",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Venda_Diaria]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Venda_Diaria]",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Venda_Diaria",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Venda_Diaria"
+								}
+							}
+						]
+					},
+					{
+						"name": "Profissional",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Venda_Diaria",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Profissional]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Profissional]\n",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Profissional",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Profissional"
+								}
+							}
+						]
+					},
+					{
+						"name": "Profissional_Diario",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Profissional",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "RestSource",
+								"httpRequestTimeout": "00:01:40",
+								"requestInterval": "00.00:00:00.010",
+								"requestMethod": "GET",
+								"paginationRules": {
+									"supportRFC5988": "true"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[urobrasil_Profissional_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[urobrasil_Profissional_Diario]\n",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "UROBRASIL_Profissional_Diario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "urobrasil_Profissional_Diario"
+								}
+							}
+						]
+					},
+					{
+						"name": "ATENDIMENTO MERGE",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Atendimento",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SQL_DESTINO",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "WITH CTE \nAS\n\n(\nSELECT DISTINCT \n\t   [atendimento_codigo]\n      ,[agendamento_codigo]\n      ,[atendimento_turno]\n      ,[atendimento_dia]\n      ,[atendimento_mes]\n      ,[atendimento_ano]\n      ,[atendimento_usuario_cadastro]\n      ,[atendimento_procedimento_empresa]\n      ,[atendimento_procedimento_empresa_requisitante]\n      ,[atendimento_procedimento_profissional_nome]\n      ,[atendimento_procedimento_profissional_requisitante]\n      ,[atendimento_procedimento_especialidade_profissional_requisitante]\n      ,[atendimento_procedimento_convenio]\n      ,[atendimento_procedimento_plano]\n      ,[atendimento_procedimento_especialidade]\n      ,[atendimento_procedimento_nome]\n      ,[atendimento_procedimento_grupo]\n      ,[atendimento_procedimento_valor]\n      ,[atendimento_procedimento_coparticipacao_valor]\n      ,[atendimento_procedimento_filme_valor]\n      ,[atendimento_material_medicamento_nome]\n      ,[atendimento_material_medicamento_valor]\n      ,[atendimento_material_medicamento_coparticipacao_valor]\n      ,[atendimento_taxa_nome]\n      ,[atendimento_taxa_valor]\n      ,[atendimento_taxa_coparticipacao_valor]\n      ,[paciente_codigo]\n      ,[paciente_nome]\n      ,[paciente_sexo]\n      ,[paciente_faixa_idade]\n      ,[paciente_estado]\n      ,[paciente_cidade]\n      ,[paciente_bairro]\n      ,[atendimento_hora]\n      ,[atendimento_diadasemana]\n      ,[atendimento_cid_primario]\n      ,[atendimento_cid_secundario]\n      ,[atendimento_cid_consultorio]\n      ,[atendimento_tipo]\n      ,[atendimento_horainicio_recepcao]\n      ,[atendimento_horafim_recepcao]\n      ,[atendimento_horainicio_consultorio]\n      ,[atendimento_horafim_consultorio]\n      ,[atendimento_procedimento_codigo]\n      ,[paciente_cep]\n      ,[atendimento_profissional_especialidade]\n      ,[atendimento_previsao_valor_repasse_profissional]\n      ,[atendimento_previsao_valor_repasse_clinica]\n      ,[atendimento_passo]\n  FROM [stg].[urobrasil_Atendimento]\n\n)\n\nMERGE\t           \n\tdw.urobrasil_Atendimento AS destino           \nUSING            \n\tCTE AS origem           \n           \n    ON\t(        \n\torigem.atendimento_codigo\t\t\t\t\t\t=\tdestino.atendimento_codigo\t\t\t\t\t\t\tAND\n\torigem.atendimento_procedimento_codigo\t\t\t=\tdestino.atendimento_procedimento_codigo\t\t\t\tAND\n\torigem.atendimento_procedimento_plano\t\t\t=\tdestino.atendimento_procedimento_plano\t\t\t\tAND\n\torigem.atendimento_procedimento_convenio\t\t=\tdestino.atendimento_procedimento_convenio\t\t\tAND\n\torigem.atendimento_material_medicamento_nome\t=\tdestino.atendimento_material_medicamento_nome\t\tAND\t\n\torigem.atendimento_procedimento_valor\t\t\t=\tdestino.atendimento_procedimento_valor\t\t\n\t\t)        \n\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \n\ndestino.atendimento_codigo=origem.atendimento_codigo,\ndestino.agendamento_codigo=origem.agendamento_codigo,\ndestino.atendimento_turno=origem.atendimento_turno,\ndestino.atendimento_dia=origem.atendimento_dia,\ndestino.atendimento_mes=origem.atendimento_mes,\ndestino.atendimento_ano=origem.atendimento_ano,\ndestino.atendimento_usuario_cadastro=origem.atendimento_usuario_cadastro,\ndestino.atendimento_procedimento_empresa=origem.atendimento_procedimento_empresa,\ndestino.atendimento_procedimento_empresa_requisitante=origem.atendimento_procedimento_empresa_requisitante,\ndestino.atendimento_procedimento_profissional_nome=origem.atendimento_procedimento_profissional_nome,\ndestino.atendimento_procedimento_profissional_requisitante=origem.atendimento_procedimento_profissional_requisitante,\ndestino.atendimento_procedimento_especialidade_profissional_requisitante=origem.atendimento_procedimento_especialidade_profissional_requisitante,\ndestino.atendimento_procedimento_convenio=origem.atendimento_procedimento_convenio,\ndestino.atendimento_procedimento_plano=origem.atendimento_procedimento_plano,\ndestino.atendimento_procedimento_especialidade=origem.atendimento_procedimento_especialidade,\ndestino.atendimento_procedimento_nome=origem.atendimento_procedimento_nome,\ndestino.atendimento_procedimento_grupo=origem.atendimento_procedimento_grupo,\ndestino.atendimento_procedimento_valor=origem.atendimento_procedimento_valor,\ndestino.atendimento_procedimento_coparticipacao_valor=origem.atendimento_procedimento_coparticipacao_valor,\ndestino.atendimento_procedimento_filme_valor=origem.atendimento_procedimento_filme_valor,\ndestino.atendimento_material_medicamento_nome=origem.atendimento_material_medicamento_nome,\ndestino.atendimento_material_medicamento_valor=origem.atendimento_material_medicamento_valor,\ndestino.atendimento_material_medicamento_coparticipacao_valor=origem.atendimento_material_medicamento_coparticipacao_valor,\ndestino.atendimento_taxa_nome=origem.atendimento_taxa_nome,\ndestino.atendimento_taxa_valor=origem.atendimento_taxa_valor,\ndestino.atendimento_taxa_coparticipacao_valor=origem.atendimento_taxa_coparticipacao_valor,\ndestino.paciente_codigo=origem.paciente_codigo,\ndestino.paciente_nome=origem.paciente_nome,\ndestino.paciente_sexo=origem.paciente_sexo,\ndestino.paciente_faixa_idade=origem.paciente_faixa_idade,\ndestino.paciente_estado=origem.paciente_estado,\ndestino.paciente_cidade=origem.paciente_cidade,\ndestino.paciente_bairro=origem.paciente_bairro,\ndestino.atendimento_hora=origem.atendimento_hora,\ndestino.atendimento_diadasemana=origem.atendimento_diadasemana,\ndestino.atendimento_cid_primario=origem.atendimento_cid_primario,\ndestino.atendimento_cid_secundario=origem.atendimento_cid_secundario,\ndestino.atendimento_cid_consultorio=origem.atendimento_cid_consultorio,\ndestino.atendimento_tipo=origem.atendimento_tipo,\ndestino.atendimento_horainicio_recepcao=origem.atendimento_horainicio_recepcao,\ndestino.atendimento_horafim_recepcao=origem.atendimento_horafim_recepcao,\ndestino.atendimento_horainicio_consultorio=origem.atendimento_horainicio_consultorio,\ndestino.atendimento_horafim_consultorio=origem.atendimento_horafim_consultorio,\ndestino.atendimento_procedimento_codigo=origem.atendimento_procedimento_codigo,\ndestino.paciente_cep=origem.paciente_cep,\ndestino.atendimento_profissional_especialidade=origem.atendimento_profissional_especialidade,\ndestino.atendimento_previsao_valor_repasse_profissional=origem.atendimento_previsao_valor_repasse_profissional,\ndestino.atendimento_previsao_valor_repasse_clinica=origem.atendimento_previsao_valor_repasse_clinica,\ndestino.atendimento_passo=origem.atendimento_passo\n\n\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.atendimento_codigo,\norigem.agendamento_codigo,\norigem.atendimento_turno,\norigem.atendimento_dia,\norigem.atendimento_mes,\norigem.atendimento_ano,\norigem.atendimento_usuario_cadastro,\norigem.atendimento_procedimento_empresa,\norigem.atendimento_procedimento_empresa_requisitante,\norigem.atendimento_procedimento_profissional_nome,\norigem.atendimento_procedimento_profissional_requisitante,\norigem.atendimento_procedimento_especialidade_profissional_requisitante,\norigem.atendimento_procedimento_convenio,\norigem.atendimento_procedimento_plano,\norigem.atendimento_procedimento_especialidade,\norigem.atendimento_procedimento_nome,\norigem.atendimento_procedimento_grupo,\norigem.atendimento_procedimento_valor,\norigem.atendimento_procedimento_coparticipacao_valor,\norigem.atendimento_procedimento_filme_valor,\norigem.atendimento_material_medicamento_nome,\norigem.atendimento_material_medicamento_valor,\norigem.atendimento_material_medicamento_coparticipacao_valor,\norigem.atendimento_taxa_nome,\norigem.atendimento_taxa_valor,\norigem.atendimento_taxa_coparticipacao_valor,\norigem.paciente_codigo,\norigem.paciente_nome,\norigem.paciente_sexo,\norigem.paciente_faixa_idade,\norigem.paciente_estado,\norigem.paciente_cidade,\norigem.paciente_bairro,\norigem.atendimento_hora,\norigem.atendimento_diadasemana,\norigem.atendimento_cid_primario,\norigem.atendimento_cid_secundario,\norigem.atendimento_cid_consultorio,\norigem.atendimento_tipo,\norigem.atendimento_horainicio_recepcao,\norigem.atendimento_horafim_recepcao,\norigem.atendimento_horainicio_consultorio,\norigem.atendimento_horafim_consultorio,\norigem.atendimento_procedimento_codigo,\norigem.paciente_cep,\norigem.atendimento_profissional_especialidade,\norigem.atendimento_previsao_valor_repasse_profissional,\norigem.atendimento_previsao_valor_repasse_clinica,\norigem.atendimento_passo\n\n); \n"
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/VISAO CENTER')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -430,6 +2794,33 @@
 						"userProperties": [],
 						"typeProperties": {
 							"storedProcedureName": "sp_carga_visaodf_tbl_convenio"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Dimensao Procedimento",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "STG DW",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_CARGA_TBL_VISAODF_CAD_PROCEDIMENTO"
 						},
 						"linkedServiceName": {
 							"referenceName": "AzureSQL_DB_Procedimentos",
@@ -1221,362 +3612,6 @@
 						"type": "String"
 					}
 				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_SF_CAD_MEDICO')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Salesforce_Sharepoint",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Salesforce"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "CadastroMedico.csv"
-					},
-					"columnDelimiter": ",",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"name": "NM_GUERRA",
-						"type": "String"
-					},
-					{
-						"name": "NR_CRM",
-						"type": "String"
-					},
-					{
-						"name": "UF_CRM",
-						"type": "String"
-					},
-					{
-						"name": "IE_SITUACAO",
-						"type": "String"
-					},
-					{
-						"name": "CD_EMPRESA",
-						"type": "String"
-					},
-					{
-						"name": "CD_ESTABELECIMENTO",
-						"type": "String"
-					},
-					{
-						"name": "IE_VINCULO_MEDICO",
-						"type": "String"
-					},
-					{
-						"name": "IE_SOCIO",
-						"type": "String"
-					},
-					{
-						"name": "CD_ESPECIALIDADE",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_PRIORIDADE",
-						"type": "String"
-					},
-					{
-						"name": "NR_RQE",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_AREA_ATUACAO",
-						"type": "String"
-					},
-					{
-						"name": "NR_RCE",
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_SF_MEDICO_ESPECIALIDADE')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Salesforce_Sharepoint",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Salesforce"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "MedicoEspecialidade.csv"
-					},
-					"columnDelimiter": ",",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_SF_PESSOA_FISICA')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Salesforce_Sharepoint",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Salesforce"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "CadastroPessoa.csv"
-					},
-					"columnDelimiter": ",",
-					"rowDelimiter": "\n",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"name": "CD_PESSOA_FISICA",
-						"type": "String"
-					},
-					{
-						"name": "NR_PRONTUARIO",
-						"type": "String"
-					},
-					{
-						"name": "CD_ESTABELECIMENTO",
-						"type": "String"
-					},
-					{
-						"name": "NM_PESSOA_FISICA",
-						"type": "String"
-					},
-					{
-						"name": "DT_NASCIMENTO",
-						"type": "String"
-					},
-					{
-						"name": "IE_SEXO",
-						"type": "String"
-					},
-					{
-						"name": "CD_NACIONALIDADE",
-						"type": "String"
-					},
-					{
-						"name": "NR_CPF",
-						"type": "String"
-					},
-					{
-						"name": "NR_MATRICULA_NASC",
-						"type": "String"
-					},
-					{
-						"name": "NR_REG_GERAL_ESTRANG",
-						"type": "String"
-					},
-					{
-						"name": "NR_TELEFONE_CELULAR",
-						"type": "String"
-					},
-					{
-						"name": "NR_TELEFONE",
-						"type": "String"
-					},
-					{
-						"name": "DS_FONE_ADIC",
-						"type": "String"
-					},
-					{
-						"name": "NM_CONTATO",
-						"type": "String"
-					},
-					{
-						"name": "CD_CEP",
-						"type": "String"
-					},
-					{
-						"name": "DS_ENDERECO",
-						"type": "String"
-					},
-					{
-						"name": "NR_ENDERECO",
-						"type": "String"
-					},
-					{
-						"name": "DS_COMPLEMENTO",
-						"type": "String"
-					},
-					{
-						"name": "DS_BAIRRO",
-						"type": "String"
-					},
-					{
-						"name": "CD_MUNICIPIO_IBGE",
-						"type": "String"
-					},
-					{
-						"name": "SG_ESTADO",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_PAIS",
-						"type": "String"
-					},
-					{
-						"name": "DS_EMAIL",
-						"type": "String"
-					},
-					{
-						"name": "IE_NAO_POSSUI_EMAIL",
-						"type": "String"
-					},
-					{
-						"name": "IE_OBRIGA_EMAIL",
-						"type": "String"
-					},
-					{
-						"name": "CD_CONVENIO",
-						"type": "String"
-					},
-					{
-						"name": "CD_CATEGORIA",
-						"type": "String"
-					},
-					{
-						"name": "CD_PLANO_CONVENIO",
-						"type": "String"
-					},
-					{
-						"name": "CD_USUARIO_CONVENIO",
-						"type": "String"
-					},
-					{
-						"name": "DT_VALIDADE_CARTEIRA",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_COR_PELE",
-						"type": "String"
-					},
-					{
-						"name": "CD_PROFISSAO",
-						"type": "String"
-					},
-					{
-						"name": "DS_CATEGORIA_CNH",
-						"type": "String"
-					},
-					{
-						"name": "DS_MEDIC_NAO_CAD",
-						"type": "String"
-					},
-					{
-						"name": "IE_INTENSIDADE",
-						"type": "String"
-					},
-					{
-						"name": "CD_MATERIAL",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_FICHA_TECNICA",
-						"type": "String"
-					},
-					{
-						"name": "IE_CONFIRMACAO",
-						"type": "String"
-					},
-					{
-						"name": "DT_REGISTRO",
-						"type": "String"
-					},
-					{
-						"name": "IE_NEGA_ALERGIAS",
-						"type": "String"
-					},
-					{
-						"name": "DT_REVISAO",
-						"type": "String"
-					},
-					{
-						"name": "NM_USUARIO_REVISAO",
-						"type": "String"
-					},
-					{
-						"name": "IE_ESTADO_CIVIL",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_TIPO_DEF",
-						"type": "String"
-					},
-					{
-						"name": "IE_NEGA_DEFICIENCIA",
-						"type": "String"
-					},
-					{
-						"name": "IE_ALERTA",
-						"type": "String"
-					},
-					{
-						"name": "NR_SEQ_PERFIL",
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSV_Salesforce_Alergia')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Salesforce_Sharepoint",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Salesforce"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "Alergia.csv"
-					},
-					"columnDelimiter": ",",
-					"rowDelimiter": "\n",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": []
 			},
 			"dependsOn": []
 		}
