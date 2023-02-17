@@ -167,7 +167,7 @@
 							"type": "Copy",
 							"dependsOn": [
 								{
-									"activity": "STG DW",
+									"activity": "Palativo Stg DW",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -303,7 +303,7 @@
 								{
 									"activity": "Copia dados para a STG",
 									"dependencyConditions": [
-										"Succeeded"
+										"Skipped"
 									]
 								}
 							],
@@ -326,6 +326,39 @@
 										"text": "WITH REF AS(\n\nSELECT \nPK_ARQUIVO\n\t\t\t,CD_ESTABELECIMENTO\n\t\t\t,DS_ESTABELECIMENTO\n\t\t\t,NR_ATENDIMENTO\n\t\t\t,NR_INTERNO_CONTA\n\t\t\t,CD_PESSOA_FISICA\n\t\t\t,NM_PESSOA_FISICA\n\t\t\t,DT_NASCIMENTO\n\t\t\t,CNPJ_CONVENIO\n\t\t\t,CD_CONVENIO\n\t\t\t,DS_CONVENIO\n\t\t\t,CRM\n\t\t\t,CD_MEDICO_EXECUTANTE\n\t\t\t,NM_MEDICO_EXECUTANTE\n\t\t\t,CD_SETOR_EXECUTANTE\n\t\t\t,DS_SETOR_EXECUTANTE\n\t\t\t,DT_ENTRADA\n\t\t\t,[COD TUSS ou AMB]\n\t\t\t,CD_ITEM\n\t\t\t,DS_ITEM\n\t\t\t,DT_LANC_ITEM\n\t\t\t,QT\n\t\t\t,VALOR\n\n FROM \n\t\t( SELECT \n\t\t\tPK_ARQUIVO\n\t\t\t,CD_ESTABELECIMENTO\n\t\t\t,DS_ESTABELECIMENTO\n\t\t\t,NR_ATENDIMENTO\n\t\t\t,NR_INTERNO_CONTA\n\t\t\t,CD_PESSOA_FISICA\n\t\t\t,NM_PESSOA_FISICA\n\t\t\t,DT_NASCIMENTO\n\t\t\t,CNPJ_CONVENIO\n\t\t\t,CD_CONVENIO\n\t\t\t,DS_CONVENIO\n\t\t\t,CRM\n\t\t\t,CD_MEDICO_EXECUTANTE\n\t\t\t,NM_MEDICO_EXECUTANTE\n\t\t\t,CD_SETOR_EXECUTANTE\n\t\t\t,DS_SETOR_EXECUTANTE\n\t\t\t,DT_ENTRADA\n\t\t\t,[COD TUSS ou AMB]\n\t\t\t,CD_ITEM\n\t\t\t,DS_ITEM\n\t\t\t,DT_LANC_ITEM\n\t\t\t,SUM(CAST(QT AS MONEY)) AS QT\n\t\t\t,SUM(cast(replace(VALOR,',','.') as decimal(19,2))) as VALOR\n\t\t\t\n\n\t\tFROM STG.ortocity\n\t\tGROUP BY\n\t\t\tPK_ARQUIVO\n\t\t\t,CD_ESTABELECIMENTO\n\t\t\t,DS_ESTABELECIMENTO\n\t\t\t,NR_ATENDIMENTO\n\t\t\t,NR_INTERNO_CONTA\n\t\t\t,CD_PESSOA_FISICA\n\t\t\t,NM_PESSOA_FISICA\n\t\t\t,DT_NASCIMENTO\n\t\t\t,CNPJ_CONVENIO\n\t\t\t,CD_CONVENIO\n\t\t\t,DS_CONVENIO\n\t\t\t,CRM\n\t\t\t,CD_MEDICO_EXECUTANTE\n\t\t\t,NM_MEDICO_EXECUTANTE\n\t\t\t,CD_SETOR_EXECUTANTE\n\t\t\t,DS_SETOR_EXECUTANTE\n\t\t\t,DT_ENTRADA\n\t\t\t,[COD TUSS ou AMB]\n\t\t\t,CD_ITEM\n\t\t\t,DS_ITEM\n\t\t\t,DT_LANC_ITEM\n\n\t\t\t) AS A\n\n)\n\n\nMERGE               \n    dw.ortocity AS destino           \nUSING            \n    REF AS ORIGEM           \n           \n    ON(    \n    destino.PK_ARQUIVO    = ORIGEM.PK_ARQUIVO    AND\n    destino.CD_ITEM        = ORIGEM.CD_ITEM     AND\n    destino.NR_ATENDIMENTO = ORIGEM.NR_ATENDIMENTO AND\n    destino.CD_SETOR_EXECUTANTE = ORIGEM.CD_SETOR_EXECUTANTE\n\n)        \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET         \n\n\n\ndestino.PK_ARQUIVO                = ORIGEM.PK_ARQUIVO                ,\ndestino.CD_ESTABELECIMENTO        = ORIGEM.CD_ESTABELECIMENTO        ,\ndestino.DS_ESTABELECIMENTO        = ORIGEM.DS_ESTABELECIMENTO        ,\ndestino.NR_ATENDIMENTO            = ORIGEM.NR_ATENDIMENTO            ,\ndestino.NR_INTERNO_CONTA        = ORIGEM.NR_INTERNO_CONTA        ,\ndestino.CD_PESSOA_FISICA        = ORIGEM.CD_PESSOA_FISICA        ,\ndestino.NM_PESSOA_FISICA        = ORIGEM.NM_PESSOA_FISICA        ,\ndestino.DT_NASCIMENTO            = ORIGEM.DT_NASCIMENTO            ,\ndestino.CNPJ_CONVENIO            = ORIGEM.CNPJ_CONVENIO            ,\ndestino.CD_CONVENIO                = ORIGEM.CD_CONVENIO            ,\ndestino.DS_CONVENIO                = ORIGEM.DS_CONVENIO            ,\ndestino.CRM                        = ORIGEM.CRM                    ,\ndestino.CD_MEDICO_EXECUTANTE    = ORIGEM.CD_MEDICO_EXECUTANTE    ,\ndestino.NM_MEDICO_EXECUTANTE    = ORIGEM.NM_MEDICO_EXECUTANTE    ,\ndestino.CD_SETOR_EXECUTANTE        = ORIGEM.CD_SETOR_EXECUTANTE    ,\ndestino.DS_SETOR_EXECUTANTE        = ORIGEM.DS_SETOR_EXECUTANTE    ,\ndestino.DT_ENTRADA                = ORIGEM.DT_ENTRADA                ,\ndestino.[COD TUSS ou AMB]        = ORIGEM.[COD TUSS ou AMB]        ,        \ndestino.CD_ITEM                    = ORIGEM.CD_ITEM                ,\ndestino.DS_ITEM                    = ORIGEM.DS_ITEM                ,\ndestino.DT_LANC_ITEM            = ORIGEM.DT_LANC_ITEM            ,\ndestino.QT                        = ORIGEM.QT                        ,\ndestino.VALOR                    = ORIGEM.VALOR\n\n\n\n \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n    VALUES (\n\nORIGEM.PK_ARQUIVO                ,\nORIGEM.CD_ESTABELECIMENTO        ,\nORIGEM.DS_ESTABELECIMENTO        ,\nORIGEM.NR_ATENDIMENTO            ,\nORIGEM.NR_INTERNO_CONTA            ,\nORIGEM.CD_PESSOA_FISICA            ,\nORIGEM.NM_PESSOA_FISICA            ,\nORIGEM.DT_NASCIMENTO            ,\nORIGEM.CNPJ_CONVENIO            ,\nORIGEM.CD_CONVENIO                ,\nORIGEM.DS_CONVENIO                ,\nORIGEM.CRM                        ,\nORIGEM.CD_MEDICO_EXECUTANTE        ,\nORIGEM.NM_MEDICO_EXECUTANTE        ,\nORIGEM.CD_SETOR_EXECUTANTE        ,\nORIGEM.DS_SETOR_EXECUTANTE        ,\nORIGEM.DT_ENTRADA                ,\nORIGEM.[COD TUSS ou AMB]        ,    \nORIGEM.CD_ITEM                    ,\nORIGEM.DS_ITEM                    ,\nORIGEM.DT_LANC_ITEM                ,\nORIGEM.QT                        ,\nORIGEM.VALOR\n);\n"
 									}
 								]
+							}
+						},
+						{
+							"name": "Palativo Stg DW",
+							"type": "Script",
+							"dependsOn": [
+								{
+									"activity": "Copia dados para a STG",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSQL_DB_Procedimentos",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "NonQuery",
+										"text": "BEGIN\n  TRUNCATE TABLE DW.ORTOCITY\nEND;\n\nBEGIN\n  INSERT INTO DW.ortocity\n  SELECT \n  PK_ARQUIVO\n  \t\t\t,CD_ESTABELECIMENTO\n  \t\t\t,DS_ESTABELECIMENTO\n  \t\t\t,NR_ATENDIMENTO\n  \t\t\t,NR_INTERNO_CONTA\n  \t\t\t,CD_PESSOA_FISICA\n  \t\t\t,NM_PESSOA_FISICA\n  \t\t\t,DT_NASCIMENTO\n  \t\t\t,CNPJ_CONVENIO\n  \t\t\t,CD_CONVENIO\n  \t\t\t,DS_CONVENIO\n  \t\t\t,CRM\n  \t\t\t,CD_MEDICO_EXECUTANTE\n  \t\t\t,NM_MEDICO_EXECUTANTE\n  \t\t\t,CD_SETOR_EXECUTANTE\n  \t\t\t,DS_SETOR_EXECUTANTE\n  \t\t\t,DT_ENTRADA\n  \t\t\t,[COD TUSS ou AMB]\n  \t\t\t,CD_ITEM\n  \t\t\t,DS_ITEM\n  \t\t\t,DT_LANC_ITEM\n  \t\t\t,QT\n  \t\t\t,VALOR\n\n   FROM \n  \t\t( SELECT \n  \t\t\tPK_ARQUIVO\n  \t\t\t,CD_ESTABELECIMENTO\n  \t\t\t,DS_ESTABELECIMENTO\n  \t\t\t,NR_ATENDIMENTO\n  \t\t\t,NR_INTERNO_CONTA\n  \t\t\t,CD_PESSOA_FISICA\n  \t\t\t,NM_PESSOA_FISICA\n  \t\t\t,DT_NASCIMENTO\n  \t\t\t,CNPJ_CONVENIO\n  \t\t\t,CD_CONVENIO\n  \t\t\t,DS_CONVENIO\n  \t\t\t,CRM\n  \t\t\t,CD_MEDICO_EXECUTANTE\n  \t\t\t,NM_MEDICO_EXECUTANTE\n  \t\t\t,CD_SETOR_EXECUTANTE\n  \t\t\t,DS_SETOR_EXECUTANTE\n  \t\t\t,DT_ENTRADA\n  \t\t\t,[COD TUSS ou AMB]\n  \t\t\t,CD_ITEM\n  \t\t\t,DS_ITEM\n  \t\t\t,DT_LANC_ITEM\n  \t\t\t,SUM(CAST(QT AS MONEY)) AS QT\n  \t\t\t,SUM(cast(replace(VALOR,',','.') as decimal(19,2))) as VALOR\n  \n\n  \t\tFROM STG.ortocity\n  \t\tGROUP BY\n  \t\t\tPK_ARQUIVO\n  \t\t\t,CD_ESTABELECIMENTO\n  \t\t\t,DS_ESTABELECIMENTO\n  \t\t\t,NR_ATENDIMENTO\n  \t\t\t,NR_INTERNO_CONTA\n  \t\t\t,CD_PESSOA_FISICA\n  \t\t\t,NM_PESSOA_FISICA\n  \t\t\t,DT_NASCIMENTO\n  \t\t\t,CNPJ_CONVENIO\n  \t\t\t,CD_CONVENIO\n  \t\t\t,DS_CONVENIO\n  \t\t\t,CRM\n  \t\t\t,CD_MEDICO_EXECUTANTE\n  \t\t\t,NM_MEDICO_EXECUTANTE\n  \t\t\t,CD_SETOR_EXECUTANTE\n  \t\t\t,DS_SETOR_EXECUTANTE\n  \t\t\t,DT_ENTRADA\n  \t\t\t,[COD TUSS ou AMB]\n  \t\t\t,CD_ITEM\n  \t\t\t,DS_ITEM\n  \t\t\t,DT_LANC_ITEM\n\n  \t\t\t) AS A\nEND;        \n\n\n"
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
 							}
 						}
 					]
