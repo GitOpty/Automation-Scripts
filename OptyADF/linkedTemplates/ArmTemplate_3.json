@@ -144,6 +144,44 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Carga Datamart TASY')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Datamart Recebimento",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_DATAMART_RECEBIMENTO_TASY]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/1_Inicializador"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DM_ProdDiariaSMARTV2')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -393,17 +431,44 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_TASY')]",
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_TASY_HTML')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"activities": [
 					{
-						"name": "TASY PRODUCAO DIARIA",
+						"name": "SP_ODS_TASY_PROD_DIARIA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "SP_TASY_RAW_PRODUCAO_DIARIA",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_ODS_TASY_PROD_DIARIA"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSqlDatabase",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "SP_TASY_RAW_PRODUCAO_DIARIA",
 						"type": "SqlServerStoredProcedure",
 						"dependsOn": [],
 						"policy": {
-							"timeout": "0.05:00:00",
+							"timeout": "0.12:00:00",
 							"retry": 0,
 							"retryIntervalInSeconds": 30,
 							"secureOutput": false,
@@ -411,10 +476,7 @@
 						},
 						"userProperties": [],
 						"typeProperties": {
-							"storedProcedureName": {
-								"value": "DBO.SP_TASY_PRODUCAO_DIARIA",
-								"type": "Expression"
-							}
+							"storedProcedureName": "SP_TASY_RAW_PRODUCAO_DIARIA"
 						},
 						"linkedServiceName": {
 							"referenceName": "AzureSQL_DB_Procedimentos",
@@ -422,18 +484,18 @@
 						}
 					},
 					{
-						"name": "TASY ODS PRODUCAO DIARIA",
+						"name": "SP_PROCESSA_DATAMART_PROD_DIARIA_TASY_CLOUD",
 						"type": "SqlServerStoredProcedure",
 						"dependsOn": [
 							{
-								"activity": "TASY PRODUCAO DIARIA",
+								"activity": "SP_ODS_TASY_PROD_DIARIA",
 								"dependencyConditions": [
 									"Succeeded"
 								]
 							}
 						],
 						"policy": {
-							"timeout": "0.09:00:00",
+							"timeout": "0.12:00:00",
 							"retry": 0,
 							"retryIntervalInSeconds": 30,
 							"secureOutput": false,
@@ -441,10 +503,45 @@
 						},
 						"userProperties": [],
 						"typeProperties": {
-							"storedProcedureName": {
-								"value": "DBO.SP_TASY_ODS_PRODUCAO_DIARIA",
-								"type": "Expression"
-							}
+							"storedProcedureName": "SP_PROCESSA_DATAMART_PROD_DIARIA_TASY_CLOUD"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_TASY_ONPREMISES')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "SP_TASY_ONPREMISES_RAW_PRODUCAO_DIARIA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_TASY_ONPREMISES_RAW_PRODUCAO_DIARIA"
 						},
 						"linkedServiceName": {
 							"referenceName": "AzureSQL_DB_Procedimentos",
@@ -452,18 +549,18 @@
 						}
 					},
 					{
-						"name": "MERGE DW PROD FINAL",
+						"name": "SP_ODS_TASY_ONPREMISES_PROD_DIARIA",
 						"type": "SqlServerStoredProcedure",
 						"dependsOn": [
 							{
-								"activity": "TASY ODS PRODUCAO DIARIA",
+								"activity": "SP_TASY_ONPREMISES_RAW_PRODUCAO_DIARIA",
 								"dependencyConditions": [
 									"Succeeded"
 								]
 							}
 						],
 						"policy": {
-							"timeout": "7.00:00:00",
+							"timeout": "0.12:00:00",
 							"retry": 0,
 							"retryIntervalInSeconds": 30,
 							"secureOutput": false,
@@ -471,7 +568,7 @@
 						},
 						"userProperties": [],
 						"typeProperties": {
-							"storedProcedureName": "dbo.sp_dw_prod_diaria_TASY"
+							"storedProcedureName": "SP_ODS_TASY_ONPREMISES_PROD_DIARIA"
 						},
 						"linkedServiceName": {
 							"referenceName": "AzureSQL_DB_Procedimentos",
@@ -479,18 +576,18 @@
 						}
 					},
 					{
-						"name": "AJUSTE DATAMART",
+						"name": "SP_PROCESSA_DATAMART_PROD_DIARIA_TASY_ONPREMISES",
 						"type": "SqlServerStoredProcedure",
 						"dependsOn": [
 							{
-								"activity": "MERGE DW PROD FINAL",
+								"activity": "SP_ODS_TASY_ONPREMISES_PROD_DIARIA",
 								"dependencyConditions": [
 									"Succeeded"
 								]
 							}
 						],
 						"policy": {
-							"timeout": "7.00:00:00",
+							"timeout": "0.12:00:00",
 							"retry": 0,
 							"retryIntervalInSeconds": 30,
 							"secureOutput": false,
@@ -498,7 +595,7 @@
 						},
 						"userProperties": [],
 						"typeProperties": {
-							"storedProcedureName": "dbo.SP_DW_PROD_DIARIA_BUSCA_LIMPA"
+							"storedProcedureName": "SP_PROCESSA_DATAMART_PROD_DIARIA_TASY_ONPREMISES"
 						},
 						"linkedServiceName": {
 							"referenceName": "AzureSQL_DB_Procedimentos",
@@ -989,107 +1086,6 @@
 				},
 				"annotations": [],
 				"lastPublishTime": "2021-07-20T18:04:44Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Workflows Requestia')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Extrai informações específicas para serem processadas nos workflows do Office Flow",
-				"activities": [
-					{
-						"name": "Extract CAPEX",
-						"description": "Copy NFD tickets to REQUESTIA_CAPEXNFD table, solving timeout in Microsoft Flow that send weekly mail from sergio.queiroz@opty.com.br account",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [
-							{
-								"activity": "Start",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "[[dbo].[sp_EXTRACTCAPEXREQUESTS]"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						}
-					},
-					{
-						"name": "Extract TISS",
-						"description": "Copy TISS tickets to specific table, solving timeout in Microsoft Flow that send weekly mail from sergio.queiroz@opty.com.br account",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [
-							{
-								"activity": "Start",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "[[dbo].[sp_EXTRACTTISSREQUESTS]"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						}
-					},
-					{
-						"name": "Start",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Apoio"
-				},
-				"annotations": [],
-				"lastPublishTime": "2019-10-09T15:23:34Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZ')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSqlDatabase",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [],
-				"typeProperties": {}
 			},
 			"dependsOn": []
 		}
