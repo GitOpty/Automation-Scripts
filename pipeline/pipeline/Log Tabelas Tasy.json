@@ -47,7 +47,7 @@
 					},
 					"activities": [
 						{
-							"name": "Extração Log",
+							"name": "ExtracaoLog",
 							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
@@ -71,6 +71,10 @@
 								},
 								"sink": {
 									"type": "AzureSqlSink",
+									"preCopyScript": {
+										"value": "@{concat('TRUNCATE TABLE ',item().NOME_SCHEMA_TABELA_DESTINO,'.',item().NOME_TABELA_DESTINO)}",
+										"type": "Expression"
+									},
 									"writeBehavior": "insert",
 									"sqlWriterUseTableLock": false,
 									"tableOption": "autoCreate",
@@ -119,7 +123,7 @@
 				}
 			},
 			{
-				"name": "CallProcedure",
+				"name": "Merge DW Log",
 				"type": "ForEach",
 				"dependsOn": [
 					{
@@ -164,6 +168,151 @@
 								],
 								"scriptBlockExecutionTimeout": "02:00:00"
 							}
+						}
+					]
+				}
+			},
+			{
+				"name": "DW_GERA_BUSCA_DT_PROCEDIMENTO_PACIENTE",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Merge DW Log",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "SP_AJ_DW_GERA_BUSCA_DT_PROCEDIMENTO_PACIENTE"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Busca Dt Reprocessar Proc",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "DW_GERA_BUSCA_DT_PROCEDIMENTO_PACIENTE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "\nSELECT\n    A.ESTABELECIMENTO\n    ,A.NOME_KEYVAULT_SECRET\n    ,CAST(A.INICIO_MES AS VARCHAR(200)) as INICIO_MES\n    ,CAST(A.FIM_MES AS VARCHAR(200)) as FIM_MES\nFROM STG.tmp_aj_dw_procedimento_paciente  A",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "AZ_SQL",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach2",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Busca Dt Reprocessar Proc",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Busca Dt Reprocessar Proc').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Gerar Dados Proc",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "OracleSource",
+									"oracleReaderQuery": {
+										"value": "@concat('SELECT * FROM VW_PROCEDIMENTO_PACIENTE WHERE DT_ATUALIZACAO ',item().INICIO_MES,' and ',item().FIM_MES)",
+										"type": "Expression"
+									},
+									"partitionOption": "None",
+									"convertDecimalToInteger": false,
+									"queryTimeout": "02:00:00"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"preCopyScript": "truncate table STG.AJ_PROCEDIMENTO_PACIENTE",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false,
+									"tableOption": "autoCreate",
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ORACLE_LOG",
+									"type": "DatasetReference",
+									"parameters": {
+										"nm_keyvault": {
+											"value": "@item().NOME_KEYVAULT_SECRET",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AZSQL_DINAMICO",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_destino": "stg",
+										"tabela_destino": "STG.AJ_PROCEDIMENTO_PACIENTE"
+									}
+								}
+							]
 						}
 					]
 				}
