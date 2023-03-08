@@ -123,11 +123,11 @@
 				}
 			},
 			{
-				"name": "Merge DW Log",
+				"name": "Insert Dados Stg Final",
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "Gera Dados Busca",
+						"activity": "Limpa Tabela Destino",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -141,7 +141,7 @@
 					},
 					"activities": [
 						{
-							"name": "Procedure",
+							"name": "Copy",
 							"type": "Script",
 							"dependsOn": [],
 							"policy": {
@@ -177,7 +177,7 @@
 				"type": "SqlServerStoredProcedure",
 				"dependsOn": [
 					{
-						"activity": "Merge DW Log",
+						"activity": "Insert Dados Stg Final",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -308,7 +308,10 @@
 									"type": "DatasetReference",
 									"parameters": {
 										"schema_destino": "stg",
-										"tabela_destino": "AJ_PROCEDIMENTO_PACIENTE"
+										"tabela_destino": {
+											"value": "@concat('AJ_',item().NOME_TABELA_ORIGEM)",
+											"type": "Expression"
+										}
 									}
 								}
 							]
@@ -380,6 +383,56 @@
 						}
 					],
 					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Limpa Tabela Destino",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Gera Dados Busca",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Busca SQL').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Truncate Table",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSQL_DB_Procedimentos",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "NonQuery",
+										"text": {
+											"value": "@concat('TRUNCATE TABLE stg.DW_AJ_',item().NOME_TABELA_ORIGEM,'_TASY')",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						}
+					]
 				}
 			}
 		],
