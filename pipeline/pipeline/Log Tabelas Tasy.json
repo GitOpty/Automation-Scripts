@@ -154,7 +154,11 @@
 							"userProperties": [],
 							"typeProperties": {
 								"source": {
-									"type": "SqlServerSource",
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_TABELA_DESTINO,'.',item().NOME_TABELA_DESTINO)",
+										"type": "Expression"
+									},
 									"queryTimeout": "02:00:00",
 									"partitionOption": "None"
 								},
@@ -177,18 +181,8 @@
 							},
 							"inputs": [
 								{
-									"referenceName": "ORIGEM_TABELAS_ADF",
-									"type": "DatasetReference",
-									"parameters": {
-										"schema_name": {
-											"value": "@item().NOME_TABELA_ORIGEM",
-											"type": "Expression"
-										},
-										"table_name": {
-											"value": "@item().NOME_TABELA_DESTINO",
-											"type": "Expression"
-										}
-									}
+									"referenceName": "AZ_SQL",
+									"type": "DatasetReference"
 								}
 							],
 							"outputs": [
@@ -250,7 +244,7 @@
 									{
 										"type": "NonQuery",
 										"text": {
-											"value": "@concat('IF (EXISTS (SELECT * \n                 FROM INFORMATION_SCHEMA.TABLES \n                 WHERE TABLE_SCHEMA = stg \n                 AND  TABLE_NAME = ','AJ_DW_',item().NOME_TABELA_ORIGEM,'))\nBEGIN\n    TRUNCATE TABLE stg.AJ_DW_',item().NOME_TABELA_ORIGEM,'\nEND'\n)",
+											"value": "@concat('BEGIN TRY TRUNCATE TABLE ','AJ_DW_',item().NOME_TABELA_ORIGEM,' END TRY BEGIN CATCH PRINT 0 END CATCH ')",
 											"type": "Expression"
 										}
 									}
