@@ -17,7 +17,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "SELECT * FROM ADF.CTR_AJUSTE_DW",
+						"sqlReaderQuery": "SELECT * FROM ADF.CTR_AJUSTE_DW WHERE HABILITA_ETL = 'S'",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -250,6 +250,88 @@
 									}
 								],
 								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Busca Tab Pipeline",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "Insert Dados Stg Final",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT DISTINCT NOME_TABELA_ORIGEM FROM ADF.CTR_AJUSTE_DW\nWHERE HABILITA_ETL = 'S'",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "AZ_SQL",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "LIsta Tabelas",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Busca Tab Pipeline",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"activities": [
+						{
+							"name": "Switch1",
+							"type": "Switch",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"on": {
+									"value": "@item().NOME_TABELA_ORIGEM",
+									"type": "Expression"
+								},
+								"cases": [
+									{
+										"value": "PROCEDIMENTO_PACIENTE",
+										"activities": [
+											{
+												"name": "Execute Pipeline1",
+												"type": "ExecutePipeline",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "AJ_PROCEDIMENTO_PACIENTE",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true
+												}
+											}
+										]
+									}
+								]
 							}
 						}
 					]
