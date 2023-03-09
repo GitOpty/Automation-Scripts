@@ -141,8 +141,8 @@
 					},
 					"activities": [
 						{
-							"name": "Copy",
-							"type": "Script",
+							"name": "Copy data1",
+							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
@@ -152,22 +152,61 @@
 								"secureInput": false
 							},
 							"userProperties": [],
-							"linkedServiceName": {
-								"referenceName": "AzureSQL_DB_Procedimentos",
-								"type": "LinkedServiceReference"
-							},
 							"typeProperties": {
-								"scripts": [
-									{
-										"type": "NonQuery",
-										"text": {
-											"value": "@concat('EXEC SP_CARGA_LOG_',replace(item().NOME_PROCESSO,'AJ_',''))",
+								"source": {
+									"type": "SqlServerSource",
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false,
+									"tableOption": "autoCreate",
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ORIGEM_TABELAS_ADF",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_name": {
+											"value": "@item().NOME_TABELA_ORIGEM",
+											"type": "Expression"
+										},
+										"table_name": {
+											"value": "@item().NOME_TABELA_DESTINO",
 											"type": "Expression"
 										}
 									}
-								],
-								"scriptBlockExecutionTimeout": "02:00:00"
-							}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AZSQL_DINAMICO",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_destino": {
+											"value": "@item().NOME_SCHEMA_TABELA_DESTINO",
+											"type": "Expression"
+										},
+										"tabela_destino": {
+											"value": "@concat('DW_AJ_',item().NOME_TABELA_ORIGEM,'_TASY')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
 						}
 					]
 				}
@@ -211,7 +250,7 @@
 									{
 										"type": "NonQuery",
 										"text": {
-											"value": "@concat('TRUNCATE TABLE stg.DW_AJ_',item().NOME_TABELA_ORIGEM,'_TASY')",
+											"value": "@concat('IF (EXISTS (SELECT * \n                 FROM INFORMATION_SCHEMA.TABLES \n                 WHERE TABLE_SCHEMA = stg \n                 AND  TABLE_NAME = ','AJ_DW_',item().NOME_TABELA_ORIGEM,'))\nBEGIN\n    TRUNCATE TABLE stg.AJ_DW_',item().NOME_TABELA_ORIGEM,'\nEND'\n)",
 											"type": "Expression"
 										}
 									}
