@@ -44,7 +44,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "\nSELECT\n    A.ESTABELECIMENTO\n    ,A.NOME_KEYVAULT_SECRET\n    ,CAST(A.INICIO_MES AS VARCHAR(200)) as INICIO_MES\n    ,CAST(A.FIM_MES AS VARCHAR(200)) as FIM_MES\n    ,'PROCEDIMENTO_PACIENTE' AS NM_PROCESSO\nFROM STG.tmp_aj_dw_procedimento_paciente  A",
+						"sqlReaderQuery": "\nSELECT\n    A.ESTABELECIMENTO\n    ,A.NOME_KEYVAULT_SECRET\n    ,CAST(A.INICIO_MES AS VARCHAR(200)) as INICIO_MES\n    ,CAST(A.FIM_MES AS VARCHAR(200)) as FIM_MES\n    ,'PROCEDIMENTO_PACIENTE' AS NM_PROCESSO\n   ,'DT_PROCEDIMENTO' AS NM_COLUMN\nFROM STG.tmp_aj_dw_procedimento_paciente  A",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -149,9 +149,9 @@
 				"type": "Script",
 				"dependsOn": [
 					{
-						"activity": "Carga Dados Novos",
+						"activity": "Delete Periodo DW",
 						"dependencyConditions": [
-							"Succeeded"
+							"Completed"
 						]
 					}
 				],
@@ -208,6 +208,56 @@
 						}
 					],
 					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Delete Periodo DW",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Limpa Tabela Procedimento",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Busca Dt Reprocessar Proc').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "DELETE FROM DW",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSQL_DB_Procedimentos",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "NonQuery",
+										"text": {
+											"value": "@concat('DELETE FROM DW.TBL',item().NM_PROCESSO,' WHERE CAST(',item().NM_COLUMN,' as date) BETWEEN ',item().INICIO_MES,' and ',item().FIM_MES)",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						}
+					]
 				}
 			}
 		],
