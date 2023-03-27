@@ -1,0 +1,333 @@
+{
+	"name": "CEOP_CSV_FPA",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lista arquivos",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.02:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "DS_HMAISDATADRIVEN_BINARY",
+						"type": "DatasetReference",
+						"parameters": {
+							"FileSystem": "ceop"
+						}
+					},
+					"fieldList": [
+						"childItems",
+						"itemType",
+						"itemName",
+						"lastModified"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "BinaryReadSettings"
+					}
+				}
+			},
+			{
+				"name": "Filtro",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "Lista arquivos",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lista arquivos').output.childItems",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@endsWith(item().name, 'csv')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Filtro",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Filtro').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Copia dados para a STG",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"preCopyScript": {
+										"value": "@{concat('Truncate table stg.',activity('Lista arquivos').output.itemName,'_v2')}",
+										"type": "Expression"
+									},
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false,
+									"tableOption": "autoCreate",
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_HMAISDATADRIVEN",
+									"type": "DatasetReference",
+									"parameters": {
+										"Filesystem": {
+											"value": "@activity('Lista arquivos').output.itemName",
+											"type": "Expression"
+										},
+										"File": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AZ_SQL_STG",
+									"type": "DatasetReference",
+									"parameters": {
+										"SCHEMA": "stg",
+										"TABELA": {
+											"value": "@concat(activity('Lista arquivos').output.itemName,'_v2')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "Move arquivo para PROCESSADOS",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "Copia dados para a STG",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_HMAISDATADRIVEN",
+									"type": "DatasetReference",
+									"parameters": {
+										"Filesystem": {
+											"value": "@activity('Lista arquivos').output.itemName",
+											"type": "Expression"
+										},
+										"File": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DS_HMAISDATADRIVEN",
+									"type": "DatasetReference",
+									"parameters": {
+										"Filesystem": {
+											"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
+											"type": "Expression"
+										},
+										"File": {
+											"value": "@concat(item().name,'-',utcnow())",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "Apaga arquivo",
+							"type": "Delete",
+							"dependsOn": [
+								{
+									"activity": "Move arquivo para PROCESSADOS",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"dataset": {
+									"referenceName": "DS_HMAISDATADRIVEN",
+									"type": "DatasetReference",
+									"parameters": {
+										"Filesystem": {
+											"value": "@activity('Lista arquivos').output.itemName",
+											"type": "Expression"
+										},
+										"File": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								},
+								"logStorageSettings": {
+									"linkedServiceName": {
+										"referenceName": "sv_hmaisbrasildatadriven",
+										"type": "LinkedServiceReference"
+									},
+									"path": "ceop/logs"
+								},
+								"enableLogging": true,
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "Convenio",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "ForEach1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "DECLARE @ESTABELECIMENTO VARCHAR(10)\n\nSELECT @ESTABELECIMENTO = ID_SYSTEM FROM v_plataforma_dw WHERE UPPER(DS_SYSTEM) LIKE '%CEOP%'\n\nTRUNCATE TABLE DW.CEOP_CONVENIO\n\nINSERT INTO DW.CEOP_CONVENIO\nSELECT DISTINCT\n    @ESTABELECIMENTO AS ESTABELECIMENTO\n    ,@ESTABELECIMENTO + '|' + CAST(A.[Cnv.Id] AS VARCHAR(50)) AS FK_CONVENIO\n    ,A.[Cnv.Id] AS CD_CONVENIO\n    ,A.Convênio AS DS_CONVENIO   \nFROM STG.CEOP A"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			}
+		],
+		"folder": {
+			"name": "Data Warehouse/P&P"
+		},
+		"annotations": []
+	}
+}
