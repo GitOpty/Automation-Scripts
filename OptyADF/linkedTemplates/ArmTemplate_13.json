@@ -39,13 +39,13 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'SMART_IOF_NEW'"
 		},
-		"SMART_ITABUNA_NEW_connectionString": {
-			"type": "secureString",
-			"metadata": "Secure string for 'connectionString' of 'SMART_ITABUNA_NEW'"
+		"Historicos_Bilhetes_HOSL_properties_typeProperties_host": {
+			"type": "string",
+			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Historicos NEXCORE\\HOSL\\BilheteLigacoes\\Novo"
 		},
-		"SMART_ITAIGARA_HOM_connectionString": {
-			"type": "secureString",
-			"metadata": "Secure string for 'connectionString' of 'SMART_ITAIGARA_HOM'"
+		"Historicos_Bilhetes_HOSL_properties_typeProperties_userId": {
+			"type": "string",
+			"defaultValue": "hobrasil\\sa.automation"
 		},
 		"Historicos_Bilhetes_INOB_properties_typeProperties_host": {
 			"type": "string",
@@ -135,6 +135,10 @@
 			"type": "string",
 			"defaultValue": "NajaPE"
 		},
+		"Oracle_Log_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "@linkedService().NOME_KEYVAULT"
+		},
 		"Ortoity_Oracle_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
 			"defaultValue": "Ortocity"
@@ -148,6 +152,33 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Historicos_Bilhetes_HOSL')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Historicos_Bilhetes_HOSL",
+				"annotations": [],
+				"type": "FileServer",
+				"typeProperties": {
+					"host": "[parameters('Historicos_Bilhetes_HOSL_properties_typeProperties_host')]",
+					"userId": "[parameters('Historicos_Bilhetes_HOSL_properties_typeProperties_userId')]",
+					"password": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "vmSA"
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Historicos_Bilhetes_INOB')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -487,6 +518,38 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Oracle_Log')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"NOME_KEYVAULT": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": {
+							"value": "[parameters('Oracle_Log_properties_typeProperties_connectionString_secretName')]",
+							"type": "Expression"
+						}
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Ortoity_Oracle')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
@@ -585,40 +648,6 @@
 				"type": "SqlServer",
 				"typeProperties": {
 					"connectionString": "[parameters('SMART_IOF_NEW_connectionString')]"
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/SMART_ITABUNA_NEW')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "SqlServer",
-				"typeProperties": {
-					"connectionString": "[parameters('SMART_ITABUNA_NEW_connectionString')]"
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/SMART_ITAIGARA_HOM')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "SqlServer",
-				"typeProperties": {
-					"connectionString": "[parameters('SMART_ITAIGARA_HOM_connectionString')]"
 				},
 				"connectVia": {
 					"referenceName": "ServidorArquivosBI",

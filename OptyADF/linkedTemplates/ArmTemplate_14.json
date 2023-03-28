@@ -7,6 +7,14 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		},
+		"SMART_ITABUNA_NEW_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SMART_ITABUNA_NEW'"
+		},
+		"SMART_ITAIGARA_HOM_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SMART_ITAIGARA_HOM'"
+		},
 		"SMART_ITAIGARA_NEW_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'SMART_ITAIGARA_NEW'"
@@ -56,6 +64,40 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/SMART_ITABUNA_NEW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SMART_ITABUNA_NEW_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SMART_ITAIGARA_HOM')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SMART_ITAIGARA_HOM_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/SMART_ITAIGARA_NEW')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -283,6 +325,36 @@
 					"referenceName": "ServidorArquivosBI",
 					"type": "IntegrationRuntimeReference"
 				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/FILE_SURVEY')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "sv_hmaisbrasildatadriven",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "ho_aux_survey.csv",
+						"fileSystem": "requestia"
+					},
+					"columnDelimiter": ";",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"type": "String"
+					}
+				]
 			},
 			"dependsOn": []
 		},
@@ -892,6 +964,342 @@
 								{
 									"type": "NonQuery",
 									"text": "DECLARE @ESTABELECIMENTO VARCHAR(10)\n\nSELECT @ESTABELECIMENTO = ID_SYSTEM FROM v_plataforma_dw WHERE UPPER(DS_SYSTEM) LIKE '%CEOP%'\n\nTRUNCATE TABLE DW.CEOP_CONVENIO\n\nINSERT INTO DW.CEOP_CONVENIO\nSELECT DISTINCT\n    @ESTABELECIMENTO AS ESTABELECIMENTO\n    ,@ESTABELECIMENTO + '|' + CAST(A.[Cnv.Id] AS VARCHAR(50)) AS FK_CONVENIO\n    ,A.[Cnv.Id] AS CD_CONVENIO\n    ,A.Convênio AS DS_CONVENIO   \nFROM STG.CEOP A"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/P&P"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CEOP_CSV_FPA')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lista arquivos",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.02:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "ceop"
+								}
+							},
+							"fieldList": [
+								"childItems",
+								"itemType",
+								"itemName",
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filtro",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Lista arquivos",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista arquivos').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'csv')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filtro",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filtro').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copia dados para a STG",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_SQL_STG",
+											"type": "DatasetReference",
+											"parameters": {
+												"SCHEMA": "stg",
+												"TABELA": {
+													"value": "@concat(activity('Lista arquivos').output.itemName,'_fpa')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Move arquivo para PROCESSADOS",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "Copia dados para a STG",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@concat(item().name,'-',utcnow())",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Apaga arquivo",
+									"type": "Delete",
+									"dependsOn": [
+										{
+											"activity": "Move arquivo para PROCESSADOS",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataset": {
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										},
+										"logStorageSettings": {
+											"linkedServiceName": {
+												"referenceName": "sv_hmaisbrasildatadriven",
+												"type": "LinkedServiceReference"
+											},
+											"path": "ceop/logs"
+										},
+										"enableLogging": true,
+										"storeSettings": {
+											"type": "AzureBlobFSReadSettings",
+											"recursive": true,
+											"enablePartitionDiscovery": false
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Convenio",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "ForEach1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "BEGIN\n    DECLARE @ESTABELECIMENTO VARCHAR(10)\n\n    SELECT @ESTABELECIMENTO = ID_SYSTEM FROM v_plataforma_dw WHERE UPPER(DS_SYSTEM) LIKE '%CEOP%'\n\n    TRUNCATE TABLE STG.CEOP_CONVENIO\n\n    INSERT INTO STG.CEOP_CONVENIO\n    SELECT DISTINCT\n        @ESTABELECIMENTO AS ESTABELECIMENTO\n        ,@ESTABELECIMENTO + '|' + CAST(A.[Cnv.Id] AS VARCHAR(50)) AS FK_CONVENIO\n        ,A.[Cnv.Id] AS CD_CONVENIO\n        ,A.Convênio AS DS_CONVENIO   \n    FROM STG.CEOP_FPA A\nEND\nBEGIN\n    with tab as(\n        SELECT\n            ESTABELECIMENTO\n            ,FK_CONVENIO\n            ,CD_CONVENIO\n            ,DS_CONVENIO\n        FROM(    \n            SELECT \n            A.ESTABELECIMENTO\n            ,A.FK_CONVENIO\n            ,A.CD_CONVENIO\n            ,A.DS_CONVENIO\n            ,ROW_NUMBER()OVER(PARTITION BY A.FK_CONVENIO ORDER BY A.FK_CONVENIO DESC) ID_LINHA \n            FROM STG.CEOP_CONVENIO A\n        )TMP\n        WHERE TMP.ID_LINHA = 1\n    )\n\n    MERGE\t           \n    \tdw.CEOP_CONVENIO AS destino           \n    USING            \n    \ttab AS origem           \n\n        ON\t(        \n            ORIGEM.FK_CONVENIO = DESTINO.FK_CONVENIO\t\n    \t\t)        \n\n    --Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \n    WHEN MATCHED            \n    THEN UPDATE SET           \n    DESTINO.ESTABELECIMENTO = ORIGEM.ESTABELECIMENTO\n    ,DESTINO.FK_CONVENIO = ORIGEM.FK_CONVENIO\n    ,DESTINO.CD_CONVENIO = ORIGEM.CD_CONVENIO\n    ,DESTINO.DS_CONVENIO = ORIGEM.DS_CONVENIO\n\n\n\n    --Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \n    WHEN NOT MATCHED BY TARGET            \n    THEN INSERT            \n    VALUES (\n    ORIGEM.ESTABELECIMENTO\n    ,ORIGEM.FK_CONVENIO\n    ,ORIGEM.CD_CONVENIO\n    ,ORIGEM.DS_CONVENIO\n    ); \nEND    \n"
 								}
 							],
 							"scriptBlockExecutionTimeout": "02:00:00"
@@ -2643,6 +3051,117 @@
 								}
 							}
 						]
+					},
+					{
+						"name": "Check table Survey",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Copy table Actions",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_SURVEY",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Copy table Survey",
+						"description": "",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Check table Survey",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": {
+									"value": "--TRUNCATE TABLE STG.REQUESTIA_HO_AUX_SURVEY",
+									"type": "Expression"
+								},
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"enableSkipIncompatibleRow": true,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "FILE_SURVEY",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": {
+										"value": "REQUESTIA_HO_AUX_SURVEY",
+										"type": "Expression"
+									}
+								}
+							}
+						]
 					}
 				],
 				"policy": {
@@ -2655,7 +3174,9 @@
 				"annotations": [],
 				"lastPublishTime": "2021-02-17T17:43:08Z"
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/FILE_SURVEY')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Databricks Five9 API')]",
@@ -2878,2355 +3399,6 @@
 				},
 				"folder": {
 					"name": "Data Warehouse/Five9"
-				},
-				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DataMart')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Verifica Start Datamart",
-						"type": "Lookup",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT\n    COUNT(1) as QT_REGISTRO \nFROM(\n    SELECT \n        A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n        ,MAX(A.DT_INICIO_PROCESS) DT_INICIO_PROCESS \n        ,CAST(MAX(A.DT_FIM_PROCESS) AS DATE) DT_FIM_PROCESS         \n    FROM DBO.LOG_PROCESSAMENTO_DW A\n    INNER JOIN DBO.cfg_plataforma_dw B ON B.ID_PLATAFORMA = A.ID_PLATAFORMA\n    WHERE UPPER(A.NOME_PROCESSO) LIKE '%CARGA_DW'\n    GROUP BY A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n)TMP    \nWHERE TMP.DT_FIM_PROCESS = CAST(GETDATE() AS DATE)\n",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "AZ_SQL",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "Processo",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Verifica Start Datamart",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Verifica Start Datamart').output.value",
-								"type": "Expression"
-							},
-							"activities": [
-								{
-									"name": "Inicia Atualizacao Datamart",
-									"type": "IfCondition",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"expression": {
-											"value": "@greaterOrEquals(item().QT_REGISTRO,2 )",
-											"type": "Expression"
-										},
-										"ifFalseActivities": [
-											{
-												"name": "Busca Email",
-												"type": "Lookup",
-												"dependsOn": [],
-												"policy": {
-													"timeout": "7.00:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"source": {
-														"type": "AzureSqlSource",
-														"sqlReaderQuery": "SELECT * FROM ADF.OWNER",
-														"queryTimeout": "02:00:00",
-														"partitionOption": "None"
-													},
-													"dataset": {
-														"referenceName": "AZ_SQL",
-														"type": "DatasetReference",
-														"parameters": {}
-													}
-												}
-											},
-											{
-												"name": "Variable Email",
-												"type": "SetVariable",
-												"dependsOn": [
-													{
-														"activity": "Busca Email",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"userProperties": [],
-												"typeProperties": {
-													"variableName": "email",
-													"value": {
-														"value": "@activity('Busca Email').output.firstRow['Email']",
-														"type": "Expression"
-													}
-												}
-											},
-											{
-												"name": "Disparado de Erro Datamart Receb",
-												"type": "ExecutePipeline",
-												"dependsOn": [
-													{
-														"activity": "Variable Email",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "Send email",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {
-														"EmailTo": {
-															"value": "@variables('email')",
-															"type": "Expression"
-														},
-														"Subject": {
-															"value": "@pipeline().Pipeline",
-															"type": "Expression"
-														},
-														"ErrorMessage": "Falha na atualização do Datamart Recebimento"
-													}
-												}
-											}
-										],
-										"ifTrueActivities": [
-											{
-												"name": "Processa Datamart",
-												"type": "SqlServerStoredProcedure",
-												"dependsOn": [],
-												"policy": {
-													"timeout": "7.00:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"storedProcedureName": "SP_PROCESSA_RECEBIMENTO_SYS_LEG"
-												},
-												"linkedServiceName": {
-													"referenceName": "AzureSQL_DB_Procedimentos",
-													"type": "LinkedServiceReference"
-												}
-											}
-										]
-									}
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"variables": {
-					"email": {
-						"type": "String"
-					},
-					"qt_registro": {
-						"type": "String"
-					}
-				},
-				"folder": {
-					"name": "Data Warehouse"
-				},
-				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/INSTITUTO_DR_OSMAR')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Agendamento",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Atendimento_Diario",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Agendamento]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Agendamento]\n",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_AGENDAMENTO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Agendamento"
-								}
-							}
-						]
-					},
-					{
-						"name": "Agendamento_Diario",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Agendamento",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Agendamento_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Agendamento_Diario]\n",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_AGENDAMENTO_DIARIO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Agendamento_Diario"
-								}
-							}
-						]
-					},
-					{
-						"name": "Atendimento",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "01:30:00",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Atendimento]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Atendimento]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_ATENDIMENTO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Atendimento"
-								}
-							}
-						]
-					},
-					{
-						"name": "Atendimento_Diario",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Atendimento",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Atendimento_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Atendimento_Diario]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_ATENDIMENTO_DIARIO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_atendimento_diario"
-								}
-							}
-						]
-					},
-					{
-						"name": "Faturamento",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Agendamento_Diario",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Faturamento]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Faturamento]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_FATURAMENTO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Faturamento"
-								}
-							}
-						]
-					},
-					{
-						"name": "Faturamento_Diario",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Faturamento",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Faturamento_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Faturamento_Diario]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_FATURAMENTO_DIARIO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Faturamento_Diario"
-								}
-							}
-						]
-					},
-					{
-						"name": "Financeiro",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Faturamento_Diario",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Financeiro]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Financeiro]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_FINANCEIRO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Financeiro"
-								}
-							}
-						]
-					},
-					{
-						"name": "Financeiro_Diario",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Financeiro",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Financeiro_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Financeiro_Diario]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_FINANCEIRO_DIARIO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Financeiro_Diario"
-								}
-							}
-						]
-					},
-					{
-						"name": "Repasse",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Financeiro_Diario",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Repasse]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Repasse]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_REPASSE",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Repasse"
-								}
-							}
-						]
-					},
-					{
-						"name": "Repasse_Diario",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Repasse",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Repasse_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Repasse_Diario]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_REPASSE_DIARIO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "urobrasil_Repasse_Diario"
-								}
-							}
-						]
-					},
-					{
-						"name": "Questionario",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Repasse_Diario",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Questionario]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Questionario]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_QUESTIONARIO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_questionario"
-								}
-							}
-						]
-					},
-					{
-						"name": "Questionario_Diario",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Questionario",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Questionario_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Questionario_Diario]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_QUESTIONARIO_DIARIO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_questionario_diario"
-								}
-							}
-						]
-					},
-					{
-						"name": "ContasPagarReceber",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Questionario_Diario",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_ContasPagarReceber]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_ContasPagarReceber]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_CONTASPAGARRECEBER",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_ContasPagarReceber"
-								}
-							}
-						]
-					},
-					{
-						"name": "ContasPagarReceber_Diarias",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "ContasPagarReceber",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_ContasPagarReceber_Diarias]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_ContasPagarReceber_Diarias]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_CONTASPAGARRECEBER_DIARIAS",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_ContasPagarReceber_Diarias"
-								}
-							}
-						]
-					},
-					{
-						"name": "Caixa",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "ContasPagarReceber_Diarias",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Caixa]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Caixa]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_CAIXA",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Caixa"
-								}
-							}
-						]
-					},
-					{
-						"name": "Caixa_Diario",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Caixa",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Caixa_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Caixa_Diario]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_CAIXA_DIARIO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Caixa_Diario"
-								}
-							}
-						]
-					},
-					{
-						"name": "Paciente",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Caixa_Diario",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Paciente]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Paciente]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_PACIENTE",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Paciente"
-								}
-							}
-						]
-					},
-					{
-						"name": "Paciente_Diario",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Paciente",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Paciente_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Paciente_Diario]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_PACIENTE_DIARIO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Paciente_Diario"
-								}
-							}
-						]
-					},
-					{
-						"name": "Teleorientacao",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Paciente_Diario",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Teleorientacao]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Teleorientacao]\n",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_TELEORIENTACAO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Teleorientacao"
-								}
-							}
-						]
-					},
-					{
-						"name": "Teleorientacao_Diario",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Teleorientacao",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Teleorientacao_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Teleorientacao_Diario]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_TELEORIENTACAO_DIARIA",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Teleorientacao_Diaria"
-								}
-							}
-						]
-					},
-					{
-						"name": "Venda",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Teleorientacao_Diario",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Venda]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Venda]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_VENDA",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Venda"
-								}
-							}
-						]
-					},
-					{
-						"name": "Venda_Diaria",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Venda",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Venda_Diaria]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Venda_Diaria]",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_VENDA_DIARIA",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Venda_Diaria"
-								}
-							}
-						]
-					},
-					{
-						"name": "Profissional",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Venda_Diaria",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Profissional]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Profissional]\n",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_PROFISSIONAL",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Profissional"
-								}
-							}
-						]
-					},
-					{
-						"name": "Profissional_Diario",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Profissional",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "RestSource",
-								"httpRequestTimeout": "00:01:40",
-								"requestInterval": "00.00:00:00.010",
-								"requestMethod": "GET",
-								"paginationRules": {
-									"supportRFC5988": "true"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": {
-									"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[inst_dr_osmar_Profissional_Diario]') AND type in (N'U'))\nDROP TABLE [stg].[inst_dr_osmar_Profissional_Diario]\n",
-									"type": "Expression"
-								},
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "INST_DR_OSMAR_PROFISSIONAL_DIARIO",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "inst_dr_osmar_Profissional_Diario"
-								}
-							}
-						]
-					},
-					{
-						"name": "ATENDIMENTO MERGE",
-						"type": "Script",
-						"dependsOn": [
-							{
-								"activity": "Atendimento",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "SQL_DESTINO",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": "WITH CTE \nAS\n\n(\nSELECT DISTINCT \n\t   [atendimento_codigo]\n      ,[agendamento_codigo]\n      ,[atendimento_turno]\n      ,[atendimento_dia]\n      ,[atendimento_mes]\n      ,[atendimento_ano]\n      ,[atendimento_usuario_cadastro]\n      ,[atendimento_procedimento_empresa]\n      ,[atendimento_procedimento_empresa_requisitante]\n      ,[atendimento_procedimento_profissional_nome]\n      ,[atendimento_procedimento_profissional_requisitante]\n      ,[atendimento_procedimento_especialidade_profissional_requisitante]\n      ,[atendimento_procedimento_convenio]\n      ,[atendimento_procedimento_plano]\n      ,[atendimento_procedimento_especialidade]\n      ,[atendimento_procedimento_nome]\n      ,[atendimento_procedimento_grupo]\n      ,[atendimento_procedimento_valor]\n      ,[atendimento_procedimento_coparticipacao_valor]\n      ,[atendimento_procedimento_filme_valor]\n      ,[atendimento_material_medicamento_nome]\n      ,[atendimento_material_medicamento_valor]\n      ,[atendimento_material_medicamento_coparticipacao_valor]\n      ,[atendimento_taxa_nome]\n      ,[atendimento_taxa_valor]\n      ,[atendimento_taxa_coparticipacao_valor]\n      ,[paciente_codigo]\n      ,[paciente_nome]\n      ,[paciente_sexo]\n      ,[paciente_faixa_idade]\n      ,[paciente_estado]\n      ,[paciente_cidade]\n      ,[paciente_bairro]\n      ,[atendimento_hora]\n      ,[atendimento_diadasemana]\n      ,[atendimento_cid_primario]\n      ,[atendimento_cid_secundario]\n      ,[atendimento_cid_consultorio]\n      ,[atendimento_tipo]\n      ,[atendimento_horainicio_recepcao]\n      ,[atendimento_horafim_recepcao]\n      ,[atendimento_horainicio_consultorio]\n      ,[atendimento_horafim_consultorio]\n      ,[atendimento_procedimento_codigo]\n      ,[paciente_cep]\n      ,[atendimento_profissional_especialidade]\n      ,[atendimento_previsao_valor_repasse_profissional]\n      ,[atendimento_previsao_valor_repasse_clinica]\n      ,[atendimento_passo]\n  FROM [stg].[urobrasil_Atendimento]\n\n)\n\nMERGE\t           \n\tdw.urobrasil_Atendimento AS destino           \nUSING            \n\tCTE AS origem           \n           \n    ON\t(        \n\torigem.atendimento_codigo\t\t\t\t\t\t=\tdestino.atendimento_codigo\t\t\t\t\t\t\tAND\n\torigem.atendimento_procedimento_codigo\t\t\t=\tdestino.atendimento_procedimento_codigo\t\t\t\tAND\n\torigem.atendimento_procedimento_plano\t\t\t=\tdestino.atendimento_procedimento_plano\t\t\t\tAND\n\torigem.atendimento_procedimento_convenio\t\t=\tdestino.atendimento_procedimento_convenio\t\t\tAND\n\torigem.atendimento_material_medicamento_nome\t=\tdestino.atendimento_material_medicamento_nome\t\tAND\t\n\torigem.atendimento_procedimento_valor\t\t\t=\tdestino.atendimento_procedimento_valor\t\t\n\t\t)        \n\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \n\ndestino.atendimento_codigo=origem.atendimento_codigo,\ndestino.agendamento_codigo=origem.agendamento_codigo,\ndestino.atendimento_turno=origem.atendimento_turno,\ndestino.atendimento_dia=origem.atendimento_dia,\ndestino.atendimento_mes=origem.atendimento_mes,\ndestino.atendimento_ano=origem.atendimento_ano,\ndestino.atendimento_usuario_cadastro=origem.atendimento_usuario_cadastro,\ndestino.atendimento_procedimento_empresa=origem.atendimento_procedimento_empresa,\ndestino.atendimento_procedimento_empresa_requisitante=origem.atendimento_procedimento_empresa_requisitante,\ndestino.atendimento_procedimento_profissional_nome=origem.atendimento_procedimento_profissional_nome,\ndestino.atendimento_procedimento_profissional_requisitante=origem.atendimento_procedimento_profissional_requisitante,\ndestino.atendimento_procedimento_especialidade_profissional_requisitante=origem.atendimento_procedimento_especialidade_profissional_requisitante,\ndestino.atendimento_procedimento_convenio=origem.atendimento_procedimento_convenio,\ndestino.atendimento_procedimento_plano=origem.atendimento_procedimento_plano,\ndestino.atendimento_procedimento_especialidade=origem.atendimento_procedimento_especialidade,\ndestino.atendimento_procedimento_nome=origem.atendimento_procedimento_nome,\ndestino.atendimento_procedimento_grupo=origem.atendimento_procedimento_grupo,\ndestino.atendimento_procedimento_valor=origem.atendimento_procedimento_valor,\ndestino.atendimento_procedimento_coparticipacao_valor=origem.atendimento_procedimento_coparticipacao_valor,\ndestino.atendimento_procedimento_filme_valor=origem.atendimento_procedimento_filme_valor,\ndestino.atendimento_material_medicamento_nome=origem.atendimento_material_medicamento_nome,\ndestino.atendimento_material_medicamento_valor=origem.atendimento_material_medicamento_valor,\ndestino.atendimento_material_medicamento_coparticipacao_valor=origem.atendimento_material_medicamento_coparticipacao_valor,\ndestino.atendimento_taxa_nome=origem.atendimento_taxa_nome,\ndestino.atendimento_taxa_valor=origem.atendimento_taxa_valor,\ndestino.atendimento_taxa_coparticipacao_valor=origem.atendimento_taxa_coparticipacao_valor,\ndestino.paciente_codigo=origem.paciente_codigo,\ndestino.paciente_nome=origem.paciente_nome,\ndestino.paciente_sexo=origem.paciente_sexo,\ndestino.paciente_faixa_idade=origem.paciente_faixa_idade,\ndestino.paciente_estado=origem.paciente_estado,\ndestino.paciente_cidade=origem.paciente_cidade,\ndestino.paciente_bairro=origem.paciente_bairro,\ndestino.atendimento_hora=origem.atendimento_hora,\ndestino.atendimento_diadasemana=origem.atendimento_diadasemana,\ndestino.atendimento_cid_primario=origem.atendimento_cid_primario,\ndestino.atendimento_cid_secundario=origem.atendimento_cid_secundario,\ndestino.atendimento_cid_consultorio=origem.atendimento_cid_consultorio,\ndestino.atendimento_tipo=origem.atendimento_tipo,\ndestino.atendimento_horainicio_recepcao=origem.atendimento_horainicio_recepcao,\ndestino.atendimento_horafim_recepcao=origem.atendimento_horafim_recepcao,\ndestino.atendimento_horainicio_consultorio=origem.atendimento_horainicio_consultorio,\ndestino.atendimento_horafim_consultorio=origem.atendimento_horafim_consultorio,\ndestino.atendimento_procedimento_codigo=origem.atendimento_procedimento_codigo,\ndestino.paciente_cep=origem.paciente_cep,\ndestino.atendimento_profissional_especialidade=origem.atendimento_profissional_especialidade,\ndestino.atendimento_previsao_valor_repasse_profissional=origem.atendimento_previsao_valor_repasse_profissional,\ndestino.atendimento_previsao_valor_repasse_clinica=origem.atendimento_previsao_valor_repasse_clinica,\ndestino.atendimento_passo=origem.atendimento_passo\n\n\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.atendimento_codigo,\norigem.agendamento_codigo,\norigem.atendimento_turno,\norigem.atendimento_dia,\norigem.atendimento_mes,\norigem.atendimento_ano,\norigem.atendimento_usuario_cadastro,\norigem.atendimento_procedimento_empresa,\norigem.atendimento_procedimento_empresa_requisitante,\norigem.atendimento_procedimento_profissional_nome,\norigem.atendimento_procedimento_profissional_requisitante,\norigem.atendimento_procedimento_especialidade_profissional_requisitante,\norigem.atendimento_procedimento_convenio,\norigem.atendimento_procedimento_plano,\norigem.atendimento_procedimento_especialidade,\norigem.atendimento_procedimento_nome,\norigem.atendimento_procedimento_grupo,\norigem.atendimento_procedimento_valor,\norigem.atendimento_procedimento_coparticipacao_valor,\norigem.atendimento_procedimento_filme_valor,\norigem.atendimento_material_medicamento_nome,\norigem.atendimento_material_medicamento_valor,\norigem.atendimento_material_medicamento_coparticipacao_valor,\norigem.atendimento_taxa_nome,\norigem.atendimento_taxa_valor,\norigem.atendimento_taxa_coparticipacao_valor,\norigem.paciente_codigo,\norigem.paciente_nome,\norigem.paciente_sexo,\norigem.paciente_faixa_idade,\norigem.paciente_estado,\norigem.paciente_cidade,\norigem.paciente_bairro,\norigem.atendimento_hora,\norigem.atendimento_diadasemana,\norigem.atendimento_cid_primario,\norigem.atendimento_cid_secundario,\norigem.atendimento_cid_consultorio,\norigem.atendimento_tipo,\norigem.atendimento_horainicio_recepcao,\norigem.atendimento_horafim_recepcao,\norigem.atendimento_horainicio_consultorio,\norigem.atendimento_horafim_consultorio,\norigem.atendimento_procedimento_codigo,\norigem.paciente_cep,\norigem.atendimento_profissional_especialidade,\norigem.atendimento_previsao_valor_repasse_profissional,\norigem.atendimento_previsao_valor_repasse_clinica,\norigem.atendimento_passo\n\n); \n"
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/P&P"
-				},
-				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/IOV')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Lista arquivos",
-						"type": "GetMetadata",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.02:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataset": {
-								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "urobrasil"
-								}
-							},
-							"fieldList": [
-								"childItems",
-								"itemType",
-								"itemName",
-								"lastModified"
-							],
-							"storeSettings": {
-								"type": "AzureBlobFSReadSettings",
-								"recursive": true,
-								"enablePartitionDiscovery": false
-							},
-							"formatSettings": {
-								"type": "BinaryReadSettings"
-							}
-						}
-					},
-					{
-						"name": "Filtro",
-						"type": "Filter",
-						"dependsOn": [
-							{
-								"activity": "Lista arquivos",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Lista arquivos').output.childItems",
-								"type": "Expression"
-							},
-							"condition": {
-								"value": "@endsWith(item().name, 'csv')",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "ForEach1",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Filtro",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Filtro').output.value",
-								"type": "Expression"
-							},
-							"activities": [
-								{
-									"name": "Copia dados para a STG",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "AzureBlobFSReadSettings",
-												"recursive": true,
-												"enablePartitionDiscovery": false
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"preCopyScript": {
-												"value": "@{concat('Drop table stg.',activity('Lista arquivos').output.itemName)}",
-												"type": "Expression"
-											},
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"tableOption": "autoCreate",
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZ_SQL_STG",
-											"type": "DatasetReference",
-											"parameters": {
-												"SCHEMA": "stg",
-												"TABELA": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												}
-											}
-										}
-									]
-								},
-								{
-									"name": "Move arquivo para PROCESSADOS",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "STG DW",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "AzureBlobFSReadSettings",
-												"recursive": true,
-												"enablePartitionDiscovery": false
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "DelimitedTextSink",
-											"storeSettings": {
-												"type": "AzureBlobFSWriteSettings"
-											},
-											"formatSettings": {
-												"type": "DelimitedTextWriteSettings",
-												"quoteAllText": true,
-												"fileExtension": ".txt"
-											}
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@concat(item().name,'-',utcnow())",
-													"type": "Expression"
-												}
-											}
-										}
-									]
-								},
-								{
-									"name": "Apaga arquivo",
-									"type": "Delete",
-									"dependsOn": [
-										{
-											"activity": "Move arquivo para PROCESSADOS",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"dataset": {
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										},
-										"logStorageSettings": {
-											"linkedServiceName": {
-												"referenceName": "sv_hmaisbrasildatadriven",
-												"type": "LinkedServiceReference"
-											},
-											"path": "ceop/logs"
-										},
-										"enableLogging": true,
-										"storeSettings": {
-											"type": "AzureBlobFSReadSettings",
-											"recursive": true,
-											"enablePartitionDiscovery": false
-										}
-									}
-								},
-								{
-									"name": "STG DW",
-									"type": "Script",
-									"dependsOn": [
-										{
-											"activity": "Copia dados para a STG",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"linkedServiceName": {
-										"referenceName": "SQL_DESTINO",
-										"type": "LinkedServiceReference"
-									},
-									"typeProperties": {
-										"scripts": [
-											{
-												"type": "NonQuery",
-												"text": "MERGE\t           \n\tdw.ortocity AS destino           \nUSING            \n\tstg.ortocity AS origem           \n           \n    ON(        \ndestino.CD_ESTABELECIMENTO\t\t= origem.CD_ESTABELECIMENTO AND\ndestino.DS_ESTABELECIMENTO\t\t= origem.DS_ESTABELECIMENTO AND\ndestino.NR_ATENDIMENTO\t\t\t= origem.NR_ATENDIMENTO AND\ndestino.NR_INTERNO_CONTA\t\t= origem.NR_INTERNO_CONTA AND\ndestino.CD_PESSOA_FISICA\t\t= origem.CD_PESSOA_FISICA AND\ndestino.CD_CONVENIO\t\t\t\t= origem.CD_CONVENIO AND\ndestino.CD_MEDICO_EXECUTANTE\t=\torigem.CD_MEDICO_EXECUTANTE \n)        \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \ndestino.CD_ESTABELECIMENTO=origem.CD_ESTABELECIMENTO ,\ndestino.DS_ESTABELECIMENTO=origem.DS_ESTABELECIMENTO ,\ndestino.NR_ATENDIMENTO=origem.NR_ATENDIMENTO ,\ndestino.NR_INTERNO_CONTA=origem.NR_INTERNO_CONTA ,\ndestino.CD_PESSOA_FISICA=origem.CD_PESSOA_FISICA ,\ndestino.NM_PESSOA_FISICA=origem.NM_PESSOA_FISICA ,\ndestino.DT_NASCIMENTO=origem.DT_NASCIMENTO ,\ndestino.CD_CONVENIO=origem.CD_CONVENIO ,\ndestino.DS_CONVENIO=origem.DS_CONVENIO ,\ndestino.CD_MEDICO_EXECUTANTE=origem.CD_MEDICO_EXECUTANTE ,\ndestino.NM_MEDICO_EXECUTANTE=origem.NM_MEDICO_EXECUTANTE ,\ndestino.CD_SETOR_EXECUTANTE=origem.CD_SETOR_EXECUTANTE ,\ndestino.DS_SETOR_EXECUTANTE=origem.DS_SETOR_EXECUTANTE ,\ndestino.DT_ENTRADA=origem.DT_ENTRADA ,\ndestino.CD_ITEM=origem.CD_ITEM ,\ndestino.DS_ITEM=origem.DS_ITEM ,\ndestino.DT_LANC_ITEM=origem.DT_LANC_ITEM ,\ndestino.QT=origem.QT ,\ndestino.VALOR=origem.VALOR \n\n\n  \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.CD_ESTABELECIMENTO,\norigem.DS_ESTABELECIMENTO,\norigem.NR_ATENDIMENTO,\norigem.NR_INTERNO_CONTA,\norigem.CD_PESSOA_FISICA,\norigem.NM_PESSOA_FISICA,\norigem.DT_NASCIMENTO,\norigem.CD_CONVENIO,\norigem.DS_CONVENIO,\norigem.CD_MEDICO_EXECUTANTE,\norigem.NM_MEDICO_EXECUTANTE,\norigem.CD_SETOR_EXECUTANTE,\norigem.DS_SETOR_EXECUTANTE,\norigem.DT_ENTRADA,\norigem.CD_ITEM,\norigem.DS_ITEM,\norigem.DT_LANC_ITEM,\norigem.QT,\norigem.VALOR\n); "
-											}
-										]
-									}
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/P&P"
-				},
-				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/OFTALMODIAGNOSE_STORAGE_ACCOUNT')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Lista arquivos",
-						"type": "GetMetadata",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.02:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataset": {
-								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "oftalmodiagnose"
-								}
-							},
-							"fieldList": [
-								"childItems",
-								"itemType",
-								"itemName",
-								"lastModified"
-							],
-							"storeSettings": {
-								"type": "AzureBlobFSReadSettings",
-								"recursive": true,
-								"enablePartitionDiscovery": false
-							},
-							"formatSettings": {
-								"type": "BinaryReadSettings"
-							}
-						}
-					},
-					{
-						"name": "Filtro",
-						"type": "Filter",
-						"dependsOn": [
-							{
-								"activity": "Lista arquivos",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Lista arquivos').output.childItems",
-								"type": "Expression"
-							},
-							"condition": {
-								"value": "@endsWith(item().name, 'csv')",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "ForEach1",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Filtro",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Filtro').output.value",
-								"type": "Expression"
-							},
-							"isSequential": true,
-							"activities": [
-								{
-									"name": "Copia dados para a STG",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "AzureBlobFSReadSettings",
-												"recursive": true,
-												"enablePartitionDiscovery": false
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"preCopyScript": {
-												"value": "\n\n\n",
-												"type": "Expression"
-											},
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"tableOption": "autoCreate",
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZ_SQL_STG",
-											"type": "DatasetReference",
-											"parameters": {
-												"SCHEMA": "stg",
-												"TABELA": {
-													"value": "@concat('oftalmodiagnose_',substring(item().Name,0,3))\n\n",
-													"type": "Expression"
-												}
-											}
-										}
-									]
-								},
-								{
-									"name": "Move arquivo para PROCESSADOS",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "STG DW",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "AzureBlobFSReadSettings",
-												"recursive": true,
-												"enablePartitionDiscovery": false
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "DelimitedTextSink",
-											"storeSettings": {
-												"type": "AzureBlobFSWriteSettings"
-											},
-											"formatSettings": {
-												"type": "DelimitedTextWriteSettings",
-												"quoteAllText": true,
-												"fileExtension": ".txt"
-											}
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@concat(item().name,'-',utcnow())",
-													"type": "Expression"
-												}
-											}
-										}
-									]
-								},
-								{
-									"name": "Apaga arquivo",
-									"type": "Delete",
-									"dependsOn": [
-										{
-											"activity": "Move arquivo para PROCESSADOS",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"dataset": {
-											"referenceName": "DS_HMAISDATADRIVEN",
-											"type": "DatasetReference",
-											"parameters": {
-												"Filesystem": {
-													"value": "@activity('Lista arquivos').output.itemName",
-													"type": "Expression"
-												},
-												"File": {
-													"value": "@item().name",
-													"type": "Expression"
-												}
-											}
-										},
-										"logStorageSettings": {
-											"linkedServiceName": {
-												"referenceName": "sv_hmaisbrasildatadriven",
-												"type": "LinkedServiceReference"
-											},
-											"path": "ceop/logs"
-										},
-										"enableLogging": true,
-										"storeSettings": {
-											"type": "AzureBlobFSReadSettings",
-											"recursive": true,
-											"enablePartitionDiscovery": false
-										}
-									}
-								},
-								{
-									"name": "STG DW",
-									"type": "Script",
-									"dependsOn": [
-										{
-											"activity": "Copia dados para a STG",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"linkedServiceName": {
-										"referenceName": "SQL_DESTINO",
-										"type": "LinkedServiceReference"
-									},
-									"typeProperties": {
-										"scripts": [
-											{
-												"type": "NonQuery",
-												"text": "select 1"
-											}
-										]
-									}
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/P&P"
 				},
 				"annotations": []
 			},

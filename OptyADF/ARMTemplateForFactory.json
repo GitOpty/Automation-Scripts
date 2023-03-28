@@ -511,6 +511,10 @@
 			"type": "string",
 			"defaultValue": "NajaPE"
 		},
+		"Oracle_Log_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "@linkedService().NOME_KEYVAULT"
+		},
 		"Ortoity_Oracle_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
 			"defaultValue": "Ortocity"
@@ -946,6 +950,519 @@
 				"[concat(variables('factoryId'), '/pipelines/DM_Recebimento')]",
 				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_TasyV2')]",
 				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiariaSMARTV2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AJ_MATERIAL_ATEND_PACIENTE')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "DW_GERA_BUSCA_DT_MAT_ATEND_PAC",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_AJ_DW_GERA_BUSCA_DT_MATERIAL_ATEND_PACIENTE"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Busca Dt Reprocessar Mat",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "DW_GERA_BUSCA_DT_MAT_ATEND_PAC",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT\n    A.ESTABELECIMENTO\n    ,A.NOME_KEYVAULT_SECRET\n    ,CAST(A.INICIO_MES AS VARCHAR(200)) as INICIO_MES\n    ,CAST(A.FIM_MES AS VARCHAR(200)) as FIM_MES\n    ,'MATERIAL_ATEND_PACIENTE' AS NM_PROCESSO\nFROM STG.tmp_aj_dw_material_atend_paciente  A",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Carga Dados Novos",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Limpa Tabela Material Atendimento",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca Dt Reprocessar Mat').output.value",
+								"type": "Expression"
+							},
+							"batchCount": 8,
+							"activities": [
+								{
+									"name": "Gerar Dados",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@concat('SELECT * FROM VW_MATERIAL_ATEND_PACIENTE WHERE DT_ATUALIZACAO BETWEEN','''',item().INICIO_MES,'''',' and ','''',item().FIM_MES,'''')",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"convertDecimalToInteger": false,
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ORACLE_LOG",
+											"type": "DatasetReference",
+											"parameters": {
+												"nm_keyvault": {
+													"value": "@item().NOME_KEYVAULT_SECRET",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZSQL_DINAMICO",
+											"type": "DatasetReference",
+											"parameters": {
+												"schema_destino": "stg",
+												"tabela_destino": {
+													"value": "@concat('AJ_',item().NM_PROCESSO)",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Merge Dw Mat Atend Paciente",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Carga Dados Novos",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "\t \n--Sincronize a tabela de destino com dados atualizados da tabela de origem \nMERGE \n\t[dw].[TBL_MATERIAL_ATEND_PACIENTE] AS destino \nUSING  \n\tstg.AJ_MATERIAL_ATEND_PACIENTE AS origem \n \n\tON (destino.NR_SEQUENCIA = origem.NR_SEQUENCIA AND destino.estabelecimento = origem.estabelecimento) \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração \nWHEN MATCHED  \nTHEN UPDATE SET       \ndestino.[ESTABELECIMENTO] = origem.[ESTABELECIMENTO], \ndestino.[NR_SEQUENCIA] = origem.[NR_SEQUENCIA], \ndestino.[NR_ATENDIMENTO] = origem.[NR_ATENDIMENTO], \ndestino.[DT_ENTRADA_UNIDADE] = origem.[DT_ENTRADA_UNIDADE], \ndestino.[CD_MATERIAL] = origem.[CD_MATERIAL], \ndestino.[DT_ATENDIMENTO] = origem.[DT_ATENDIMENTO], \ndestino.[CD_UNIDADE_MEDIDA] = origem.[CD_UNIDADE_MEDIDA], \ndestino.[QT_MATERIAL] = origem.[QT_MATERIAL], \ndestino.[DT_ATUALIZACAO] = origem.[DT_ATUALIZACAO], \ndestino.[NM_USUARIO] = origem.[NM_USUARIO], \ndestino.[CD_CONVENIO] = origem.[CD_CONVENIO], \ndestino.[CD_CATEGORIA] = origem.[CD_CATEGORIA], \ndestino.[DT_PRESCRICAO] = origem.[DT_PRESCRICAO], \ndestino.[CD_MATERIAL_PRESCRICAO] = origem.[CD_MATERIAL_PRESCRICAO], \ndestino.[IE_VIA_APLICACAO] = origem.[IE_VIA_APLICACAO], \ndestino.[DS_OBSERVACAO] = origem.[DS_OBSERVACAO], \ndestino.[VL_MATERIAL] = origem.[VL_MATERIAL], \ndestino.[CD_TAB_PRECO_MATERIAL] = origem.[CD_TAB_PRECO_MATERIAL], \ndestino.[DT_VIGENCIA_TABELA] = origem.[DT_VIGENCIA_TABELA], \ndestino.[DT_ACERTO_CONTA] = origem.[DT_ACERTO_CONTA], \ndestino.[DT_ACERTO_CONVENIO] = origem.[DT_ACERTO_CONVENIO], \ndestino.[NR_PRESCRICAO] = origem.[NR_PRESCRICAO], \ndestino.[NR_SEQUENCIA_PRESCRICAO] = origem.[NR_SEQUENCIA_PRESCRICAO], \ndestino.[CD_MOTIVO_EXC_CONTA] = origem.[CD_MOTIVO_EXC_CONTA], \ndestino.[DS_COMPL_MOTIVO_EXCON] = origem.[DS_COMPL_MOTIVO_EXCON], \ndestino.[CD_LOCAL_ESTOQUE] = origem.[CD_LOCAL_ESTOQUE], \ndestino.[DT_ATUALIZACAO_ESTOQUE] = origem.[DT_ATUALIZACAO_ESTOQUE], \ndestino.[CD_ACAO] = origem.[CD_ACAO], \ndestino.[CD_SETOR_ATENDIMENTO] = origem.[CD_SETOR_ATENDIMENTO], \ndestino.[QT_DEVOLVIDA] = origem.[QT_DEVOLVIDA], \ndestino.[CD_MOTIVO_DEVOLUCAO] = origem.[CD_MOTIVO_DEVOLUCAO], \ndestino.[NR_CIRURGIA] = origem.[NR_CIRURGIA], \ndestino.[NR_DOC_CONVENIO] = origem.[NR_DOC_CONVENIO], \ndestino.[QT_EXECUTADA] = origem.[QT_EXECUTADA], \ndestino.[DT_CONTA] = origem.[DT_CONTA], \ndestino.[VL_UNITARIO] = origem.[VL_UNITARIO], \ndestino.[CD_PROCED_REFERENCIA] = origem.[CD_PROCED_REFERENCIA], \ndestino.[CD_CONTA_CONTABIL] = origem.[CD_CONTA_CONTABIL], \ndestino.[QT_AJUSTE_CONTA] = origem.[QT_AJUSTE_CONTA], \ndestino.[NR_AIH] = origem.[NR_AIH], \ndestino.[IE_VALOR_INFORMADO] = origem.[IE_VALOR_INFORMADO], \ndestino.[CD_ESTABELECIMENTO_CUSTO] = origem.[CD_ESTABELECIMENTO_CUSTO], \ndestino.[CD_TABELA_CUSTO] = origem.[CD_TABELA_CUSTO], \ndestino.[CD_SITUACAO_GLOSA] = origem.[CD_SITUACAO_GLOSA], \ndestino.[NR_LOTE_CONTABIL] = origem.[NR_LOTE_CONTABIL], \ndestino.[CD_MATERIAL_CONVENIO] = origem.[CD_MATERIAL_CONVENIO], \ndestino.[NR_SEQ_AUTORIZACAO] = origem.[NR_SEQ_AUTORIZACAO], \ndestino.[NR_INTERNO_CONTA] = origem.[NR_INTERNO_CONTA], \ndestino.[NR_SEQ_PROC_PRINC] = origem.[NR_SEQ_PROC_PRINC], \ndestino.[IE_GUIA_INFORMADA] = origem.[IE_GUIA_INFORMADA], \ndestino.[CD_ESPECIALIDADE] = origem.[CD_ESPECIALIDADE], \ndestino.[NM_USUARIO_ORIGINAL] = origem.[NM_USUARIO_ORIGINAL], \ndestino.[NR_SEQ_PROC_PACOTE] = origem.[NR_SEQ_PROC_PACOTE], \ndestino.[VL_TABELA_ORIGINAL] = origem.[VL_TABELA_ORIGINAL], \ndestino.[IE_EMITE_CONTA] = origem.[IE_EMITE_CONTA], \ndestino.[CD_SETOR_RECEITA] = origem.[CD_SETOR_RECEITA], \ndestino.[CD_CGC_FORNECEDOR] = origem.[CD_CGC_FORNECEDOR], \ndestino.[NR_SEQ_LOTE_FORNEC] = origem.[NR_SEQ_LOTE_FORNEC], \ndestino.[CD_MATERIAL_EXEC] = origem.[CD_MATERIAL_EXEC], \ndestino.[NR_SEQ_ATEPACU] = origem.[NR_SEQ_ATEPACU], \ndestino.[IE_TIPO_GUIA] = origem.[IE_TIPO_GUIA], \ndestino.[NR_DOC_INTERNO] = origem.[NR_DOC_INTERNO], \ndestino.[IE_AUDITORIA] = origem.[IE_AUDITORIA], \ndestino.[NR_SEQ_GRUPO_REC] = origem.[NR_SEQ_GRUPO_REC], \ndestino.[CD_MOTIVO_AJUSTE] = origem.[CD_MOTIVO_AJUSTE], \ndestino.[NR_SEQ_TIPO_BAIXA] = origem.[NR_SEQ_TIPO_BAIXA], \ndestino.[NR_SEQ_COR_EXEC] = origem.[NR_SEQ_COR_EXEC], \ndestino.[NR_SEQ_ORIGEM] = origem.[NR_SEQ_ORIGEM], \ndestino.[IE_DISPERSAO] = origem.[IE_DISPERSAO], \ndestino.[NR_SEQ_CONTA_ORIGEM] = origem.[NR_SEQ_CONTA_ORIGEM], \ndestino.[CD_SETOR_PACIENTE] = origem.[CD_SETOR_PACIENTE], \ndestino.[NR_SEQ_PARCIAL] = origem.[NR_SEQ_PARCIAL], \ndestino.[CD_CGC_PRESTADOR] = origem.[CD_CGC_PRESTADOR], \ndestino.[NR_SEQ_AIH] = origem.[NR_SEQ_AIH], \ndestino.[DT_CONFERENCIA] = origem.[DT_CONFERENCIA], \ndestino.[NR_SERIE_MATERIAL] = origem.[NR_SERIE_MATERIAL], \ndestino.[NR_SEQ_ORDEM_PROD] = origem.[NR_SEQ_ORDEM_PROD], \ndestino.[NR_RECEITA] = origem.[NR_RECEITA], \ndestino.[DT_ATUALIZACAO_NREC] = origem.[DT_ATUALIZACAO_NREC], \ndestino.[NM_USUARIO_NREC] = origem.[NM_USUARIO_NREC], \ndestino.[IE_ORIGEM_PRECO] = origem.[IE_ORIGEM_PRECO], \ndestino.[QT_ESTOQUE] = origem.[QT_ESTOQUE], \ndestino.[NR_SEQ_REGRA_LANC] = origem.[NR_SEQ_REGRA_LANC], \ndestino.[NR_SEQ_TISS_TABELA] = origem.[NR_SEQ_TISS_TABELA], \ndestino.[IE_RESPONSAVEL_CREDITO] = origem.[IE_RESPONSAVEL_CREDITO], \ndestino.[IE_TISS_TIPO_GUIA_DESP] = origem.[IE_TISS_TIPO_GUIA_DESP], \ndestino.[IE_TISS_TIPO_DESPESA] = origem.[IE_TISS_TIPO_DESPESA], \ndestino.[CD_CGC_PRESTADOR_TISS] = origem.[CD_CGC_PRESTADOR_TISS], \ndestino.[CD_SENHA] = origem.[CD_SENHA], \ndestino.[IE_ESTORNO_CONTA] = origem.[IE_ESTORNO_CONTA], \ndestino.[CD_MATERIAL_TISS] = origem.[CD_MATERIAL_TISS], \ndestino.[DS_MATERIAL_TISS] = origem.[DS_MATERIAL_TISS], \ndestino.[CD_KIT_MATERIAL] = origem.[CD_KIT_MATERIAL], \ndestino.[CD_TAB_CUSTO_PRECO] = origem.[CD_TAB_CUSTO_PRECO], \ndestino.[NR_SEQ_MAT_AUTOR] = origem.[NR_SEQ_MAT_AUTOR], \ndestino.[TX_MATERIAL] = origem.[TX_MATERIAL], \ndestino.[CD_PRESTADOR_TISS] = origem.[CD_PRESTADOR_TISS], \ndestino.[NR_SEQ_MAT_HOR] = origem.[NR_SEQ_MAT_HOR], \ndestino.[CD_CGC_PREST_SOLIC_TISS] = origem.[CD_CGC_PREST_SOLIC_TISS], \ndestino.[NR_SEQ_LOTE_AP] = origem.[NR_SEQ_LOTE_AP], \ndestino.[NR_SEQ_PROCESSO] = origem.[NR_SEQ_PROCESSO], \ndestino.[IE_TISS_DESP_HONOR] = origem.[IE_TISS_DESP_HONOR], \ndestino.[NR_SEQ_MAT_EST] = origem.[NR_SEQ_MAT_EST], \ndestino.[NR_SEQ_MAT_CRIT_REPASSE] = origem.[NR_SEQ_MAT_CRIT_REPASSE], \ndestino.[CD_MEDICO_PRESCRITOR] = origem.[CD_MEDICO_PRESCRITOR], \ndestino.[NR_DEVOLUCAO] = origem.[NR_DEVOLUCAO], \ndestino.[NR_SEQ_ITEM_DEVOL] = origem.[NR_SEQ_ITEM_DEVOL], \ndestino.[DS_PRESTADOR_TISS] = origem.[DS_PRESTADOR_TISS], \ndestino.[CD_FUNCAO] = origem.[CD_FUNCAO], \ndestino.[CD_PERFIL] = origem.[CD_PERFIL], \ndestino.[NR_SEQ_REG_TEMPLATE] = origem.[NR_SEQ_REG_TEMPLATE], \ndestino.[NR_SEQ_REGRA_AJUSTE_MAT] = origem.[NR_SEQ_REGRA_AJUSTE_MAT], \ndestino.[CD_MEDICO_EXEC_TISS] = origem.[CD_MEDICO_EXEC_TISS], \ndestino.[IE_GLOSADO] = origem.[IE_GLOSADO], \ndestino.[VL_CUSTO_MAT_REPASSE] = origem.[VL_CUSTO_MAT_REPASSE], \ndestino.[NR_SEQ_JUST_VALOR_INF] = origem.[NR_SEQ_JUST_VALOR_INF], \ndestino.[NR_SEQ_MAT_GLOSA] = origem.[NR_SEQ_MAT_GLOSA], \ndestino.[CD_LABORATORIO] = origem.[CD_LABORATORIO], \ndestino.[CD_MEDICAMENTO] = origem.[CD_MEDICAMENTO], \ndestino.[CD_APRESENTACAO] = origem.[CD_APRESENTACAO], \ndestino.[VL_MATERIAL_TISS] = origem.[VL_MATERIAL_TISS], \ndestino.[VL_REPASSE_CALC] = origem.[VL_REPASSE_CALC], \ndestino.[NR_SEQ_KIT_ESTOQUE] = origem.[NR_SEQ_KIT_ESTOQUE], \ndestino.[CD_PRESTADOR_SOLIC_TISS] = origem.[CD_PRESTADOR_SOLIC_TISS], \ndestino.[DS_PRESTADOR_SOLIC_TISS] = origem.[DS_PRESTADOR_SOLIC_TISS], \ndestino.[NR_SEQ_ENTREGA_MEDIC_FA] = origem.[NR_SEQ_ENTREGA_MEDIC_FA], \ndestino.[IE_OPME_INTEGRACAO] = origem.[IE_OPME_INTEGRACAO], \ndestino.[NR_SEQ_DEVOL_EXEC] = origem.[NR_SEQ_DEVOL_EXEC], \ndestino.[IE_VERSAO_ATUAL] = origem.[IE_VERSAO_ATUAL], \ndestino.[NM_USUARIO_ATEND_FAR] = origem.[NM_USUARIO_ATEND_FAR], \ndestino.[NM_USUARIO_ATEND_ENF] = origem.[NM_USUARIO_ATEND_ENF], \ndestino.[NM_USUARIO_RETIRANTE] = origem.[NM_USUARIO_RETIRANTE], \ndestino.[DS_JUSTIFICATIVA] = origem.[DS_JUSTIFICATIVA], \ndestino.[IE_TRAT_CONTA_RN] = origem.[IE_TRAT_CONTA_RN], \ndestino.[NR_SEQ_AGENDA_PAC_OPME] = origem.[NR_SEQ_AGENDA_PAC_OPME], \ndestino.[NR_SEQ_DOACAO] = origem.[NR_SEQ_DOACAO], \ndestino.[NR_SEQ_DIALISADOR] = origem.[NR_SEQ_DIALISADOR], \ndestino.[NR_SEQ_PEPO] = origem.[NR_SEQ_PEPO], \ndestino.[NR_SEQ_MOTIVO_INCL] = origem.[NR_SEQ_MOTIVO_INCL], \ndestino.[IE_STATUS_ITEM_TABELA] = origem.[IE_STATUS_ITEM_TABELA], \ndestino.[DT_CONVERSAO_MANUAL] = origem.[DT_CONVERSAO_MANUAL], \ndestino.[NR_SEQ_RESERVA] = origem.[NR_SEQ_RESERVA], \ndestino.[NR_SEQ_TRANSFUSAO] = origem.[NR_SEQ_TRANSFUSAO], \ndestino.[DT_DESDOBRAMENTO] = origem.[DT_DESDOBRAMENTO], \ndestino.[CD_CENTRO_CUSTO_RECEITA] = origem.[CD_CENTRO_CUSTO_RECEITA], \ndestino.[CD_SIMPRO] = origem.[CD_SIMPRO], \ndestino.[DS_JUST_VALOR_INF] = origem.[DS_JUST_VALOR_INF], \ndestino.[IE_FAT_DIRETO] = origem.[IE_FAT_DIRETO], \ndestino.[DS_JUST_ALTER_DATA] = origem.[DS_JUST_ALTER_DATA], \ndestino.[NR_SEQ_ORIG_AUDIT] = origem.[NR_SEQ_ORIG_AUDIT], \ndestino.[CD_MEDICO_AUTENTICACAO] = origem.[CD_MEDICO_AUTENTICACAO], \ndestino.[DT_AUTENTICACAO] = origem.[DT_AUTENTICACAO], \ndestino.[DS_BIOMETRIA] = origem.[DS_BIOMETRIA], \ndestino.[NR_SEQ_GEDIPA_ETAPA_DISP] = origem.[NR_SEQ_GEDIPA_ETAPA_DISP], \ndestino.[IE_RATEAR_ITEM] = origem.[IE_RATEAR_ITEM], \ndestino.[NR_SEQ_BRAS_PRECO] = origem.[NR_SEQ_BRAS_PRECO], \ndestino.[NR_SEQ_CONV_BRAS] = origem.[NR_SEQ_CONV_BRAS], \ndestino.[NR_SEQ_MAT_BRAS] = origem.[NR_SEQ_MAT_BRAS], \ndestino.[CD_MATERIAL_TUSS] = origem.[CD_MATERIAL_TUSS], \ndestino.[NR_SEQ_TUSS_MAT_ITEM] = origem.[NR_SEQ_TUSS_MAT_ITEM], \ndestino.[NR_REGISTRO_ANVISA_TISS] = origem.[NR_REGISTRO_ANVISA_TISS], \ndestino.[IE_OPME] = origem.[IE_OPME], \ndestino.[DS_STACK] = origem.[DS_STACK], \ndestino.[NR_SEQ_MAT_SIMP] = origem.[NR_SEQ_MAT_SIMP], \ndestino.[NR_SEQ_CONV_SIMP] = origem.[NR_SEQ_CONV_SIMP], \ndestino.[NR_SEQ_SIMP_PRECO] = origem.[NR_SEQ_SIMP_PRECO], \ndestino.[NR_SEQ_MAT_DESDOB] = origem.[NR_SEQ_MAT_DESDOB], \ndestino.[DS_MATERIAL_TUSS] = origem.[DS_MATERIAL_TUSS], \ndestino.[IE_VALOR_AUTORIZADO] = origem.[IE_VALOR_AUTORIZADO], \ndestino.[CD_JUSTI_CONTRASTE] = origem.[CD_JUSTI_CONTRASTE], \ndestino.[NR_SEQ_CONTA_REVERSAO] = origem.[NR_SEQ_CONTA_REVERSAO], \ndestino.[CD_UNID_MEDIDA_CONV] = origem.[CD_UNID_MEDIDA_CONV], \ndestino.[TX_CONVERSAO_QTDE] = origem.[TX_CONVERSAO_QTDE], \ndestino.[NR_SEQ_REGRA_PEPO] = origem.[NR_SEQ_REGRA_PEPO] \n \n\t\t\t\t \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino \nWHEN NOT MATCHED BY TARGET  \nTHEN INSERT  \n\tVALUES (   \norigem.[ESTABELECIMENTO], \norigem.[NR_SEQUENCIA], \norigem.[NR_ATENDIMENTO], \norigem.[DT_ENTRADA_UNIDADE], \norigem.[CD_MATERIAL], \norigem.[DT_ATENDIMENTO], \norigem.[CD_UNIDADE_MEDIDA], \norigem.[QT_MATERIAL], \norigem.[DT_ATUALIZACAO], \norigem.[NM_USUARIO], \norigem.[CD_CONVENIO], \norigem.[CD_CATEGORIA], \norigem.[DT_PRESCRICAO], \norigem.[CD_MATERIAL_PRESCRICAO], \norigem.[IE_VIA_APLICACAO], \norigem.[DS_OBSERVACAO], \norigem.[VL_MATERIAL], \norigem.[CD_TAB_PRECO_MATERIAL], \norigem.[DT_VIGENCIA_TABELA], \norigem.[DT_ACERTO_CONTA], \norigem.[DT_ACERTO_CONVENIO], \norigem.[NR_PRESCRICAO], \norigem.[NR_SEQUENCIA_PRESCRICAO], \norigem.[CD_MOTIVO_EXC_CONTA], \norigem.[DS_COMPL_MOTIVO_EXCON], \norigem.[CD_LOCAL_ESTOQUE], \norigem.[DT_ATUALIZACAO_ESTOQUE], \norigem.[CD_ACAO], \norigem.[CD_SETOR_ATENDIMENTO], \norigem.[QT_DEVOLVIDA], \norigem.[CD_MOTIVO_DEVOLUCAO], \norigem.[NR_CIRURGIA], \norigem.[NR_DOC_CONVENIO], \norigem.[QT_EXECUTADA], \norigem.[DT_CONTA], \norigem.[VL_UNITARIO], \norigem.[CD_PROCED_REFERENCIA], \norigem.[CD_CONTA_CONTABIL], \norigem.[QT_AJUSTE_CONTA], \norigem.[NR_AIH], \norigem.[IE_VALOR_INFORMADO], \norigem.[CD_ESTABELECIMENTO_CUSTO], \norigem.[CD_TABELA_CUSTO], \norigem.[CD_SITUACAO_GLOSA], \norigem.[NR_LOTE_CONTABIL], \norigem.[CD_MATERIAL_CONVENIO], \norigem.[NR_SEQ_AUTORIZACAO], \norigem.[NR_INTERNO_CONTA], \norigem.[NR_SEQ_PROC_PRINC], \norigem.[IE_GUIA_INFORMADA], \norigem.[CD_ESPECIALIDADE], \norigem.[NM_USUARIO_ORIGINAL], \norigem.[NR_SEQ_PROC_PACOTE], \norigem.[VL_TABELA_ORIGINAL], \norigem.[IE_EMITE_CONTA], \norigem.[CD_SETOR_RECEITA], \norigem.[CD_CGC_FORNECEDOR], \norigem.[NR_SEQ_LOTE_FORNEC], \norigem.[CD_MATERIAL_EXEC], \norigem.[NR_SEQ_ATEPACU], \norigem.[IE_TIPO_GUIA], \norigem.[NR_DOC_INTERNO], \norigem.[IE_AUDITORIA], \norigem.[NR_SEQ_GRUPO_REC], \norigem.[CD_MOTIVO_AJUSTE], \norigem.[NR_SEQ_TIPO_BAIXA], \norigem.[NR_SEQ_COR_EXEC], \norigem.[NR_SEQ_ORIGEM], \norigem.[IE_DISPERSAO], \norigem.[NR_SEQ_CONTA_ORIGEM], \norigem.[CD_SETOR_PACIENTE], \norigem.[NR_SEQ_PARCIAL], \norigem.[CD_CGC_PRESTADOR], \norigem.[NR_SEQ_AIH], \norigem.[DT_CONFERENCIA], \norigem.[NR_SERIE_MATERIAL], \norigem.[NR_SEQ_ORDEM_PROD], \norigem.[NR_RECEITA], \norigem.[DT_ATUALIZACAO_NREC], \norigem.[NM_USUARIO_NREC], \norigem.[IE_ORIGEM_PRECO], \norigem.[QT_ESTOQUE], \norigem.[NR_SEQ_REGRA_LANC], \norigem.[NR_SEQ_TISS_TABELA], \norigem.[IE_RESPONSAVEL_CREDITO], \norigem.[IE_TISS_TIPO_GUIA_DESP], \norigem.[IE_TISS_TIPO_DESPESA], \norigem.[CD_CGC_PRESTADOR_TISS], \norigem.[CD_SENHA], \norigem.[IE_ESTORNO_CONTA], \norigem.[CD_MATERIAL_TISS], \norigem.[DS_MATERIAL_TISS], \norigem.[CD_KIT_MATERIAL], \norigem.[CD_TAB_CUSTO_PRECO], \norigem.[NR_SEQ_MAT_AUTOR], \norigem.[TX_MATERIAL], \norigem.[CD_PRESTADOR_TISS], \norigem.[NR_SEQ_MAT_HOR], \norigem.[CD_CGC_PREST_SOLIC_TISS], \norigem.[NR_SEQ_LOTE_AP], \norigem.[NR_SEQ_PROCESSO], \norigem.[IE_TISS_DESP_HONOR], \norigem.[NR_SEQ_MAT_EST], \norigem.[NR_SEQ_MAT_CRIT_REPASSE], \norigem.[CD_MEDICO_PRESCRITOR], \norigem.[NR_DEVOLUCAO], \norigem.[NR_SEQ_ITEM_DEVOL], \norigem.[DS_PRESTADOR_TISS], \norigem.[CD_FUNCAO], \norigem.[CD_PERFIL], \norigem.[NR_SEQ_REG_TEMPLATE], \norigem.[NR_SEQ_REGRA_AJUSTE_MAT], \norigem.[CD_MEDICO_EXEC_TISS], \norigem.[IE_GLOSADO], \norigem.[VL_CUSTO_MAT_REPASSE], \norigem.[NR_SEQ_JUST_VALOR_INF], \norigem.[NR_SEQ_MAT_GLOSA], \norigem.[CD_LABORATORIO], \norigem.[CD_MEDICAMENTO], \norigem.[CD_APRESENTACAO], \norigem.[VL_MATERIAL_TISS], \norigem.[VL_REPASSE_CALC], \norigem.[NR_SEQ_KIT_ESTOQUE], \norigem.[CD_PRESTADOR_SOLIC_TISS], \norigem.[DS_PRESTADOR_SOLIC_TISS], \norigem.[NR_SEQ_ENTREGA_MEDIC_FA], \norigem.[IE_OPME_INTEGRACAO], \norigem.[NR_SEQ_DEVOL_EXEC], \norigem.[IE_VERSAO_ATUAL], \norigem.[NM_USUARIO_ATEND_FAR], \norigem.[NM_USUARIO_ATEND_ENF], \norigem.[NM_USUARIO_RETIRANTE], \norigem.[DS_JUSTIFICATIVA], \norigem.[IE_TRAT_CONTA_RN], \norigem.[NR_SEQ_AGENDA_PAC_OPME], \norigem.[NR_SEQ_DOACAO], \norigem.[NR_SEQ_DIALISADOR], \norigem.[NR_SEQ_PEPO], \norigem.[NR_SEQ_MOTIVO_INCL], \norigem.[IE_STATUS_ITEM_TABELA], \norigem.[DT_CONVERSAO_MANUAL], \norigem.[NR_SEQ_RESERVA], \norigem.[NR_SEQ_TRANSFUSAO], \norigem.[DT_DESDOBRAMENTO], \norigem.[CD_CENTRO_CUSTO_RECEITA], \norigem.[CD_SIMPRO], \norigem.[DS_JUST_VALOR_INF], \norigem.[IE_FAT_DIRETO], \norigem.[DS_JUST_ALTER_DATA], \norigem.[NR_SEQ_ORIG_AUDIT], \norigem.[CD_MEDICO_AUTENTICACAO], \norigem.[DT_AUTENTICACAO], \norigem.[DS_BIOMETRIA], \norigem.[NR_SEQ_GEDIPA_ETAPA_DISP], \norigem.[IE_RATEAR_ITEM], \norigem.[NR_SEQ_BRAS_PRECO], \norigem.[NR_SEQ_CONV_BRAS], \norigem.[NR_SEQ_MAT_BRAS], \norigem.[CD_MATERIAL_TUSS], \norigem.[NR_SEQ_TUSS_MAT_ITEM], \norigem.[NR_REGISTRO_ANVISA_TISS], \norigem.[IE_OPME], \norigem.[DS_STACK], \norigem.[NR_SEQ_MAT_SIMP], \norigem.[NR_SEQ_CONV_SIMP], \norigem.[NR_SEQ_SIMP_PRECO], \norigem.[NR_SEQ_MAT_DESDOB], \norigem.[DS_MATERIAL_TUSS], \norigem.[IE_VALOR_AUTORIZADO], \norigem.[CD_JUSTI_CONTRASTE], \norigem.[NR_SEQ_CONTA_REVERSAO], \norigem.[CD_UNID_MEDIDA_CONV], \norigem.[TX_CONVERSAO_QTDE], \norigem.[NR_SEQ_REGRA_PEPO] \n \n\t         );"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Limpa Tabela Material Atendimento",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Busca Dt Reprocessar Mat",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "BEGIN TRY\n    TRUNCATE TABLE  stg.AJ_MATERIAL_ATEND_PACIENTE\nEND TRY\nBEGIN CATCH\n    PRINT 0\nEND CATCH        "
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Ajuste DW Tasy"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/datasets/AZ_SQL')]",
+				"[concat(variables('factoryId'), '/datasets/ORACLE_LOG')]",
+				"[concat(variables('factoryId'), '/datasets/AZSQL_DINAMICO')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AJ_PROCEDIMENTO_PACIENTE')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "DW_GERA_BUSCA_DT_PROCEDIMENTO_PACIENTE",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_AJ_DW_GERA_BUSCA_DT_PROCEDIMENTO_PACIENTE"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Busca Dt Reprocessar Proc",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "DW_GERA_BUSCA_DT_PROCEDIMENTO_PACIENTE",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "\nSELECT\n    A.ESTABELECIMENTO\n    ,A.NOME_KEYVAULT_SECRET\n    ,CAST(A.INICIO_MES AS VARCHAR(200)) as INICIO_MES\n    ,CAST(A.FIM_MES AS VARCHAR(200)) as FIM_MES\n    ,'PROCEDIMENTO_PACIENTE' AS NM_PROCESSO\n   ,'DT_PROCEDIMENTO' AS NM_COLUMN\nFROM STG.tmp_aj_dw_procedimento_paciente  A",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Carga Dados Novos",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Limpa Tabela Procedimento",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca Dt Reprocessar Proc').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 10,
+							"activities": [
+								{
+									"name": "Gerar Dados",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@concat('SELECT * FROM VW_PROCEDIMENTO_PACIENTE WHERE DT_ATUALIZACAO BETWEEN','''',item().INICIO_MES,'''',' and ','''',item().FIM_MES,'''')",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"convertDecimalToInteger": false,
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ORACLE_LOG",
+											"type": "DatasetReference",
+											"parameters": {
+												"nm_keyvault": {
+													"value": "@item().NOME_KEYVAULT_SECRET",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZSQL_DINAMICO",
+											"type": "DatasetReference",
+											"parameters": {
+												"schema_destino": "stg",
+												"tabela_destino": {
+													"value": "@concat('AJ_',item().NM_PROCESSO)",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Merge Dw Proc Paciente",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Delete Periodo DW",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "--Sincronize a tabela de destino com dados atualizados da tabela de origem\n\nMERGE\n\t[dw].[TBL_PROCEDIMENTO_PACIENTE] AS destino\nUSING \n\tstg.AJ_PROCEDIMENTO_PACIENTE AS origem\n\n\tON (destino.NR_SEQUENCIA = origem.NR_SEQUENCIA AND destino.estabelecimento = origem.estabelecimento)\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração\nWHEN MATCHED \nTHEN UPDATE SET      \ndestino.[ESTABELECIMENTO] = origem.[ESTABELECIMENTO],\ndestino.[NR_SEQUENCIA] = origem.[NR_SEQUENCIA],\ndestino.[NR_ATENDIMENTO] = origem.[NR_ATENDIMENTO],\ndestino.[DT_ENTRADA_UNIDADE] = origem.[DT_ENTRADA_UNIDADE],\ndestino.[CD_PROCEDIMENTO] = origem.[CD_PROCEDIMENTO],\ndestino.[DT_PROCEDIMENTO] = origem.[DT_PROCEDIMENTO],\ndestino.[QT_PROCEDIMENTO] = origem.[QT_PROCEDIMENTO],\ndestino.[DT_ATUALIZACAO] = origem.[DT_ATUALIZACAO],\ndestino.[NM_USUARIO] = origem.[NM_USUARIO],\ndestino.[CD_MEDICO] = origem.[CD_MEDICO],\ndestino.[CD_CONVENIO] = origem.[CD_CONVENIO],\ndestino.[CD_CATEGORIA] = origem.[CD_CATEGORIA],\ndestino.[CD_PESSOA_FISICA] = origem.[CD_PESSOA_FISICA],\ndestino.[DT_PRESCRICAO] = origem.[DT_PRESCRICAO],\ndestino.[DS_OBSERVACAO] = origem.[DS_OBSERVACAO],\ndestino.[VL_PROCEDIMENTO] = origem.[VL_PROCEDIMENTO],\ndestino.[VL_MEDICO] = origem.[VL_MEDICO],\ndestino.[VL_ANESTESISTA] = origem.[VL_ANESTESISTA],\ndestino.[VL_MATERIAIS] = origem.[VL_MATERIAIS],\ndestino.[CD_EDICAO_AMB] = origem.[CD_EDICAO_AMB],\ndestino.[CD_TABELA_SERVICO] = origem.[CD_TABELA_SERVICO],\ndestino.[DT_VIGENCIA_PRECO] = origem.[DT_VIGENCIA_PRECO],\ndestino.[CD_PROCEDIMENTO_PRINC] = origem.[CD_PROCEDIMENTO_PRINC],\ndestino.[DT_PROCEDIMENTO_PRINC] = origem.[DT_PROCEDIMENTO_PRINC],\ndestino.[DT_ACERTO_CONTA] = origem.[DT_ACERTO_CONTA],\ndestino.[DT_ACERTO_CONVENIO] = origem.[DT_ACERTO_CONVENIO],\ndestino.[DT_ACERTO_MEDICO] = origem.[DT_ACERTO_MEDICO],\ndestino.[VL_AUXILIARES] = origem.[VL_AUXILIARES],\ndestino.[VL_CUSTO_OPERACIONAL] = origem.[VL_CUSTO_OPERACIONAL],\ndestino.[TX_MEDICO] = origem.[TX_MEDICO],\ndestino.[TX_ANESTESIA] = origem.[TX_ANESTESIA],\ndestino.[NR_PRESCRICAO] = origem.[NR_PRESCRICAO],\ndestino.[NR_SEQUENCIA_PRESCRICAO] = origem.[NR_SEQUENCIA_PRESCRICAO],\ndestino.[CD_MOTIVO_EXC_CONTA] = origem.[CD_MOTIVO_EXC_CONTA],\ndestino.[DS_COMPL_MOTIVO_EXCON] = origem.[DS_COMPL_MOTIVO_EXCON],\ndestino.[CD_ACAO] = origem.[CD_ACAO],\ndestino.[QT_DEVOLVIDA] = origem.[QT_DEVOLVIDA],\ndestino.[CD_MOTIVO_DEVOLUCAO] = origem.[CD_MOTIVO_DEVOLUCAO],\ndestino.[NR_CIRURGIA] = origem.[NR_CIRURGIA],\ndestino.[NR_DOC_CONVENIO] = origem.[NR_DOC_CONVENIO],\ndestino.[CD_MEDICO_EXECUTOR] = origem.[CD_MEDICO_EXECUTOR],\ndestino.[IE_COBRA_PF_PJ] = origem.[IE_COBRA_PF_PJ],\ndestino.[NR_LAUDO] = origem.[NR_LAUDO],\ndestino.[DT_CONTA] = origem.[DT_CONTA],\ndestino.[CD_SETOR_ATENDIMENTO] = origem.[CD_SETOR_ATENDIMENTO],\ndestino.[CD_CONTA_CONTABIL] = origem.[CD_CONTA_CONTABIL],\ndestino.[CD_PROCEDIMENTO_AIH] = origem.[CD_PROCEDIMENTO_AIH],\ndestino.[IE_ORIGEM_PROCED] = origem.[IE_ORIGEM_PROCED],\ndestino.[NR_AIH] = origem.[NR_AIH],\ndestino.[IE_RESPONSAVEL_CREDITO] = origem.[IE_RESPONSAVEL_CREDITO],\ndestino.[TX_PROCEDIMENTO] = origem.[TX_PROCEDIMENTO],\ndestino.[CD_EQUIPAMENTO] = origem.[CD_EQUIPAMENTO],\ndestino.[IE_VALOR_INFORMADO] = origem.[IE_VALOR_INFORMADO],\ndestino.[CD_ESTABELECIMENTO_CUSTO] = origem.[CD_ESTABELECIMENTO_CUSTO],\ndestino.[CD_TABELA_CUSTO] = origem.[CD_TABELA_CUSTO],\ndestino.[CD_SITUACAO_GLOSA] = origem.[CD_SITUACAO_GLOSA],\ndestino.[NR_LOTE_CONTABIL] = origem.[NR_LOTE_CONTABIL],\ndestino.[CD_PROCEDIMENTO_CONVENIO] = origem.[CD_PROCEDIMENTO_CONVENIO],\ndestino.[NR_SEQ_AUTORIZACAO] = origem.[NR_SEQ_AUTORIZACAO],\ndestino.[IE_TIPO_SERVICO_SUS] = origem.[IE_TIPO_SERVICO_SUS],\ndestino.[IE_TIPO_ATO_SUS] = origem.[IE_TIPO_ATO_SUS],\ndestino.[CD_CGC_PRESTADOR] = origem.[CD_CGC_PRESTADOR],\ndestino.[NR_NF_PRESTADOR] = origem.[NR_NF_PRESTADOR],\ndestino.[CD_ATIVIDADE_PROF_BPA] = origem.[CD_ATIVIDADE_PROF_BPA],\ndestino.[NR_INTERNO_CONTA] = origem.[NR_INTERNO_CONTA],\ndestino.[NR_SEQ_PROC_PRINC] = origem.[NR_SEQ_PROC_PRINC],\ndestino.[IE_GUIA_INFORMADA] = origem.[IE_GUIA_INFORMADA],\ndestino.[DT_INICIO_PROCEDIMENTO] = origem.[DT_INICIO_PROCEDIMENTO],\ndestino.[IE_EMITE_CONTA] = origem.[IE_EMITE_CONTA],\ndestino.[IE_FUNCAO_MEDICO] = origem.[IE_FUNCAO_MEDICO],\ndestino.[IE_CLASSIF_SUS] = origem.[IE_CLASSIF_SUS],\ndestino.[CD_ESPECIALIDADE] = origem.[CD_ESPECIALIDADE],\ndestino.[NM_USUARIO_ORIGINAL] = origem.[NM_USUARIO_ORIGINAL],\ndestino.[NR_SEQ_PROC_PACOTE] = origem.[NR_SEQ_PROC_PACOTE],\ndestino.[IE_TIPO_PROC_SUS] = origem.[IE_TIPO_PROC_SUS],\ndestino.[CD_SETOR_RECEITA] = origem.[CD_SETOR_RECEITA],\ndestino.[VL_ADIC_PLANT] = origem.[VL_ADIC_PLANT],\ndestino.[QT_PORTE_ANESTESICO] = origem.[QT_PORTE_ANESTESICO],\ndestino.[TX_HORA_EXTRA] = origem.[TX_HORA_EXTRA],\ndestino.[IE_EMITE_CONTA_HONOR] = origem.[IE_EMITE_CONTA_HONOR],\ndestino.[NR_SEQ_ATEPACU] = origem.[NR_SEQ_ATEPACU],\ndestino.[IE_PROC_PRINC_ATEND] = origem.[IE_PROC_PRINC_ATEND],\ndestino.[CD_MEDICO_REQ] = origem.[CD_MEDICO_REQ],\ndestino.[IE_TIPO_GUIA] = origem.[IE_TIPO_GUIA],\ndestino.[IE_VIDEO] = origem.[IE_VIDEO],\ndestino.[NR_DOC_INTERNO] = origem.[NR_DOC_INTERNO],\ndestino.[IE_AUDITORIA] = origem.[IE_AUDITORIA],\ndestino.[NR_SEQ_GRUPO_REC] = origem.[NR_SEQ_GRUPO_REC],\ndestino.[CD_MEDICO_CONVENIO] = origem.[CD_MEDICO_CONVENIO],\ndestino.[CD_MOTIVO_AJUSTE] = origem.[CD_MOTIVO_AJUSTE],\ndestino.[IE_VIA_ACESSO] = origem.[IE_VIA_ACESSO],\ndestino.[NR_SEQ_COR_EXEC] = origem.[NR_SEQ_COR_EXEC],\ndestino.[NR_SEQ_EXAME] = origem.[NR_SEQ_EXAME],\ndestino.[IE_INTERCORRENCIA] = origem.[IE_INTERCORRENCIA],\ndestino.[NR_SEQ_ORIGEM] = origem.[NR_SEQ_ORIGEM],\ndestino.[IE_DISPERSAO] = origem.[IE_DISPERSAO],\ndestino.[CD_SETOR_PACIENTE] = origem.[CD_SETOR_PACIENTE],\ndestino.[NR_SEQ_CONTA_ORIGEM] = origem.[NR_SEQ_CONTA_ORIGEM],\ndestino.[NR_SEQ_PARCIAL] = origem.[NR_SEQ_PARCIAL],\ndestino.[NR_SEQ_PROC_INTERNO] = origem.[NR_SEQ_PROC_INTERNO],\ndestino.[CD_SENHA] = origem.[CD_SENHA],\ndestino.[NR_SEQ_AIH] = origem.[NR_SEQ_AIH],\ndestino.[NR_DOC_HONOR_CONV] = origem.[NR_DOC_HONOR_CONV],\ndestino.[DT_CONFERENCIA] = origem.[DT_CONFERENCIA],\ndestino.[IE_TIPO_ATEND_BPA] = origem.[IE_TIPO_ATEND_BPA],\ndestino.[IE_GRUPO_ATEND_BPA] = origem.[IE_GRUPO_ATEND_BPA],\ndestino.[CD_CGC_PRESTADOR_CONTA] = origem.[CD_CGC_PRESTADOR_CONTA],\ndestino.[CD_MEDICO_EXEC_CONTA] = origem.[CD_MEDICO_EXEC_CONTA],\ndestino.[NR_SEQ_PQ_PROC] = origem.[NR_SEQ_PQ_PROC],\ndestino.[QT_FILME] = origem.[QT_FILME],\ndestino.[NR_SEQ_PROC_CRIT_REPASSE] = origem.[NR_SEQ_PROC_CRIT_REPASSE],\ndestino.[CD_SENHA_AUTOR] = origem.[CD_SENHA_AUTOR],\ndestino.[CD_AUTOR_CONVENIO] = origem.[CD_AUTOR_CONVENIO],\ndestino.[NR_SEQ_REGRA_LANC] = origem.[NR_SEQ_REGRA_LANC],\ndestino.[IE_TISS_TIPO_GUIA] = origem.[IE_TISS_TIPO_GUIA],\ndestino.[NR_SEQ_TISS_TABELA] = origem.[NR_SEQ_TISS_TABELA],\ndestino.[NR_MINUTO_DURACAO] = origem.[NR_MINUTO_DURACAO],\ndestino.[IE_TISS_TIPO_GUIA_HONOR] = origem.[IE_TISS_TIPO_GUIA_HONOR],\ndestino.[NR_SEQ_REGRA_PRECO] = origem.[NR_SEQ_REGRA_PRECO],\ndestino.[IE_TISS_TIPO_GUIA_DESP] = origem.[IE_TISS_TIPO_GUIA_DESP],\ndestino.[IE_TECNICA_UTILIZADA] = origem.[IE_TECNICA_UTILIZADA],\ndestino.[IE_TISS_TIPO_DESPESA] = origem.[IE_TISS_TIPO_DESPESA],\ndestino.[CD_CGC_PRESTADOR_TISS] = origem.[CD_CGC_PRESTADOR_TISS],\ndestino.[CD_CGC_HONORARIO_TISS] = origem.[CD_CGC_HONORARIO_TISS],\ndestino.[IE_INTEGRACAO] = origem.[IE_INTEGRACAO],\ndestino.[NR_SEQ_PROC_ACERTO] = origem.[NR_SEQ_PROC_ACERTO],\ndestino.[VL_ORIGINAL_TABELA] = origem.[VL_ORIGINAL_TABELA],\ndestino.[CD_DOENCA_CID] = origem.[CD_DOENCA_CID],\ndestino.[NR_SEQ_APAC] = origem.[NR_SEQ_APAC],\ndestino.[NR_SEQ_AJUSTE_PROC] = origem.[NR_SEQ_AJUSTE_PROC],\ndestino.[CD_TAB_CUSTO_PRECO] = origem.[CD_TAB_CUSTO_PRECO],\ndestino.[NR_SEQ_PROC_AUTOR] = origem.[NR_SEQ_PROC_AUTOR],\ndestino.[IE_DOC_EXECUTOR] = origem.[IE_DOC_EXECUTOR],\ndestino.[NR_SEQ_REGRA_DOC] = origem.[NR_SEQ_REGRA_DOC],\ndestino.[CD_CBO] = origem.[CD_CBO],\ndestino.[CD_PRESTADOR_TISS] = origem.[CD_PRESTADOR_TISS],\ndestino.[CD_CGC_PREST_SOLIC_TISS] = origem.[CD_CGC_PREST_SOLIC_TISS],\ndestino.[CD_SETOR_RESP] = origem.[CD_SETOR_RESP],\ndestino.[DT_FINAL_PROCEDIMENTO] = origem.[DT_FINAL_PROCEDIMENTO],\ndestino.[IE_TISS_DESP_HONOR] = origem.[IE_TISS_DESP_HONOR],\ndestino.[NR_SEQ_PROC_EST] = origem.[NR_SEQ_PROC_EST],\ndestino.[CD_PREST_RESP] = origem.[CD_PREST_RESP],\ndestino.[CD_MEDICO_EXEC_TISS] = origem.[CD_MEDICO_EXEC_TISS],\ndestino.[DS_PROC_TISS] = origem.[DS_PROC_TISS],\ndestino.[NR_SEQ_TAMANHO_FILME] = origem.[NR_SEQ_TAMANHO_FILME],\ndestino.[DS_PRESTADOR_TISS] = origem.[DS_PRESTADOR_TISS],\ndestino.[NR_SEQ_PROC_CRIT_HOR] = origem.[NR_SEQ_PROC_CRIT_HOR],\ndestino.[NR_SEQ_REG_TEMPLATE] = origem.[NR_SEQ_REG_TEMPLATE],\ndestino.[CD_PROCEDIMENTO_TUSS] = origem.[CD_PROCEDIMENTO_TUSS],\ndestino.[IE_RATEAR_ITEM] = origem.[IE_RATEAR_ITEM],\ndestino.[IE_COMPLEXIDADE] = origem.[IE_COMPLEXIDADE],\ndestino.[IE_TIPO_FINANCIAMENTO] = origem.[IE_TIPO_FINANCIAMENTO],\ndestino.[CD_FUNCAO] = origem.[CD_FUNCAO],\ndestino.[CD_PERFIL] = origem.[CD_PERFIL],\ndestino.[NR_SEQ_REGRA_QTDE_EXEC] = origem.[NR_SEQ_REGRA_QTDE_EXEC],\ndestino.[CD_CENTRO_CUSTO_RECEITA] = origem.[CD_CENTRO_CUSTO_RECEITA],\ndestino.[NR_SEQ_REGRA_GUIA_TISS] = origem.[NR_SEQ_REGRA_GUIA_TISS],\ndestino.[NR_SEQ_REGRA_HONOR_TISS] = origem.[NR_SEQ_REGRA_HONOR_TISS],\ndestino.[IE_TIPO_ATEND_TISS] = origem.[IE_TIPO_ATEND_TISS],\ndestino.[VL_DESP_TISS] = origem.[VL_DESP_TISS],\ndestino.[IE_RESP_CRED_MANUAL] = origem.[IE_RESP_CRED_MANUAL],\ndestino.[NR_SEQ_JUST_VALOR_INF] = origem.[NR_SEQ_JUST_VALOR_INF],\ndestino.[CD_MEDICO_SOLIC_TISS] = origem.[CD_MEDICO_SOLIC_TISS],\ndestino.[CD_MEDICO_PROF_SOLIC_TISS] = origem.[CD_MEDICO_PROF_SOLIC_TISS],\ndestino.[VL_REPASSE_CALC] = origem.[VL_REPASSE_CALC],\ndestino.[TX_CUSTO_OPER_QT] = origem.[TX_CUSTO_OPER_QT],\ndestino.[IE_SPECT] = origem.[IE_SPECT],\ndestino.[NR_SEQ_AGENDA_RXT] = origem.[NR_SEQ_AGENDA_RXT],\ndestino.[CD_PRESTADOR_SOLIC_TISS] = origem.[CD_PRESTADOR_SOLIC_TISS],\ndestino.[DS_PRESTADOR_SOLIC_TISS] = origem.[DS_PRESTADOR_SOLIC_TISS],\ndestino.[VL_TX_DESCONTO] = origem.[VL_TX_DESCONTO],\ndestino.[VL_TX_ADM] = origem.[VL_TX_ADM],\ndestino.[CD_MEDICO_HONOR_TISS] = origem.[CD_MEDICO_HONOR_TISS],\ndestino.[NR_CONTROLE] = origem.[NR_CONTROLE],\ndestino.[NR_SEQ_REGRA_TAXA_CIR] = origem.[NR_SEQ_REGRA_TAXA_CIR],\ndestino.[NR_SEQ_PROC_ORIG] = origem.[NR_SEQ_PROC_ORIG],\ndestino.[NR_SEQUENCIA_GAS] = origem.[NR_SEQUENCIA_GAS],\ndestino.[NR_SEQ_ETAPA_CHECKUP] = origem.[NR_SEQ_ETAPA_CHECKUP],\ndestino.[NR_SEQ_CHECKUP_ETAPA] = origem.[NR_SEQ_CHECKUP_ETAPA],\ndestino.[IE_VIA_HEMODINAMICA] = origem.[IE_VIA_HEMODINAMICA],\ndestino.[CD_REGRA_REPASSE] = origem.[CD_REGRA_REPASSE],\ndestino.[IE_TRAT_CONTA_RN] = origem.[IE_TRAT_CONTA_RN],\ndestino.[NR_SEQ_REG_PROCED] = origem.[NR_SEQ_REG_PROCED],\ndestino.[NR_SEQ_PEPO] = origem.[NR_SEQ_PEPO],\ndestino.[NR_SEQ_MOTIVO_INCL] = origem.[NR_SEQ_MOTIVO_INCL],\ndestino.[DT_CONVERSAO_MANUAL] = origem.[DT_CONVERSAO_MANUAL],\ndestino.[NR_SEQ_TRANSFUSAO] = origem.[NR_SEQ_TRANSFUSAO],\ndestino.[NR_SEQ_RESERVA] = origem.[NR_SEQ_RESERVA],\ndestino.[CD_CGC_PREST_HONOR_TISS] = origem.[CD_CGC_PREST_HONOR_TISS],\ndestino.[IE_LADO] = origem.[IE_LADO],\ndestino.[NR_SEQ_HC_EQUIPAMENTO] = origem.[NR_SEQ_HC_EQUIPAMENTO],\ndestino.[DT_VINC_PROCED_ADIC] = origem.[DT_VINC_PROCED_ADIC],\ndestino.[DS_INDICACAO] = origem.[DS_INDICACAO],\ndestino.[CD_TIPO_ANESTESIA] = origem.[CD_TIPO_ANESTESIA],\ndestino.[NR_SEQ_MATERIAL] = origem.[NR_SEQ_MATERIAL],\ndestino.[IE_CARATER_CIRURGIA] = origem.[IE_CARATER_CIRURGIA],\ndestino.[CD_MEDICO_PREV_LAUDO] = origem.[CD_MEDICO_PREV_LAUDO],\ndestino.[DS_JUST_VALOR_INF] = origem.[DS_JUST_VALOR_INF],\ndestino.[NR_FONE_INTEGRACAO] = origem.[NR_FONE_INTEGRACAO],\ndestino.[DT_LIGACAO_INTEGRACAO] = origem.[DT_LIGACAO_INTEGRACAO],\ndestino.[NR_SEQ_LANC_ACAO] = origem.[NR_SEQ_LANC_ACAO],\ndestino.[DS_JUST_ALTER_DATA] = origem.[DS_JUST_ALTER_DATA],\ndestino.[NR_SEQ_ORIG_AUDIT] = origem.[NR_SEQ_ORIG_AUDIT],\ndestino.[NR_SEQ_SERVICO] = origem.[NR_SEQ_SERVICO],\ndestino.[NR_SEQ_SERVICO_CLASSIF] = origem.[NR_SEQ_SERVICO_CLASSIF],\ndestino.[NR_SEQ_SUS_EQUIPE] = origem.[NR_SEQ_SUS_EQUIPE],\ndestino.[NR_SEQ_PROC_DITADO] = origem.[NR_SEQ_PROC_DITADO],\ndestino.[NR_SEQ_CRIT_HONORARIO] = origem.[NR_SEQ_CRIT_HONORARIO],\ndestino.[IE_TX_CIR_TEMPO] = origem.[IE_TX_CIR_TEMPO],\ndestino.[NR_SEQ_PE_PRESCR] = origem.[NR_SEQ_PE_PRESCR],\ndestino.[NR_SEQ_PRESCR_MAT] = origem.[NR_SEQ_PRESCR_MAT],\ndestino.[NR_SEQ_SOLUCAO] = origem.[NR_SEQ_SOLUCAO],\ndestino.[CD_MEDICO_AUTENTICACAO] = origem.[CD_MEDICO_AUTENTICACAO],\ndestino.[DT_AUTENTICACAO] = origem.[DT_AUTENTICACAO],\ndestino.[DS_BIOMETRIA] = origem.[DS_BIOMETRIA],\ndestino.[NR_SEQ_PROC_DESDOB] = origem.[NR_SEQ_PROC_DESDOB],\ndestino.[CD_MEDICO_RESIDENTE] = origem.[CD_MEDICO_RESIDENTE],\ndestino.[IE_RETORNO] = origem.[IE_RETORNO],\ndestino.[NR_ATO_IPASGO] = origem.[NR_ATO_IPASGO],\ndestino.[NR_SEQ_CONTA_REVERSAO] = origem.[NR_SEQ_CONTA_REVERSAO],\ndestino.[NR_SEQ_REGRA_PEPO] = origem.[NR_SEQ_REGRA_PEPO],\ndestino.[DS_PROC_TUSS] = origem.[DS_PROC_TUSS],\ndestino.[NR_SEQ_TUSS_ITEM] = origem.[NR_SEQ_TUSS_ITEM]\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino\nWHEN NOT MATCHED BY TARGET \nTHEN INSERT \n\tVALUES (  \norigem.[ESTABELECIMENTO],\norigem.[NR_SEQUENCIA],\norigem.[NR_ATENDIMENTO],\norigem.[DT_ENTRADA_UNIDADE],\norigem.[CD_PROCEDIMENTO],\norigem.[DT_PROCEDIMENTO],\norigem.[QT_PROCEDIMENTO],\norigem.[DT_ATUALIZACAO],\norigem.[NM_USUARIO],\norigem.[CD_MEDICO],\norigem.[CD_CONVENIO],\norigem.[CD_CATEGORIA],\norigem.[CD_PESSOA_FISICA],\norigem.[DT_PRESCRICAO],\norigem.[DS_OBSERVACAO],\norigem.[VL_PROCEDIMENTO],\norigem.[VL_MEDICO],\norigem.[VL_ANESTESISTA],\norigem.[VL_MATERIAIS],\norigem.[CD_EDICAO_AMB],\norigem.[CD_TABELA_SERVICO],\norigem.[DT_VIGENCIA_PRECO],\norigem.[CD_PROCEDIMENTO_PRINC],\norigem.[DT_PROCEDIMENTO_PRINC],\norigem.[DT_ACERTO_CONTA],\norigem.[DT_ACERTO_CONVENIO],\norigem.[DT_ACERTO_MEDICO],\norigem.[VL_AUXILIARES],\norigem.[VL_CUSTO_OPERACIONAL],\norigem.[TX_MEDICO],\norigem.[TX_ANESTESIA],\norigem.[NR_PRESCRICAO],\norigem.[NR_SEQUENCIA_PRESCRICAO],\norigem.[CD_MOTIVO_EXC_CONTA],\norigem.[DS_COMPL_MOTIVO_EXCON],\norigem.[CD_ACAO],\norigem.[QT_DEVOLVIDA],\norigem.[CD_MOTIVO_DEVOLUCAO],\norigem.[NR_CIRURGIA],\norigem.[NR_DOC_CONVENIO],\norigem.[CD_MEDICO_EXECUTOR],\norigem.[IE_COBRA_PF_PJ],\norigem.[NR_LAUDO],\norigem.[DT_CONTA],\norigem.[CD_SETOR_ATENDIMENTO],\norigem.[CD_CONTA_CONTABIL],\norigem.[CD_PROCEDIMENTO_AIH],\norigem.[IE_ORIGEM_PROCED],\norigem.[NR_AIH],\norigem.[IE_RESPONSAVEL_CREDITO],\norigem.[TX_PROCEDIMENTO],\norigem.[CD_EQUIPAMENTO],\norigem.[IE_VALOR_INFORMADO],\norigem.[CD_ESTABELECIMENTO_CUSTO],\norigem.[CD_TABELA_CUSTO],\norigem.[CD_SITUACAO_GLOSA],\norigem.[NR_LOTE_CONTABIL],\norigem.[CD_PROCEDIMENTO_CONVENIO],\norigem.[NR_SEQ_AUTORIZACAO],\norigem.[IE_TIPO_SERVICO_SUS],\norigem.[IE_TIPO_ATO_SUS],\norigem.[CD_CGC_PRESTADOR],\norigem.[NR_NF_PRESTADOR],\norigem.[CD_ATIVIDADE_PROF_BPA],\norigem.[NR_INTERNO_CONTA],\norigem.[NR_SEQ_PROC_PRINC],\norigem.[IE_GUIA_INFORMADA],\norigem.[DT_INICIO_PROCEDIMENTO],\norigem.[IE_EMITE_CONTA],\norigem.[IE_FUNCAO_MEDICO],\norigem.[IE_CLASSIF_SUS],\norigem.[CD_ESPECIALIDADE],\norigem.[NM_USUARIO_ORIGINAL],\norigem.[NR_SEQ_PROC_PACOTE],\norigem.[IE_TIPO_PROC_SUS],\norigem.[CD_SETOR_RECEITA],\norigem.[VL_ADIC_PLANT],\norigem.[QT_PORTE_ANESTESICO],\norigem.[TX_HORA_EXTRA],\norigem.[IE_EMITE_CONTA_HONOR],\norigem.[NR_SEQ_ATEPACU],\norigem.[IE_PROC_PRINC_ATEND],\norigem.[CD_MEDICO_REQ],\norigem.[IE_TIPO_GUIA],\norigem.[IE_VIDEO],\norigem.[NR_DOC_INTERNO],\norigem.[IE_AUDITORIA],\norigem.[NR_SEQ_GRUPO_REC],\norigem.[CD_MEDICO_CONVENIO],\norigem.[CD_MOTIVO_AJUSTE],\norigem.[IE_VIA_ACESSO],\norigem.[NR_SEQ_COR_EXEC],\norigem.[NR_SEQ_EXAME],\norigem.[IE_INTERCORRENCIA],\norigem.[NR_SEQ_ORIGEM],\norigem.[IE_DISPERSAO],\norigem.[CD_SETOR_PACIENTE],\norigem.[NR_SEQ_CONTA_ORIGEM],\norigem.[NR_SEQ_PARCIAL],\norigem.[NR_SEQ_PROC_INTERNO],\norigem.[CD_SENHA],\norigem.[NR_SEQ_AIH],\norigem.[NR_DOC_HONOR_CONV],\norigem.[DT_CONFERENCIA],\norigem.[IE_TIPO_ATEND_BPA],\norigem.[IE_GRUPO_ATEND_BPA],\norigem.[CD_CGC_PRESTADOR_CONTA],\norigem.[CD_MEDICO_EXEC_CONTA],\norigem.[NR_SEQ_PQ_PROC],\norigem.[QT_FILME],\norigem.[NR_SEQ_PROC_CRIT_REPASSE],\norigem.[CD_SENHA_AUTOR],\norigem.[CD_AUTOR_CONVENIO],\norigem.[NR_SEQ_REGRA_LANC],\norigem.[IE_TISS_TIPO_GUIA],\norigem.[NR_SEQ_TISS_TABELA],\norigem.[NR_MINUTO_DURACAO],\norigem.[IE_TISS_TIPO_GUIA_HONOR],\norigem.[NR_SEQ_REGRA_PRECO],\norigem.[IE_TISS_TIPO_GUIA_DESP],\norigem.[IE_TECNICA_UTILIZADA],\norigem.[IE_TISS_TIPO_DESPESA],\norigem.[CD_CGC_PRESTADOR_TISS],\norigem.[CD_CGC_HONORARIO_TISS],\norigem.[IE_INTEGRACAO],\norigem.[NR_SEQ_PROC_ACERTO],\norigem.[VL_ORIGINAL_TABELA],\norigem.[CD_DOENCA_CID],\norigem.[NR_SEQ_APAC],\norigem.[NR_SEQ_AJUSTE_PROC],\norigem.[CD_TAB_CUSTO_PRECO],\norigem.[NR_SEQ_PROC_AUTOR],\norigem.[IE_DOC_EXECUTOR],\norigem.[NR_SEQ_REGRA_DOC],\norigem.[CD_CBO],\norigem.[CD_PRESTADOR_TISS],\norigem.[CD_CGC_PREST_SOLIC_TISS],\norigem.[CD_SETOR_RESP],\norigem.[DT_FINAL_PROCEDIMENTO],\norigem.[IE_TISS_DESP_HONOR],\norigem.[NR_SEQ_PROC_EST],\norigem.[CD_PREST_RESP],\norigem.[CD_MEDICO_EXEC_TISS],\norigem.[DS_PROC_TISS],\norigem.[NR_SEQ_TAMANHO_FILME],\norigem.[DS_PRESTADOR_TISS],\norigem.[NR_SEQ_PROC_CRIT_HOR],\norigem.[NR_SEQ_REG_TEMPLATE],\norigem.[CD_PROCEDIMENTO_TUSS],\norigem.[IE_RATEAR_ITEM],\norigem.[IE_COMPLEXIDADE],\norigem.[IE_TIPO_FINANCIAMENTO],\norigem.[CD_FUNCAO],\norigem.[CD_PERFIL],\norigem.[NR_SEQ_REGRA_QTDE_EXEC],\norigem.[CD_CENTRO_CUSTO_RECEITA],\norigem.[NR_SEQ_REGRA_GUIA_TISS],\norigem.[NR_SEQ_REGRA_HONOR_TISS],\norigem.[IE_TIPO_ATEND_TISS],\norigem.[VL_DESP_TISS],\norigem.[IE_RESP_CRED_MANUAL],\norigem.[NR_SEQ_JUST_VALOR_INF],\norigem.[CD_MEDICO_SOLIC_TISS],\norigem.[CD_MEDICO_PROF_SOLIC_TISS],\norigem.[VL_REPASSE_CALC],\norigem.[TX_CUSTO_OPER_QT],\norigem.[IE_SPECT],\norigem.[NR_SEQ_AGENDA_RXT],\norigem.[CD_PRESTADOR_SOLIC_TISS],\norigem.[DS_PRESTADOR_SOLIC_TISS],\norigem.[VL_TX_DESCONTO],\norigem.[VL_TX_ADM],\norigem.[CD_MEDICO_HONOR_TISS],\norigem.[NR_CONTROLE],\norigem.[NR_SEQ_REGRA_TAXA_CIR],\norigem.[NR_SEQ_PROC_ORIG],\norigem.[NR_SEQUENCIA_GAS],\norigem.[NR_SEQ_ETAPA_CHECKUP],\norigem.[NR_SEQ_CHECKUP_ETAPA],\norigem.[IE_VIA_HEMODINAMICA],\norigem.[CD_REGRA_REPASSE],\norigem.[IE_TRAT_CONTA_RN],\norigem.[NR_SEQ_REG_PROCED],\norigem.[NR_SEQ_PEPO],\norigem.[NR_SEQ_MOTIVO_INCL],\norigem.[DT_CONVERSAO_MANUAL],\norigem.[NR_SEQ_TRANSFUSAO],\norigem.[NR_SEQ_RESERVA],\norigem.[CD_CGC_PREST_HONOR_TISS],\norigem.[IE_LADO],\norigem.[NR_SEQ_HC_EQUIPAMENTO],\norigem.[DT_VINC_PROCED_ADIC],\norigem.[DS_INDICACAO],\norigem.[CD_TIPO_ANESTESIA],\norigem.[NR_SEQ_MATERIAL],\norigem.[IE_CARATER_CIRURGIA],\norigem.[CD_MEDICO_PREV_LAUDO],\norigem.[DS_JUST_VALOR_INF],\norigem.[NR_FONE_INTEGRACAO],\norigem.[DT_LIGACAO_INTEGRACAO],\norigem.[NR_SEQ_LANC_ACAO],\norigem.[DS_JUST_ALTER_DATA],\norigem.[NR_SEQ_ORIG_AUDIT],\norigem.[NR_SEQ_SERVICO],\norigem.[NR_SEQ_SERVICO_CLASSIF],\norigem.[NR_SEQ_SUS_EQUIPE],\norigem.[NR_SEQ_PROC_DITADO],\norigem.[NR_SEQ_CRIT_HONORARIO],\norigem.[IE_TX_CIR_TEMPO],\norigem.[NR_SEQ_PE_PRESCR],\norigem.[NR_SEQ_PRESCR_MAT],\norigem.[NR_SEQ_SOLUCAO],\norigem.[CD_MEDICO_AUTENTICACAO],\norigem.[DT_AUTENTICACAO],\norigem.[DS_BIOMETRIA],\norigem.[NR_SEQ_PROC_DESDOB],\norigem.[CD_MEDICO_RESIDENTE],\norigem.[IE_RETORNO],\norigem.[NR_ATO_IPASGO],\norigem.[NR_SEQ_CONTA_REVERSAO],\norigem.[NR_SEQ_REGRA_PEPO],\norigem.[DS_PROC_TUSS],\norigem.[NR_SEQ_TUSS_ITEM]\n\t         ) ;\n \n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Limpa Tabela Procedimento",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Busca Dt Reprocessar Proc",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "truncate table stg.AJ_PROCEDIMENTO_PACIENTE"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Delete Periodo DW",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Limpa Tabela Procedimento",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca Dt Reprocessar Proc').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "DELETE FROM DW",
+									"type": "Script",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": {
+													"value": "@concat('DELETE FROM DW.TBL_',item().NM_PROCESSO,' WHERE CAST(',item().NM_COLUMN,' as date) BETWEEN ','''',item().INICIO_MES,'''',' and ','''',item().FIM_MES,'''', ' and ESTABELECIMENTO=',item().ESTABELECIMENTO)",
+													"type": "Expression"
+												}
+											}
+										],
+										"scriptBlockExecutionTimeout": "20:00:00"
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Ajuste DW Tasy"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/datasets/AZ_SQL')]",
+				"[concat(variables('factoryId'), '/datasets/ORACLE_LOG')]",
+				"[concat(variables('factoryId'), '/datasets/AZSQL_DINAMICO')]"
 			]
 		},
 		{
@@ -20699,6 +21216,348 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/CEOP_CSV_FPA')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lista arquivos",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.02:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "ceop"
+								}
+							},
+							"fieldList": [
+								"childItems",
+								"itemType",
+								"itemName",
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filtro",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Lista arquivos",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista arquivos').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'csv')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filtro",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filtro').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copia dados para a STG",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_SQL_STG",
+											"type": "DatasetReference",
+											"parameters": {
+												"SCHEMA": "stg",
+												"TABELA": {
+													"value": "@concat(activity('Lista arquivos').output.itemName,'_fpa')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Move arquivo para PROCESSADOS",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "Copia dados para a STG",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@concat(item().name,'-',utcnow())",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Apaga arquivo",
+									"type": "Delete",
+									"dependsOn": [
+										{
+											"activity": "Move arquivo para PROCESSADOS",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataset": {
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										},
+										"logStorageSettings": {
+											"linkedServiceName": {
+												"referenceName": "sv_hmaisbrasildatadriven",
+												"type": "LinkedServiceReference"
+											},
+											"path": "ceop/logs"
+										},
+										"enableLogging": true,
+										"storeSettings": {
+											"type": "AzureBlobFSReadSettings",
+											"recursive": true,
+											"enablePartitionDiscovery": false
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Convenio",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "ForEach1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "BEGIN\n    DECLARE @ESTABELECIMENTO VARCHAR(10)\n\n    SELECT @ESTABELECIMENTO = ID_SYSTEM FROM v_plataforma_dw WHERE UPPER(DS_SYSTEM) LIKE '%CEOP%'\n\n    TRUNCATE TABLE STG.CEOP_CONVENIO\n\n    INSERT INTO STG.CEOP_CONVENIO\n    SELECT DISTINCT\n        @ESTABELECIMENTO AS ESTABELECIMENTO\n        ,@ESTABELECIMENTO + '|' + CAST(A.[Cnv.Id] AS VARCHAR(50)) AS FK_CONVENIO\n        ,A.[Cnv.Id] AS CD_CONVENIO\n        ,A.Convênio AS DS_CONVENIO   \n    FROM STG.CEOP_FPA A\nEND\nBEGIN\n    with tab as(\n        SELECT\n            ESTABELECIMENTO\n            ,FK_CONVENIO\n            ,CD_CONVENIO\n            ,DS_CONVENIO\n        FROM(    \n            SELECT \n            A.ESTABELECIMENTO\n            ,A.FK_CONVENIO\n            ,A.CD_CONVENIO\n            ,A.DS_CONVENIO\n            ,ROW_NUMBER()OVER(PARTITION BY A.FK_CONVENIO ORDER BY A.FK_CONVENIO DESC) ID_LINHA \n            FROM STG.CEOP_CONVENIO A\n        )TMP\n        WHERE TMP.ID_LINHA = 1\n    )\n\n    MERGE\t           \n    \tdw.CEOP_CONVENIO AS destino           \n    USING            \n    \ttab AS origem           \n\n        ON\t(        \n            ORIGEM.FK_CONVENIO = DESTINO.FK_CONVENIO\t\n    \t\t)        \n\n    --Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \n    WHEN MATCHED            \n    THEN UPDATE SET           \n    DESTINO.ESTABELECIMENTO = ORIGEM.ESTABELECIMENTO\n    ,DESTINO.FK_CONVENIO = ORIGEM.FK_CONVENIO\n    ,DESTINO.CD_CONVENIO = ORIGEM.CD_CONVENIO\n    ,DESTINO.DS_CONVENIO = ORIGEM.DS_CONVENIO\n\n\n\n    --Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \n    WHEN NOT MATCHED BY TARGET            \n    THEN INSERT            \n    VALUES (\n    ORIGEM.ESTABELECIMENTO\n    ,ORIGEM.FK_CONVENIO\n    ,ORIGEM.CD_CONVENIO\n    ,ORIGEM.DS_CONVENIO\n    ); \nEND    \n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/P&P"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_HMAISDATADRIVEN_BINARY')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/datasets/DS_HMAISDATADRIVEN')]",
+				"[concat(variables('factoryId'), '/datasets/AZ_SQL_STG')]",
+				"[concat(variables('factoryId'), '/linkedServices/sv_hmaisbrasildatadriven')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Carga Datamart TASY')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -26352,6 +27211,117 @@
 								}
 							}
 						]
+					},
+					{
+						"name": "Check table Survey",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Copy table Actions",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_SURVEY",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Copy table Survey",
+						"description": "",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Check table Survey",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": {
+									"value": "--TRUNCATE TABLE STG.REQUESTIA_HO_AUX_SURVEY",
+									"type": "Expression"
+								},
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"enableSkipIncompatibleRow": true,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "FILE_SURVEY",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": {
+										"value": "REQUESTIA_HO_AUX_SURVEY",
+										"type": "Expression"
+									}
+								}
+							}
+						]
 					}
 				],
 				"policy": {
@@ -26372,6 +27342,7 @@
 				"[concat(variables('factoryId'), '/datasets/FILE_QTABLEANSWER_NEW')]",
 				"[concat(variables('factoryId'), '/datasets/FILE_ACTION')]",
 				"[concat(variables('factoryId'), '/datasets/AZ_SQL_STG')]",
+				"[concat(variables('factoryId'), '/datasets/FILE_SURVEY')]",
 				"[concat(variables('factoryId'), '/pipelines/Send email')]",
 				"[concat(variables('factoryId'), '/datasets/TABLE_REQUESTS')]",
 				"[concat(variables('factoryId'), '/datasets/TABLE_QSESSION')]",
@@ -54147,7 +55118,7 @@
 							"scripts": [
 								{
 									"type": "NonQuery",
-									"text": "WITH CTE \nAS\n\n(\nSELECT DISTINCT \n\t   [atendimento_codigo]\n      ,[agendamento_codigo]\n      ,[atendimento_turno]\n      ,[atendimento_dia]\n      ,[atendimento_mes]\n      ,[atendimento_ano]\n      ,[atendimento_usuario_cadastro]\n      ,[atendimento_procedimento_empresa]\n      ,[atendimento_procedimento_empresa_requisitante]\n      ,[atendimento_procedimento_profissional_nome]\n      ,[atendimento_procedimento_profissional_requisitante]\n      ,[atendimento_procedimento_especialidade_profissional_requisitante]\n      ,[atendimento_procedimento_convenio]\n      ,[atendimento_procedimento_plano]\n      ,[atendimento_procedimento_especialidade]\n      ,[atendimento_procedimento_nome]\n      ,[atendimento_procedimento_grupo]\n      ,[atendimento_procedimento_valor]\n      ,[atendimento_procedimento_coparticipacao_valor]\n      ,[atendimento_procedimento_filme_valor]\n      ,[atendimento_material_medicamento_nome]\n      ,[atendimento_material_medicamento_valor]\n      ,[atendimento_material_medicamento_coparticipacao_valor]\n      ,[atendimento_taxa_nome]\n      ,[atendimento_taxa_valor]\n      ,[atendimento_taxa_coparticipacao_valor]\n      ,[paciente_codigo]\n      ,[paciente_nome]\n      ,[paciente_sexo]\n      ,[paciente_faixa_idade]\n      ,[paciente_estado]\n      ,[paciente_cidade]\n      ,[paciente_bairro]\n      ,[atendimento_hora]\n      ,[atendimento_diadasemana]\n      ,[atendimento_cid_primario]\n      ,[atendimento_cid_secundario]\n      ,[atendimento_cid_consultorio]\n      ,[atendimento_tipo]\n      ,[atendimento_horainicio_recepcao]\n      ,[atendimento_horafim_recepcao]\n      ,[atendimento_horainicio_consultorio]\n      ,[atendimento_horafim_consultorio]\n      ,[atendimento_procedimento_codigo]\n      ,[paciente_cep]\n      ,[atendimento_profissional_especialidade]\n      ,[atendimento_previsao_valor_repasse_profissional]\n      ,[atendimento_previsao_valor_repasse_clinica]\n      ,[atendimento_passo]\n  FROM [stg].[urobrasil_Atendimento]\n\n)\n\nMERGE\t           \n\tdw.urobrasil_Atendimento AS destino           \nUSING            \n\tCTE AS origem           \n           \n    ON\t(        \n\torigem.atendimento_codigo\t\t\t\t\t\t=\tdestino.atendimento_codigo\t\t\t\t\t\t\tAND\n\torigem.atendimento_procedimento_codigo\t\t\t=\tdestino.atendimento_procedimento_codigo\t\t\t\tAND\n\torigem.atendimento_procedimento_plano\t\t\t=\tdestino.atendimento_procedimento_plano\t\t\t\tAND\n\torigem.atendimento_procedimento_convenio\t\t=\tdestino.atendimento_procedimento_convenio\t\t\tAND\n\torigem.atendimento_material_medicamento_nome\t=\tdestino.atendimento_material_medicamento_nome\t\tAND\t\n\torigem.atendimento_procedimento_valor\t\t\t=\tdestino.atendimento_procedimento_valor\t\t\n\t\t)        \n\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \n\ndestino.atendimento_codigo=origem.atendimento_codigo,\ndestino.agendamento_codigo=origem.agendamento_codigo,\ndestino.atendimento_turno=origem.atendimento_turno,\ndestino.atendimento_dia=origem.atendimento_dia,\ndestino.atendimento_mes=origem.atendimento_mes,\ndestino.atendimento_ano=origem.atendimento_ano,\ndestino.atendimento_usuario_cadastro=origem.atendimento_usuario_cadastro,\ndestino.atendimento_procedimento_empresa=origem.atendimento_procedimento_empresa,\ndestino.atendimento_procedimento_empresa_requisitante=origem.atendimento_procedimento_empresa_requisitante,\ndestino.atendimento_procedimento_profissional_nome=origem.atendimento_procedimento_profissional_nome,\ndestino.atendimento_procedimento_profissional_requisitante=origem.atendimento_procedimento_profissional_requisitante,\ndestino.atendimento_procedimento_especialidade_profissional_requisitante=origem.atendimento_procedimento_especialidade_profissional_requisitante,\ndestino.atendimento_procedimento_convenio=origem.atendimento_procedimento_convenio,\ndestino.atendimento_procedimento_plano=origem.atendimento_procedimento_plano,\ndestino.atendimento_procedimento_especialidade=origem.atendimento_procedimento_especialidade,\ndestino.atendimento_procedimento_nome=origem.atendimento_procedimento_nome,\ndestino.atendimento_procedimento_grupo=origem.atendimento_procedimento_grupo,\ndestino.atendimento_procedimento_valor=origem.atendimento_procedimento_valor,\ndestino.atendimento_procedimento_coparticipacao_valor=origem.atendimento_procedimento_coparticipacao_valor,\ndestino.atendimento_procedimento_filme_valor=origem.atendimento_procedimento_filme_valor,\ndestino.atendimento_material_medicamento_nome=origem.atendimento_material_medicamento_nome,\ndestino.atendimento_material_medicamento_valor=origem.atendimento_material_medicamento_valor,\ndestino.atendimento_material_medicamento_coparticipacao_valor=origem.atendimento_material_medicamento_coparticipacao_valor,\ndestino.atendimento_taxa_nome=origem.atendimento_taxa_nome,\ndestino.atendimento_taxa_valor=origem.atendimento_taxa_valor,\ndestino.atendimento_taxa_coparticipacao_valor=origem.atendimento_taxa_coparticipacao_valor,\ndestino.paciente_codigo=origem.paciente_codigo,\ndestino.paciente_nome=origem.paciente_nome,\ndestino.paciente_sexo=origem.paciente_sexo,\ndestino.paciente_faixa_idade=origem.paciente_faixa_idade,\ndestino.paciente_estado=origem.paciente_estado,\ndestino.paciente_cidade=origem.paciente_cidade,\ndestino.paciente_bairro=origem.paciente_bairro,\ndestino.atendimento_hora=origem.atendimento_hora,\ndestino.atendimento_diadasemana=origem.atendimento_diadasemana,\ndestino.atendimento_cid_primario=origem.atendimento_cid_primario,\ndestino.atendimento_cid_secundario=origem.atendimento_cid_secundario,\ndestino.atendimento_cid_consultorio=origem.atendimento_cid_consultorio,\ndestino.atendimento_tipo=origem.atendimento_tipo,\ndestino.atendimento_horainicio_recepcao=origem.atendimento_horainicio_recepcao,\ndestino.atendimento_horafim_recepcao=origem.atendimento_horafim_recepcao,\ndestino.atendimento_horainicio_consultorio=origem.atendimento_horainicio_consultorio,\ndestino.atendimento_horafim_consultorio=origem.atendimento_horafim_consultorio,\ndestino.atendimento_procedimento_codigo=origem.atendimento_procedimento_codigo,\ndestino.paciente_cep=origem.paciente_cep,\ndestino.atendimento_profissional_especialidade=origem.atendimento_profissional_especialidade,\ndestino.atendimento_previsao_valor_repasse_profissional=origem.atendimento_previsao_valor_repasse_profissional,\ndestino.atendimento_previsao_valor_repasse_clinica=origem.atendimento_previsao_valor_repasse_clinica,\ndestino.atendimento_passo=origem.atendimento_passo\n\n\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.atendimento_codigo,\norigem.agendamento_codigo,\norigem.atendimento_turno,\norigem.atendimento_dia,\norigem.atendimento_mes,\norigem.atendimento_ano,\norigem.atendimento_usuario_cadastro,\norigem.atendimento_procedimento_empresa,\norigem.atendimento_procedimento_empresa_requisitante,\norigem.atendimento_procedimento_profissional_nome,\norigem.atendimento_procedimento_profissional_requisitante,\norigem.atendimento_procedimento_especialidade_profissional_requisitante,\norigem.atendimento_procedimento_convenio,\norigem.atendimento_procedimento_plano,\norigem.atendimento_procedimento_especialidade,\norigem.atendimento_procedimento_nome,\norigem.atendimento_procedimento_grupo,\norigem.atendimento_procedimento_valor,\norigem.atendimento_procedimento_coparticipacao_valor,\norigem.atendimento_procedimento_filme_valor,\norigem.atendimento_material_medicamento_nome,\norigem.atendimento_material_medicamento_valor,\norigem.atendimento_material_medicamento_coparticipacao_valor,\norigem.atendimento_taxa_nome,\norigem.atendimento_taxa_valor,\norigem.atendimento_taxa_coparticipacao_valor,\norigem.paciente_codigo,\norigem.paciente_nome,\norigem.paciente_sexo,\norigem.paciente_faixa_idade,\norigem.paciente_estado,\norigem.paciente_cidade,\norigem.paciente_bairro,\norigem.atendimento_hora,\norigem.atendimento_diadasemana,\norigem.atendimento_cid_primario,\norigem.atendimento_cid_secundario,\norigem.atendimento_cid_consultorio,\norigem.atendimento_tipo,\norigem.atendimento_horainicio_recepcao,\norigem.atendimento_horafim_recepcao,\norigem.atendimento_horainicio_consultorio,\norigem.atendimento_horafim_consultorio,\norigem.atendimento_procedimento_codigo,\norigem.paciente_cep,\norigem.atendimento_profissional_especialidade,\norigem.atendimento_previsao_valor_repasse_profissional,\norigem.atendimento_previsao_valor_repasse_clinica,\norigem.atendimento_passo\n\n); \n"
+									"text": "WITH CTE \nAS\n\n(\nSELECT \nA.ATENDIMENTO_CODIGO + '|' + A.atendimento_procedimento_codigo + '|' + LTRIM(RTRIM(REPLACE(A.atendimento_procedimento_convenio,' ',''))) + '|' + CAST(ROW_NUMBER()OVER(PARTITION BY A.ATENDIMENTO_CODIGO, A.ATENDIMENTO_PROCEDIMENTO_CODIGO, A.atendimento_procedimento_convenio ORDER BY A.ATENDIMENTO_HORA DESC) AS VARCHAR(100)) AS FK\n,A.atendimento_codigo\n,A.agendamento_codigo\n,A.atendimento_turno\n,A.atendimento_dia\n,A.atendimento_mes\n,A.atendimento_ano\n,A.atendimento_usuario_cadastro\n,A.atendimento_procedimento_empresa\n,A.atendimento_procedimento_empresa_requisitante\n,A.atendimento_procedimento_profissional_nome\n,A.atendimento_procedimento_profissional_requisitante\n,A.atendimento_procedimento_especialidade_profissional_requisitante\n,A.atendimento_procedimento_convenio\n,A.atendimento_procedimento_plano\n,A.atendimento_procedimento_especialidade\n,A.atendimento_procedimento_nome\n,A.atendimento_procedimento_grupo\n,A.atendimento_procedimento_valor\n,A.atendimento_procedimento_coparticipacao_valor\n,A.atendimento_procedimento_filme_valor\n,A.atendimento_material_medicamento_nome\n,A.atendimento_material_medicamento_valor\n,A.atendimento_material_medicamento_coparticipacao_valor\n,A.atendimento_taxa_nome\n,A.atendimento_taxa_valor\n,A.atendimento_taxa_coparticipacao_valor\n,A.paciente_codigo\n,A.paciente_nome\n,A.paciente_sexo\n,A.paciente_faixa_idade\n,A.paciente_estado\n,A.paciente_cidade\n,A.paciente_bairro\n,A.atendimento_hora\n,A.atendimento_diadasemana\n,A.atendimento_cid_primario\n,A.atendimento_cid_secundario\n,A.atendimento_cid_consultorio\n,A.atendimento_tipo\n,A.atendimento_horainicio_recepcao\n,A.atendimento_horafim_recepcao\n,A.atendimento_horainicio_consultorio\n,A.atendimento_horafim_consultorio\n,A.atendimento_procedimento_codigo\n,A.paciente_cep\n,A.atendimento_profissional_especialidade\n,A.atendimento_previsao_valor_repasse_profissional\n,A.atendimento_previsao_valor_repasse_clinica\n,A.atendimento_passo\n,A.atendimento_codigo_guia\n,A.atendimento_quantidade_executada_procedimento\n,A.atendimento_status_procedimento\nFROM STG.inst_dr_osmar_Atendimento A\n\n)\n\nMERGE\t           \n\tdw.inst_dr_osmar_Atendimento AS destino           \nUSING            \n\tCTE AS origem           \n           \n    ON\t(        \n            origem.fk = destino.fk\n\t\t)        \n\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \n\ndestino.fk = origem.fk\n,destino.atendimento_codigo = origem.atendimento_codigo\n,destino.agendamento_codigo = origem.agendamento_codigo\n,destino.atendimento_turno = origem.atendimento_turno\n,destino.atendimento_dia = origem.atendimento_dia\n,destino.atendimento_mes = origem.atendimento_mes\n,destino.atendimento_ano = origem.atendimento_ano\n,destino.atendimento_usuario_cadastro = origem.atendimento_usuario_cadastro\n,destino.atendimento_procedimento_empresa = origem.atendimento_procedimento_empresa\n,destino.atendimento_procedimento_empresa_requisitante = origem.atendimento_procedimento_empresa_requisitante\n,destino.atendimento_procedimento_profissional_nome = origem.atendimento_procedimento_profissional_nome\n,destino.atendimento_procedimento_profissional_requisitante = origem.atendimento_procedimento_profissional_requisitante\n,destino.atendimento_procedimento_especialidade_profissional_requisitante = origem.atendimento_procedimento_especialidade_profissional_requisitante\n,destino.atendimento_procedimento_convenio = origem.atendimento_procedimento_convenio\n,destino.atendimento_procedimento_plano = origem.atendimento_procedimento_plano\n,destino.atendimento_procedimento_especialidade = origem.atendimento_procedimento_especialidade\n,destino.atendimento_procedimento_nome = origem.atendimento_procedimento_nome\n,destino.atendimento_procedimento_grupo = origem.atendimento_procedimento_grupo\n,destino.atendimento_procedimento_valor = origem.atendimento_procedimento_valor\n,destino.atendimento_procedimento_coparticipacao_valor = origem.atendimento_procedimento_coparticipacao_valor\n,destino.atendimento_procedimento_filme_valor = origem.atendimento_procedimento_filme_valor\n,destino.atendimento_material_medicamento_nome = origem.atendimento_material_medicamento_nome\n,destino.atendimento_material_medicamento_valor = origem.atendimento_material_medicamento_valor\n,destino.atendimento_material_medicamento_coparticipacao_valor = origem.atendimento_material_medicamento_coparticipacao_valor\n,destino.atendimento_taxa_nome = origem.atendimento_taxa_nome\n,destino.atendimento_taxa_valor = origem.atendimento_taxa_valor\n,destino.atendimento_taxa_coparticipacao_valor = origem.atendimento_taxa_coparticipacao_valor\n,destino.paciente_codigo = origem.paciente_codigo\n,destino.paciente_nome = origem.paciente_nome\n,destino.paciente_sexo = origem.paciente_sexo\n,destino.paciente_faixa_idade = origem.paciente_faixa_idade\n,destino.paciente_estado = origem.paciente_estado\n,destino.paciente_cidade = origem.paciente_cidade\n,destino.paciente_bairro = origem.paciente_bairro\n,destino.atendimento_hora = origem.atendimento_hora\n,destino.atendimento_diadasemana = origem.atendimento_diadasemana\n,destino.atendimento_cid_primario = origem.atendimento_cid_primario\n,destino.atendimento_cid_secundario = origem.atendimento_cid_secundario\n,destino.atendimento_cid_consultorio = origem.atendimento_cid_consultorio\n,destino.atendimento_tipo = origem.atendimento_tipo\n,destino.atendimento_horainicio_recepcao = origem.atendimento_horainicio_recepcao\n,destino.atendimento_horafim_recepcao = origem.atendimento_horafim_recepcao\n,destino.atendimento_horainicio_consultorio = origem.atendimento_horainicio_consultorio\n,destino.atendimento_horafim_consultorio = origem.atendimento_horafim_consultorio\n,destino.atendimento_procedimento_codigo = origem.atendimento_procedimento_codigo\n,destino.paciente_cep = origem.paciente_cep\n,destino.atendimento_profissional_especialidade = origem.atendimento_profissional_especialidade\n,destino.atendimento_previsao_valor_repasse_profissional = origem.atendimento_previsao_valor_repasse_profissional\n,destino.atendimento_previsao_valor_repasse_clinica = origem.atendimento_previsao_valor_repasse_clinica\n,destino.atendimento_passo = origem.atendimento_passo\n,destino.atendimento_codigo_guia = origem.atendimento_codigo_guia\n,destino.atendimento_quantidade_executada_procedimento = origem.atendimento_quantidade_executada_procedimento\n,destino.atendimento_status_procedimento = origem.atendimento_status_procedimento\n\n\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.fk\n,origem.atendimento_codigo\n,origem.agendamento_codigo\n,origem.atendimento_turno\n,origem.atendimento_dia\n,origem.atendimento_mes\n,origem.atendimento_ano\n,origem.atendimento_usuario_cadastro\n,origem.atendimento_procedimento_empresa\n,origem.atendimento_procedimento_empresa_requisitante\n,origem.atendimento_procedimento_profissional_nome\n,origem.atendimento_procedimento_profissional_requisitante\n,origem.atendimento_procedimento_especialidade_profissional_requisitante\n,origem.atendimento_procedimento_convenio\n,origem.atendimento_procedimento_plano\n,origem.atendimento_procedimento_especialidade\n,origem.atendimento_procedimento_nome\n,origem.atendimento_procedimento_grupo\n,origem.atendimento_procedimento_valor\n,origem.atendimento_procedimento_coparticipacao_valor\n,origem.atendimento_procedimento_filme_valor\n,origem.atendimento_material_medicamento_nome\n,origem.atendimento_material_medicamento_valor\n,origem.atendimento_material_medicamento_coparticipacao_valor\n,origem.atendimento_taxa_nome\n,origem.atendimento_taxa_valor\n,origem.atendimento_taxa_coparticipacao_valor\n,origem.paciente_codigo\n,origem.paciente_nome\n,origem.paciente_sexo\n,origem.paciente_faixa_idade\n,origem.paciente_estado\n,origem.paciente_cidade\n,origem.paciente_bairro\n,origem.atendimento_hora\n,origem.atendimento_diadasemana\n,origem.atendimento_cid_primario\n,origem.atendimento_cid_secundario\n,origem.atendimento_cid_consultorio\n,origem.atendimento_tipo\n,origem.atendimento_horainicio_recepcao\n,origem.atendimento_horafim_recepcao\n,origem.atendimento_horainicio_consultorio\n,origem.atendimento_horafim_consultorio\n,origem.atendimento_procedimento_codigo\n,origem.paciente_cep\n,origem.atendimento_profissional_especialidade\n,origem.atendimento_previsao_valor_repasse_profissional\n,origem.atendimento_previsao_valor_repasse_clinica\n,origem.atendimento_passo\n,origem.atendimento_codigo_guia\n,origem.atendimento_quantidade_executada_procedimento\n,origem.atendimento_status_procedimento        \n\n); \n"
 								}
 							]
 						}
@@ -57391,6 +58362,906 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Log Tabelas Tasy')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Busca SQL",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT * FROM ADF.CTR_AJUSTE_DW WHERE HABILITA_ETL = 'S'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Gera Dados Busca",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Busca SQL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "ExtracaoLog",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@replace(item().DS_SQL,'\"','')",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"convertDecimalToInteger": false,
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ORACLE_LOG",
+											"type": "DatasetReference",
+											"parameters": {
+												"nm_keyvault": {
+													"value": "@item().NOME_KEYVAULT",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DESTINO_TABELAS_ADF",
+											"type": "DatasetReference",
+											"parameters": {
+												"Schema_Destino": {
+													"value": "@item().NOME_SCHEMA_TABELA_DESTINO",
+													"type": "Expression"
+												},
+												"Tabela_Destino": {
+													"value": "@item().NOME_TABELA_DESTINO",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Insert Dados Stg Final",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Limpa Tabela Destino",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_TABELA_DESTINO,'.',item().NOME_TABELA_DESTINO)",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "AZ_SQL",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZSQL_DINAMICO",
+											"type": "DatasetReference",
+											"parameters": {
+												"schema_destino": {
+													"value": "@item().NOME_SCHEMA_TABELA_DESTINO",
+													"type": "Expression"
+												},
+												"tabela_destino": {
+													"value": "@concat('DW_AJ_',item().NOME_TABELA_ORIGEM,'_TASY')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Limpa Tabela Destino",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Gera Dados Busca",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Truncate Table",
+									"type": "Script",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": {
+													"value": "@concat('BEGIN TRY TRUNCATE TABLE stg.','DW_AJ',item().NOME_TABELA_ORIGEM,'_TASY END TRY BEGIN CATCH PRINT 0 END CATCH ')",
+													"type": "Expression"
+												}
+											}
+										],
+										"scriptBlockExecutionTimeout": "02:00:00"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Busca Tab Pipeline",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Insert Dados Stg Final",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT DISTINCT NOME_TABELA_ORIGEM FROM ADF.CTR_AJUSTE_DW\nWHERE HABILITA_ETL = 'S'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "LIsta Tabelas",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Busca Tab Pipeline",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca Tab Pipeline').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Switch1",
+									"type": "Switch",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"on": {
+											"value": "@item().NOME_TABELA_ORIGEM",
+											"type": "Expression"
+										},
+										"cases": [
+											{
+												"value": "PROCEDIMENTO_PACIENTE",
+												"activities": [
+													{
+														"name": "Execute Pipeline1",
+														"type": "ExecutePipeline",
+														"dependsOn": [],
+														"userProperties": [],
+														"typeProperties": {
+															"pipeline": {
+																"referenceName": "AJ_PROCEDIMENTO_PACIENTE",
+																"type": "PipelineReference"
+															},
+															"waitOnCompletion": true,
+															"parameters": {}
+														}
+													}
+												]
+											},
+											{
+												"value": "MATERIAL_ATEND_PACIENTE",
+												"activities": [
+													{
+														"name": "Execute Pipeline2",
+														"type": "ExecutePipeline",
+														"dependsOn": [],
+														"userProperties": [],
+														"typeProperties": {
+															"pipeline": {
+																"referenceName": "AJ_MATERIAL_ATEND_PACIENTE",
+																"type": "PipelineReference"
+															},
+															"waitOnCompletion": true,
+															"parameters": {}
+														}
+													}
+												]
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ODS Producao Diaria Tasy",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Raw data Producao Diaria Tasy",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "\nIF (EXISTS (SELECT *    \n                 FROM INFORMATION_SCHEMA.TABLES    \n                 WHERE TABLE_SCHEMA = 'stg'    \n                 AND  TABLE_NAME = 'TBL_ODS_AJ_TASY_PROD_DIARIA_TMP'))   \nBEGIN   \n    drop table stg.TBL_ODS_AJ_TASY_PROD_DIARIA_TMP   \nEND;   \n   \n   \nWITH PROC_PRINC AS(   \n    SELECT    \n         A.ESTABELECIMENTO   \n         ,A.NR_INTERNO_CONTA    \n         ,ROW_NUMBER()OVER(PARTITION BY A.ESTABELECIMENTO, A.NR_INTERNO_CONTA ORDER BY A.VL_ITEM DESC) ID_LINHA   \n         ,cast(A.CD_ITEM as varchar(50)) + '|' + CAST(A.IE_ORIGEM_PROCED AS VARCHAR(10)) AS CD_PROC_PRINCIPAL   \n    FROM STG.tbl_tasy_aj_producao_diaria_tmp A   \n   INNER JOIN VW_ESTRUTURA_PROCEDIMENTO EP ON EP.ESTABELECIMENTO = A.ESTABELECIMENTO AND EP.IE_ORIGEM_PROCED = A.IE_ORIGEM_PROCED AND ('P|'+CAST(EP.CD_PROCEDIMENTO AS VARCHAR(100))) = A.CD_ITEM AND EP.IE_MAT_MED_TX = 0    \n    -- WHERE A.NR_INTERNO_CONTA = 55505   \n    --     AND A.ESTABELECIMENTO = 1   \n)   \n   \nSELECT    \n       CAST(A.ESTABELECIMENTO AS VARCHAR(10))          AS ESTABELECIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_INTERNO_CONTA AS VARCHAR(50)) + '|' + CAST(A.NR_SEQUENCIA AS VARCHAR(100)) + '|' + CAST(A.CD_ITEM AS VARCHAR(50))  AS FK_NR_SEQUENCIA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_ESTABELECIMENTO AS VARCHAR(50))                                                                                    AS FK_CD_ESTABELECIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_PESSOA_FISICA AS VARCHAR(50))                                                                                      AS FK_CD_PESSOA_FISICA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_ATENDIMENTO AS VARCHAR(50))                                                                                        AS FK_NR_ATENDIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_INTERNO_CONTA AS VARCHAR(50))                                                                                      AS FK_NR_INTERNO_CONTA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_CONVENIO AS VARCHAR(50))                                                                                           AS FK_CD_CONVENIO   \n       ,A.DT_ENTRADA                                                       \n       ,A.DT_LANCAMENTO                                                    \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(X.CD_PROC_PRINCIPAL AS VARCHAR(50))                                                                                     AS FK_CD_PROC_PRINCIPAL   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_ITEM AS VARCHAR(100)) + '|' + CAST(A.IE_ORIGEM_PROCED AS VARCHAR(10))                                               AS FK_CD_ITEM   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_PROC_INTERNO AS VARCHAR(100))                                                                                      AS FK_NR_PROC_INTERNO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_ATENDIMENTO AS VARCHAR(100))                                                                                AS FK_CD_MEDICO_ATENDIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_SOL AS VARCHAR(100))                                                                                        AS FK_CD_MEDICO_SOLICITANTE   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_EXECUTANTE AS VARCHAR(100))                                                                                 AS FK_CD_MEDICO_EXECUTANTE   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_RESP AS VARCHAR(100))                                                                                       AS FK_CD_MEDICO_RESPONSAVEL   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_SETOR_ATENDIMENTO AS VARCHAR(100))     AS FK_CD_SETOR_ATENDIMENTO   \n     ,CAST(A.QTD_ITEM AS decimal)                                                                                                                                                 AS QT_ITEM   \n       ,CAST(A.QT_PROCEDIMENTO AS decimal)                                                                                                                                          AS QT_PROCEDIMENTO   \n       ,CAST(A.VL_ITEM  AS money)                                                                                                                                                   AS VL_ITEM      \n       ,CAST(A.VL_ITEM  AS money)                                                                                                                                                   AS VL_ITEM_AJUSTE      \n       ,CAST(A.VL_MEDICO  AS money)                                                                                                                                                 AS VL_HM    \n       ,1                                                                                                                                                                           AS IE_CONSIDERAR      \n       ,GETDATE()                                                                                                                                                                   AS DT_PROCESSAMENTO   \n   \nINTO STG.TBL_ODS_AJ_TASY_PROD_DIARIA_TMP   \nFROM STG.tbl_tasy_aj_producao_diaria_tmp A   \nLEFT JOIN PROC_PRINC X ON A.ESTABELECIMENTO = X.ESTABELECIMENTO AND A.NR_INTERNO_CONTA = X.NR_INTERNO_CONTA AND X.ID_LINHA = 1   \nWHERE A.NR_INTERNO_CONTA IS NOT NULL   \n   "
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Raw data Producao Diaria Tasy",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "LIsta Tabelas",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "IF (EXISTS (SELECT *        \n                 FROM INFORMATION_SCHEMA.TABLES        \n                 WHERE TABLE_SCHEMA = 'stg'        \n                 AND  TABLE_NAME = 'tbl_tasy_aj_producao_diaria_tmp'))       \nBEGIN       \n    drop table stg.tbl_tasy_aj_producao_diaria_tmp       \nEND;        \n        \nwith prod as (        \n        \nselect DISTINCT        \n    pp.estabelecimento,        \n    ap.CD_ESTABELECIMENTO,            \n    PP.nr_atendimento                                              as NR_ATENDIMENTO ,        \n    PP.nr_interno_conta                                            as NR_INTERNO_CONTA ,        \n    CP.cd_convenio_parametro                                       as CD_CONVENIO ,        \n    ap.cd_pessoa_fisica,                \n    AP.dt_entrada                                                  as DT_ENTRADA ,            \n    pp.cd_medico_executor                                          AS CD_MEDICO_EXECUTANTE ,        \n    ap.cd_medico_resp,        \n    ap.cd_medico_atendimento,        \n    pp.cd_medico_req                                               AS CD_MEDICO_SOL,        \n    pp.cd_setor_atendimento,        \n    'P|' + CAST(PP.NR_SEQUENCIA AS VARCHAR(255))                   AS NR_SEQUENCIA,        \n    cast(pp.DT_PROCEDIMENTO as date)                               as DT_LANCAMENTO,         \n    PP.IE_ORIGEM_PROCED                                            AS IE_ORIGEM_PROCED,            \n    'P|'+CAST(PP.cd_procedimento AS VARCHAR(100))                  as CD_ITEM,         \n    PP.NR_SEQ_PROC_INTERNO                                         AS NR_PROC_INTERNO,                \n    PP.qt_procedimento                                             as QTD_ITEM,    \n    CASE    \n        WHEN EP.IE_PACOTE = 0 AND EP.IE_MAT_MED_TX = 0 THEN 1    \n            ELSE 0    \n    END                                                            AS QT_PROCEDIMENTO,                 \n    PP.vl_medico                                                   as VL_MEDICO ,        \n    CASE   \n        WHEN EP.IE_PACOTE = 1 THEN 0   \n            ELSE PP.vl_procedimento   \n    END                                                            as VL_ITEM,        \n    PP.DT_ATUALIZACAO        \n        \n            \nfrom stg.aj_procedimento_paciente          pp           with(nolock)        \n-- inner join stg.tbl_procedimento             P            with(nolock)         on  ((pp.cd_procedimento = p.cd_procedimento)                      and (pp.ie_origem_proced = p.ie_origem_proced)) and pp.estabelecimento = p.ESTABELECIMENTO        \ninner join dw.tbl_atendimento_paciente     ap           with(nolock)         on ap.nr_atendimento = pp.nr_atendimento                           and ap.ESTABELECIMENTO = pp.ESTABELECIMENTO        \nleft join dw.tbl_conta_paciente            cp           with(nolock)         on cp.nr_interno_conta = pp.nr_interno_conta                       and cp.ESTABELECIMENTO = pp.ESTABELECIMENTO        \nOUTER APPLY(        \n        SELECT TOP 1 C.CD_AREA_PROCEDIMENTO, C.IE_PACOTE, C.IE_MAT_MED_TX, C.DS_AREA_PROCEDIMENTO        \n        FROM vw_estrutura_procedimento C        \n        WHERE C.CD_PROCEDIMENTO = PP.CD_PROCEDIMENTO AND C.IE_ORIGEM_PROCED = PP.IE_ORIGEM_PROCED AND C.ESTABELECIMENTO = PP.ESTABELECIMENTO AND C.IE_SITUACAO = 'A'         \n)ep        \n        \nwhere pp.cd_motivo_exc_conta is null        \n        and CP.ie_cancelamento is null        \n        and CP.nr_interno_conta is not null        \n        or (--(ep.CD_AREA_PROCEDIMENTO <> 10 and PP.ESTABELECIMENTO = 1)  OR     \n            (PP.ESTABELECIMENTO = 2 AND PP.NR_PRESCRICAO IS NOT NULL))  \n        -- and cast(pp.DT_ATUALIZACAO as date) >= @DT_PROCESSAMENTO   \n        -- and cp.ESTABELECIMENTO = 1        \n        -- and cp.NR_INTERNO_CONTA = 1305983        \n        -- and pp.nr_atendimento = 938011 and pp.ESTABELECIMENTO = '1'        \n        -- AND PP.NR_ATENDIMENTO = 6324040 AND PP.ESTABELECIMENTO = '2'        \n        -- AND PP.NR_ATENDIMENTO = 6322484 AND PP.ESTABELECIMENTO = '2'        \n                \n    --and obter_area_procedimento(a.cd_procedimento  a.ie_origem_proced) <> 10        \n        \n         \n        \nunion all        \n        \n         \n     \nselect         \n    map.estabelecimento,        \n    ap.cd_estabelecimento,        \n    map.nr_atendimento                                           as NR_ATENDIMENTO ,        \n    map.nr_interno_conta                                         as NR_INTERNO_CONTA,         \n    cp.cd_convenio_parametro                                     as CD_CONVENIO ,        \n    ap.cd_pessoa_fisica,         \n     ap.dt_entrada                                               as DT_ENTRADA ,        \n    0                                                            AS CD_MEDICO_EXECUTANTE,        \n    ap.cd_medico_resp,        \n    ap.cd_medico_atendimento,        \n    0 as CD_MEDICO_SOL,        \n    map.CD_SETOR_ATENDIMENTO,        \n    'M|' + CAST(MAP.NR_SEQUENCIA AS VARCHAR(255)) AS NR_SEQUENCIA,        \n    cast(map.dt_atendimento as date)                            as DT_LANCAMENTO ,        \n    NULL                                                        AS IE_ORIGEM_PROCED,        \n    'M|'+ CAST(map.cd_material AS VARCHAR(100))                 as CD_ITEM ,        \n    0                                                           AS NR_PROC_INTERNO,         \n    map.qt_material                                             as QT_ITEM ,    \n    0                                                           AS QT_PROCEDIMENTO,        \n    0                                                           as VL_MEDICO ,        \n    map.vl_material                                             as VL_ITEM,         \n    MAP.DT_ATUALIZACAO        \n        \nfrom stg.aj_material_atend_paciente            map          with(nolock)          \nleft join dw.tbl_atendimento_paciente           ap           with(nolock)          on ap.nr_atendimento = map.nr_atendimento                             and ap.ESTABELECIMENTO = map.ESTABELECIMENTO        \nleft join dw.tbl_conta_paciente                 cp           with(nolock)          on cp.nr_interno_conta = map.nr_interno_conta                         and cp.ESTABELECIMENTO = map.ESTABELECIMENTO        \n        \n        \nwhere map.cd_motivo_exc_conta is null        \nand cp.ie_cancelamento is null        \nand cp.nr_interno_conta is not null     \nAND ((MAP.ESTABELECIMENTO = 1 AND MAP.NR_PRESCRICAO IS NOT NULL OR MAP.NR_PRESCRICAO IS NULL) OR (MAP.ESTABELECIMENTO = 2 AND MAP.NR_PRESCRICAO IS NOT NULL))  \n-- and cast(map.DT_ATUALIZACAO as date) >= @DT_PROCESSAMENTO              \n-- and cp.estabelecimento = 1        \n-- and cp.nr_interno_conta = 1305983        \n-- and map.nr_atendimento = 938011 and map.ESTABELECIMENTO = '1'        \n-- AND MAP.NR_ATENDIMENTO = 6324040 AND MAP.ESTABELECIMENTO = '2'        \n-- AND MAP.NR_ATENDIMENTO = 6322484 AND MAP.ESTABELECIMENTO = '2'        \n        \n)        \n        \nselect *        \nINTO stg.tbl_tasy_aj_producao_diaria_tmp       \nfrom prod  \n\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Ajuste DW Tasy"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AZ_SQL')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/datasets/ORACLE_LOG')]",
+				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
+				"[concat(variables('factoryId'), '/datasets/AZSQL_DINAMICO')]",
+				"[concat(variables('factoryId'), '/pipelines/AJ_PROCEDIMENTO_PACIENTE')]",
+				"[concat(variables('factoryId'), '/pipelines/AJ_MATERIAL_ATEND_PACIENTE')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Log Tabelas Tasy_antigo')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Busca SQL",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT * FROM ADF.CTR_AJUSTE_DW WHERE HABILITA_ETL = 'S'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Gera Dados Busca",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Busca SQL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "ExtracaoLog",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@replace(item().DS_SQL,'\"','')",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"convertDecimalToInteger": false,
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ORACLE_LOG",
+											"type": "DatasetReference",
+											"parameters": {
+												"nm_keyvault": {
+													"value": "@item().NOME_KEYVAULT",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DESTINO_TABELAS_ADF",
+											"type": "DatasetReference",
+											"parameters": {
+												"Schema_Destino": {
+													"value": "@item().NOME_SCHEMA_TABELA_DESTINO",
+													"type": "Expression"
+												},
+												"Tabela_Destino": {
+													"value": "@item().NOME_TABELA_DESTINO",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Insert Dados Stg Final",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Limpa Tabela Destino",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_TABELA_DESTINO,'.',item().NOME_TABELA_DESTINO)",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "AZ_SQL",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZSQL_DINAMICO",
+											"type": "DatasetReference",
+											"parameters": {
+												"schema_destino": {
+													"value": "@item().NOME_SCHEMA_TABELA_DESTINO",
+													"type": "Expression"
+												},
+												"tabela_destino": {
+													"value": "@concat('DW_AJ_',item().NOME_TABELA_ORIGEM,'_TASY')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Limpa Tabela Destino",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Gera Dados Busca",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Truncate Table",
+									"type": "Script",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": {
+													"value": "@concat('BEGIN TRY TRUNCATE TABLE stg.','DW_AJ',item().NOME_TABELA_ORIGEM,'_TASY END TRY BEGIN CATCH PRINT 0 END CATCH ')",
+													"type": "Expression"
+												}
+											}
+										],
+										"scriptBlockExecutionTimeout": "02:00:00"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Busca Tab Pipeline",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Insert Dados Stg Final",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT DISTINCT NOME_TABELA_ORIGEM FROM ADF.CTR_AJUSTE_DW\nWHERE HABILITA_ETL = 'S'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "LIsta Tabelas",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Busca Tab Pipeline",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca Tab Pipeline').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Switch1",
+									"type": "Switch",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"on": {
+											"value": "@item().NOME_TABELA_ORIGEM",
+											"type": "Expression"
+										},
+										"cases": [
+											{
+												"value": "PROCEDIMENTO_PACIENTE",
+												"activities": [
+													{
+														"name": "Execute Pipeline1",
+														"type": "ExecutePipeline",
+														"dependsOn": [],
+														"userProperties": [],
+														"typeProperties": {
+															"pipeline": {
+																"referenceName": "AJ_PROCEDIMENTO_PACIENTE",
+																"type": "PipelineReference"
+															},
+															"waitOnCompletion": true,
+															"parameters": {}
+														}
+													}
+												]
+											},
+											{
+												"value": "MATERIAL_ATEND_PACIENTE",
+												"activities": [
+													{
+														"name": "Execute Pipeline2",
+														"type": "ExecutePipeline",
+														"dependsOn": [],
+														"userProperties": [],
+														"typeProperties": {
+															"pipeline": {
+																"referenceName": "AJ_MATERIAL_ATEND_PACIENTE",
+																"type": "PipelineReference"
+															},
+															"waitOnCompletion": true,
+															"parameters": {}
+														}
+													}
+												]
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ODS Producao Diaria Tasy",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Raw data Producao Diaria Tasy",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "\nIF (EXISTS (SELECT *    \n                 FROM INFORMATION_SCHEMA.TABLES    \n                 WHERE TABLE_SCHEMA = 'stg'    \n                 AND  TABLE_NAME = 'TBL_ODS_AJ_TASY_PROD_DIARIA_TMP'))   \nBEGIN   \n    drop table stg.TBL_ODS_AJ_TASY_PROD_DIARIA_TMP   \nEND;   \n   \n   \nWITH PROC_PRINC AS(   \n    SELECT    \n         A.ESTABELECIMENTO   \n         ,A.NR_INTERNO_CONTA    \n         ,ROW_NUMBER()OVER(PARTITION BY A.ESTABELECIMENTO, A.NR_INTERNO_CONTA ORDER BY A.VL_ITEM DESC) ID_LINHA   \n         ,cast(A.CD_ITEM as varchar(50)) + '|' + CAST(A.IE_ORIGEM_PROCED AS VARCHAR(10)) AS CD_PROC_PRINCIPAL   \n    FROM STG.tbl_tasy_aj_producao_diaria_tmp A   \n   INNER JOIN VW_ESTRUTURA_PROCEDIMENTO EP ON EP.ESTABELECIMENTO = A.ESTABELECIMENTO AND EP.IE_ORIGEM_PROCED = A.IE_ORIGEM_PROCED AND ('P|'+CAST(EP.CD_PROCEDIMENTO AS VARCHAR(100))) = A.CD_ITEM AND EP.IE_MAT_MED_TX = 0    \n    -- WHERE A.NR_INTERNO_CONTA = 55505   \n    --     AND A.ESTABELECIMENTO = 1   \n)   \n   \nSELECT    \n       CAST(A.ESTABELECIMENTO AS VARCHAR(10))          AS ESTABELECIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_INTERNO_CONTA AS VARCHAR(50)) + '|' + CAST(A.NR_SEQUENCIA AS VARCHAR(100)) + '|' + CAST(A.CD_ITEM AS VARCHAR(50))  AS FK_NR_SEQUENCIA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_ESTABELECIMENTO AS VARCHAR(50))                                                                                    AS FK_CD_ESTABELECIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_PESSOA_FISICA AS VARCHAR(50))                                                                                      AS FK_CD_PESSOA_FISICA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_ATENDIMENTO AS VARCHAR(50))                                                                                        AS FK_NR_ATENDIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_INTERNO_CONTA AS VARCHAR(50))                                                                                      AS FK_NR_INTERNO_CONTA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_CONVENIO AS VARCHAR(50))                                                                                           AS FK_CD_CONVENIO   \n       ,A.DT_ENTRADA                                                       \n       ,A.DT_LANCAMENTO                                                    \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(X.CD_PROC_PRINCIPAL AS VARCHAR(50))                                                                                     AS FK_CD_PROC_PRINCIPAL   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_ITEM AS VARCHAR(100)) + '|' + CAST(A.IE_ORIGEM_PROCED AS VARCHAR(10))                                               AS FK_CD_ITEM   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_PROC_INTERNO AS VARCHAR(100))                                                                                      AS FK_NR_PROC_INTERNO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_ATENDIMENTO AS VARCHAR(100))                                                                                AS FK_CD_MEDICO_ATENDIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_SOL AS VARCHAR(100))                                                                                        AS FK_CD_MEDICO_SOLICITANTE   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_EXECUTANTE AS VARCHAR(100))                                                                                 AS FK_CD_MEDICO_EXECUTANTE   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_RESP AS VARCHAR(100))                                                                                       AS FK_CD_MEDICO_RESPONSAVEL   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_SETOR_ATENDIMENTO AS VARCHAR(100))     AS FK_CD_SETOR_ATENDIMENTO   \n     ,CAST(A.QTD_ITEM AS decimal)                                                                                                                                                 AS QT_ITEM   \n       ,CAST(A.QT_PROCEDIMENTO AS decimal)                                                                                                                                          AS QT_PROCEDIMENTO   \n       ,CAST(A.VL_ITEM  AS money)                                                                                                                                                   AS VL_ITEM      \n       ,CAST(A.VL_ITEM  AS money)                                                                                                                                                   AS VL_ITEM_AJUSTE      \n       ,CAST(A.VL_MEDICO  AS money)                                                                                                                                                 AS VL_HM    \n       ,1                                                                                                                                                                           AS IE_CONSIDERAR      \n       ,GETDATE()                                                                                                                                                                   AS DT_PROCESSAMENTO   \n   \nINTO STG.TBL_ODS_AJ_TASY_PROD_DIARIA_TMP   \nFROM STG.tbl_tasy_aj_producao_diaria_tmp A   \nLEFT JOIN PROC_PRINC X ON A.ESTABELECIMENTO = X.ESTABELECIMENTO AND A.NR_INTERNO_CONTA = X.NR_INTERNO_CONTA AND X.ID_LINHA = 1   \nWHERE A.NR_INTERNO_CONTA IS NOT NULL   \n   "
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Raw data Producao Diaria Tasy",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "LIsta Tabelas",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "IF (EXISTS (SELECT *        \n                 FROM INFORMATION_SCHEMA.TABLES        \n                 WHERE TABLE_SCHEMA = 'stg'        \n                 AND  TABLE_NAME = 'tbl_tasy_aj_producao_diaria_tmp'))       \nBEGIN       \n    drop table stg.tbl_tasy_aj_producao_diaria_tmp       \nEND;        \n        \nwith prod as (        \n        \nselect DISTINCT        \n    pp.estabelecimento,        \n    ap.CD_ESTABELECIMENTO,            \n    PP.nr_atendimento                                              as NR_ATENDIMENTO ,        \n    PP.nr_interno_conta                                            as NR_INTERNO_CONTA ,        \n    CP.cd_convenio_parametro                                       as CD_CONVENIO ,        \n    ap.cd_pessoa_fisica,                \n    AP.dt_entrada                                                  as DT_ENTRADA ,            \n    pp.cd_medico_executor                                          AS CD_MEDICO_EXECUTANTE ,        \n    ap.cd_medico_resp,        \n    ap.cd_medico_atendimento,        \n    pp.cd_medico_req                                               AS CD_MEDICO_SOL,        \n    pp.cd_setor_atendimento,        \n    'P|' + CAST(PP.NR_SEQUENCIA AS VARCHAR(255))                   AS NR_SEQUENCIA,        \n    cast(pp.DT_PROCEDIMENTO as date)                               as DT_LANCAMENTO,         \n    PP.IE_ORIGEM_PROCED                                            AS IE_ORIGEM_PROCED,            \n    'P|'+CAST(PP.cd_procedimento AS VARCHAR(100))                  as CD_ITEM,         \n    PP.NR_SEQ_PROC_INTERNO                                         AS NR_PROC_INTERNO,                \n    PP.qt_procedimento                                             as QTD_ITEM,    \n    CASE    \n        WHEN EP.IE_PACOTE = 0 AND EP.IE_MAT_MED_TX = 0 THEN 1    \n            ELSE 0    \n    END                                                            AS QT_PROCEDIMENTO,                 \n    PP.vl_medico                                                   as VL_MEDICO ,        \n    CASE   \n        WHEN EP.IE_PACOTE = 1 THEN 0   \n            ELSE PP.vl_procedimento   \n    END                                                            as VL_ITEM,        \n    PP.DT_ATUALIZACAO        \n        \n            \nfrom stg.aj_procedimento_paciente          pp           with(nolock)        \n-- inner join stg.tbl_procedimento             P            with(nolock)         on  ((pp.cd_procedimento = p.cd_procedimento)                      and (pp.ie_origem_proced = p.ie_origem_proced)) and pp.estabelecimento = p.ESTABELECIMENTO        \ninner join dw.tbl_atendimento_paciente     ap           with(nolock)         on ap.nr_atendimento = pp.nr_atendimento                           and ap.ESTABELECIMENTO = pp.ESTABELECIMENTO        \nleft join dw.tbl_conta_paciente            cp           with(nolock)         on cp.nr_interno_conta = pp.nr_interno_conta                       and cp.ESTABELECIMENTO = pp.ESTABELECIMENTO        \nOUTER APPLY(        \n        SELECT TOP 1 C.CD_AREA_PROCEDIMENTO, C.IE_PACOTE, C.IE_MAT_MED_TX, C.DS_AREA_PROCEDIMENTO        \n        FROM vw_estrutura_procedimento C        \n        WHERE C.CD_PROCEDIMENTO = PP.CD_PROCEDIMENTO AND C.IE_ORIGEM_PROCED = PP.IE_ORIGEM_PROCED AND C.ESTABELECIMENTO = PP.ESTABELECIMENTO AND C.IE_SITUACAO = 'A'         \n)ep        \n        \nwhere pp.cd_motivo_exc_conta is null        \n        and CP.ie_cancelamento is null        \n        and CP.nr_interno_conta is not null        \n        or (--(ep.CD_AREA_PROCEDIMENTO <> 10 and PP.ESTABELECIMENTO = 1)  OR     \n            (PP.ESTABELECIMENTO = 2 AND PP.NR_PRESCRICAO IS NOT NULL))  \n        -- and cast(pp.DT_ATUALIZACAO as date) >= @DT_PROCESSAMENTO   \n        -- and cp.ESTABELECIMENTO = 1        \n        -- and cp.NR_INTERNO_CONTA = 1305983        \n        -- and pp.nr_atendimento = 938011 and pp.ESTABELECIMENTO = '1'        \n        -- AND PP.NR_ATENDIMENTO = 6324040 AND PP.ESTABELECIMENTO = '2'        \n        -- AND PP.NR_ATENDIMENTO = 6322484 AND PP.ESTABELECIMENTO = '2'        \n                \n    --and obter_area_procedimento(a.cd_procedimento  a.ie_origem_proced) <> 10        \n        \n         \n        \nunion all        \n        \n         \n     \nselect         \n    map.estabelecimento,        \n    ap.cd_estabelecimento,        \n    map.nr_atendimento                                           as NR_ATENDIMENTO ,        \n    map.nr_interno_conta                                         as NR_INTERNO_CONTA,         \n    cp.cd_convenio_parametro                                     as CD_CONVENIO ,        \n    ap.cd_pessoa_fisica,         \n     ap.dt_entrada                                               as DT_ENTRADA ,        \n    0                                                            AS CD_MEDICO_EXECUTANTE,        \n    ap.cd_medico_resp,        \n    ap.cd_medico_atendimento,        \n    0 as CD_MEDICO_SOL,        \n    map.CD_SETOR_ATENDIMENTO,        \n    'M|' + CAST(MAP.NR_SEQUENCIA AS VARCHAR(255)) AS NR_SEQUENCIA,        \n    cast(map.dt_atendimento as date)                            as DT_LANCAMENTO ,        \n    NULL                                                        AS IE_ORIGEM_PROCED,        \n    'M|'+ CAST(map.cd_material AS VARCHAR(100))                 as CD_ITEM ,        \n    0                                                           AS NR_PROC_INTERNO,         \n    map.qt_material                                             as QT_ITEM ,    \n    0                                                           AS QT_PROCEDIMENTO,        \n    0                                                           as VL_MEDICO ,        \n    map.vl_material                                             as VL_ITEM,         \n    MAP.DT_ATUALIZACAO        \n        \nfrom stg.aj_material_atend_paciente            map          with(nolock)          \nleft join dw.tbl_atendimento_paciente           ap           with(nolock)          on ap.nr_atendimento = map.nr_atendimento                             and ap.ESTABELECIMENTO = map.ESTABELECIMENTO        \nleft join dw.tbl_conta_paciente                 cp           with(nolock)          on cp.nr_interno_conta = map.nr_interno_conta                         and cp.ESTABELECIMENTO = map.ESTABELECIMENTO        \n        \n        \nwhere map.cd_motivo_exc_conta is null        \nand cp.ie_cancelamento is null        \nand cp.nr_interno_conta is not null     \nAND ((MAP.ESTABELECIMENTO = 1 AND MAP.NR_PRESCRICAO IS NOT NULL OR MAP.NR_PRESCRICAO IS NULL) OR (MAP.ESTABELECIMENTO = 2 AND MAP.NR_PRESCRICAO IS NOT NULL))  \n-- and cast(map.DT_ATUALIZACAO as date) >= @DT_PROCESSAMENTO              \n-- and cp.estabelecimento = 1        \n-- and cp.nr_interno_conta = 1305983        \n-- and map.nr_atendimento = 938011 and map.ESTABELECIMENTO = '1'        \n-- AND MAP.NR_ATENDIMENTO = 6324040 AND MAP.ESTABELECIMENTO = '2'        \n-- AND MAP.NR_ATENDIMENTO = 6322484 AND MAP.ESTABELECIMENTO = '2'        \n        \n)        \n        \nselect *        \nINTO stg.tbl_tasy_aj_producao_diaria_tmp       \nfrom prod  \n\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Ajuste DW Tasy/Antigo"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AZ_SQL')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/datasets/ORACLE_LOG')]",
+				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
+				"[concat(variables('factoryId'), '/datasets/AZSQL_DINAMICO')]",
+				"[concat(variables('factoryId'), '/pipelines/AJ_PROCEDIMENTO_PACIENTE')]",
+				"[concat(variables('factoryId'), '/pipelines/AJ_MATERIAL_ATEND_PACIENTE')]"
 			]
 		},
 		{
@@ -82731,6 +84602,41 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/AZSQL_DINAMICO')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"schema_destino": {
+						"type": "string"
+					},
+					"tabela_destino": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().schema_destino",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().tabela_destino",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_Agendamentos_Futuros_Unidade')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -96624,6 +98530,35 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/ORACLE_LOG')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Oracle_Log",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"NOME_KEYVAULT": {
+							"value": "@dataset().nm_keyvault",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"nm_keyvault": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "OracleTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Oracle_Log')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/ORIGEM_TABELAS_ADF')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -100803,6 +102738,41 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Oracle_Log')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"NOME_KEYVAULT": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": {
+							"value": "[parameters('Oracle_Log_properties_typeProperties_connectionString_secretName')]",
+							"type": "Expression"
+						}
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/integrationRuntimes/ServidorArquivosBI')]",
+				"[concat(variables('factoryId'), '/linkedServices/SV_OptyKeyVault')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Ortoity_Oracle')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
@@ -101665,6 +103635,13 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "OFTALMODIAGNOSE_ADF",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -101689,7 +103666,8 @@
 				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_SMART_IRIS')]",
 				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_SMART')]",
 				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_TASY_ONPREMISES')]",
-				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_NAJA')]"
+				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_NAJA')]",
+				"[concat(variables('factoryId'), '/pipelines/OFTALMODIAGNOSE_ADF')]"
 			]
 		},
 		{
@@ -102031,6 +104009,13 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "INSTITUTO_DR_OSMAR",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -102053,7 +104038,8 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/UROBRASIL')]",
-				"[concat(variables('factoryId'), '/pipelines/UPO')]"
+				"[concat(variables('factoryId'), '/pipelines/UPO')]",
+				"[concat(variables('factoryId'), '/pipelines/INSTITUTO_DR_OSMAR')]"
 			]
 		},
 		{
@@ -102228,6 +104214,38 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/FILE_SURVEY')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "sv_hmaisbrasildatadriven",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": "ho_aux_survey.csv",
+						"fileSystem": "requestia"
+					},
+					"columnDelimiter": ";",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/sv_hmaisbrasildatadriven')]"
+			]
 		}
 	]
 }
