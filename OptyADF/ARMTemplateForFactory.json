@@ -55122,6 +55122,39 @@
 								}
 							]
 						}
+					},
+					{
+						"name": "CONVENIO MERGE",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "ATENDIMENTO MERGE",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "WITH CONV AS(\n\nSELECT DISTINCT\n    '41' AS ESTABELECIMENTO\n    ,'41|' + LTRIM(RTRIM(REPLACE(REPLACE(UPPER(ATENDIMENTO_PROCEDIMENTO_CONVENIO),' ',''),'-',''))) AS FK_CONVENIO\n    ,LTRIM(RTRIM(REPLACE(REPLACE(UPPER(ATENDIMENTO_PROCEDIMENTO_CONVENIO),' ',''),'-',''))) AS CD_CONVENIO\n    ,ATENDIMENTO_PROCEDIMENTO_CONVENIO AS DS_CONVENIO\n    ,CASE\n        WHEN UPPER(ATENDIMENTO_PROCEDIMENTO_CONVENIO) LIKE '%PARTICULAR%' THEN 'PARTICULAR'\n        WHEN UPPER(ATENDIMENTO_PROCEDIMENTO_CONVENIO) LIKE '%SUS%' THEN 'SUS'\n        ELSE 'CONVÊNIO'\n     END TP_CONVENIO\n    ,'0' AS CD_CGC\n    \nFROM dw.inst_dr_osmar_Atendimento\n\n)\n\nMERGE\t           \n\tDW.inst_dr_osmar_CONVENIO AS destino           \nUSING            \n\tCONV AS origem           \n           \n    ON\t(        \n        origem.FK_CONVENIO = destino.FK_CONVENIO\n\t\t)        \n\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \nDESTINO.ESTABELECIMENTO = ORIGEM.ESTABELECIMENTO\n,DESTINO.FK_CONVENIO = ORIGEM.FK_CONVENIO\n,DESTINO.CD_CONVENIO = ORIGEM.CD_CONVENIO\n,DESTINO.DS_CONVENIO = ORIGEM.DS_CONVENIO\n,DESTINO.TP_CONVENIO = ORIGEM.TP_CONVENIO\n,DESTINO.CD_CGC = ORIGEM.CD_CGC\n\n\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\nORIGEM.ESTABELECIMENTO\n,ORIGEM.FK_CONVENIO\n,ORIGEM.CD_CONVENIO\n,ORIGEM.DS_CONVENIO\n,ORIGEM.TP_CONVENIO\n,ORIGEM.CD_CGC\n); \n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
 					}
 				],
 				"policy": {
@@ -55159,7 +55192,8 @@
 				"[concat(variables('factoryId'), '/datasets/INST_DR_OSMAR_VENDA_DIARIA')]",
 				"[concat(variables('factoryId'), '/datasets/INST_DR_OSMAR_PROFISSIONAL')]",
 				"[concat(variables('factoryId'), '/datasets/INST_DR_OSMAR_PROFISSIONAL_DIARIO')]",
-				"[concat(variables('factoryId'), '/linkedServices/SQL_DESTINO')]"
+				"[concat(variables('factoryId'), '/linkedServices/SQL_DESTINO')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
 			]
 		},
 		{
@@ -83637,6 +83671,39 @@
 								}
 							]
 						}
+					},
+					{
+						"name": "CONVENIO MERGE",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "ATENDIMENTO MERGE",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "WITH CONV AS(\n\nSELECT DISTINCT\n    '40' AS ESTABELECIMENTO\n    ,'40|' + LTRIM(RTRIM(REPLACE(REPLACE(UPPER(ATENDIMENTO_PROCEDIMENTO_CONVENIO),' ',''),'-',''))) AS FK_CONVENIO\n    ,LTRIM(RTRIM(REPLACE(REPLACE(UPPER(ATENDIMENTO_PROCEDIMENTO_CONVENIO),' ',''),'-',''))) AS CD_CONVENIO\n    ,ATENDIMENTO_PROCEDIMENTO_CONVENIO AS DS_CONVENIO\n    ,CASE\n        WHEN UPPER(ATENDIMENTO_PROCEDIMENTO_CONVENIO) LIKE '%PARTICULAR%' THEN 'PARTICULAR'\n        WHEN UPPER(ATENDIMENTO_PROCEDIMENTO_CONVENIO) LIKE '%SUS%' THEN 'SUS'\n        ELSE 'CONVÊNIO'\n     END TP_CONVENIO\n    ,'0' AS CD_CGC\n        \nFROM dw.urobrasil_Atendimento\n\n)\n\nMERGE\t           \n\tDW.UROBRASIL_CONVENIO AS destino           \nUSING            \n\tCONV AS origem           \n           \n    ON\t(        \n        origem.FK_CONVENIO = destino.FK_CONVENIO\n\t\t)        \n\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \nDESTINO.ESTABELECIMENTO = ORIGEM.ESTABELECIMENTO\n,DESTINO.FK_CONVENIO = ORIGEM.FK_CONVENIO\n,DESTINO.CD_CONVENIO = ORIGEM.CD_CONVENIO\n,DESTINO.DS_CONVENIO = ORIGEM.DS_CONVENIO\n,DESTINO.TP_CONVENIO = ORIGEM.TP_CONVENIO\n,DESTINO.CD_CGC = ORIGEM.CD_CGC\n\n\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\nORIGEM.ESTABELECIMENTO\n,ORIGEM.FK_CONVENIO\n,ORIGEM.CD_CONVENIO\n,ORIGEM.DS_CONVENIO\n,ORIGEM.TP_CONVENIO\n,ORIGEM.CD_CGC\n); "
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
 					}
 				],
 				"policy": {
@@ -83674,7 +83741,8 @@
 				"[concat(variables('factoryId'), '/datasets/UROBRASIL_Venda_Diaria')]",
 				"[concat(variables('factoryId'), '/datasets/UROBRASIL_Profissional')]",
 				"[concat(variables('factoryId'), '/datasets/UROBRASIL_Profissional_Diario')]",
-				"[concat(variables('factoryId'), '/linkedServices/SQL_DESTINO')]"
+				"[concat(variables('factoryId'), '/linkedServices/SQL_DESTINO')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
 			]
 		},
 		{
