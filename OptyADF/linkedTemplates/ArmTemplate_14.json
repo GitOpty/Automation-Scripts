@@ -7,6 +7,10 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		},
+		"SMART_IOF_NEW_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SMART_IOF_NEW'"
+		},
 		"SMART_ITABUNA_NEW_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'SMART_ITABUNA_NEW'"
@@ -64,6 +68,23 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/SMART_IOF_NEW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SMART_IOF_NEW_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/SMART_ITABUNA_NEW')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -325,36 +346,6 @@
 					"referenceName": "ServidorArquivosBI",
 					"type": "IntegrationRuntimeReference"
 				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/FILE_SURVEY')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "sv_hmaisbrasildatadriven",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobFSLocation",
-						"fileName": "ho_aux_survey.csv",
-						"fileSystem": "requestia"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": [
-					{
-						"type": "String"
-					}
-				]
 			},
 			"dependsOn": []
 		},
@@ -3123,7 +3114,7 @@
 							"sink": {
 								"type": "AzureSqlSink",
 								"preCopyScript": {
-									"value": "--TRUNCATE TABLE STG.REQUESTIA_HO_AUX_SURVEY",
+									"value": "TRUNCATE TABLE STG.REQUESTIA_HO_AUX_SURVEY",
 									"type": "Expression"
 								},
 								"writeBehavior": "insert",
@@ -3174,9 +3165,7 @@
 				"annotations": [],
 				"lastPublishTime": "2021-02-17T17:43:08Z"
 			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/FILE_SURVEY')]"
-			]
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Databricks Five9 API')]",

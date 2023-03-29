@@ -7,6 +7,14 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		},
+		"Folder_Nexcore_Consolidado_properties_typeProperties_host": {
+			"type": "string",
+			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Consolidado"
+		},
+		"Folder_Nexcore_Consolidado_properties_typeProperties_userId": {
+			"type": "string",
+			"defaultValue": "hobrasil\\serv.corp.sa"
+		},
 		"Folder_Requestia_properties_typeProperties_host": {
 			"type": "string",
 			"defaultValue": "C:\\Power BI Gateway Files\\Requestia"
@@ -154,20 +162,39 @@
 		"Historicos_Bilhetes_DAYHORC_properties_typeProperties_userId": {
 			"type": "string",
 			"defaultValue": "hobrasil\\sa.automation"
-		},
-		"Historicos_Bilhetes_HOBL2_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "C:\\Power BI Gateway Files\\Nexcore\\Historicos NEXCORE\\HOBL2\\BilheteLigacoes\\Novo"
-		},
-		"Historicos_Bilhetes_HOBL2_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\sa.automation"
 		}
 	},
 	"variables": {
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Folder_Nexcore_Consolidado')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Folder onde são colocados os arquivos coletados do FTP Nexcore. Script agendado para execução diária no host 10.47.251.10",
+				"annotations": [],
+				"type": "FileServer",
+				"typeProperties": {
+					"host": "[parameters('Folder_Nexcore_Consolidado_properties_typeProperties_host')]",
+					"userId": "[parameters('Folder_Nexcore_Consolidado_properties_typeProperties_userId')]",
+					"password": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": "vmSA"
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Folder_Requestia')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -658,33 +685,6 @@
 				"typeProperties": {
 					"host": "[parameters('Historicos_Bilhetes_DAYHORC_properties_typeProperties_host')]",
 					"userId": "[parameters('Historicos_Bilhetes_DAYHORC_properties_typeProperties_userId')]",
-					"password": {
-						"type": "AzureKeyVaultSecret",
-						"store": {
-							"referenceName": "SV_OptyKeyVault",
-							"type": "LinkedServiceReference"
-						},
-						"secretName": "vmSA"
-					}
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Historicos_Bilhetes_HOBL2')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Historicos_Bilhetes_HOBL2",
-				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('Historicos_Bilhetes_HOBL2_properties_typeProperties_host')]",
-					"userId": "[parameters('Historicos_Bilhetes_HOBL2_properties_typeProperties_userId')]",
 					"password": {
 						"type": "AzureKeyVaultSecret",
 						"store": {
