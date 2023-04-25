@@ -1,0 +1,130 @@
+{
+	"name": "Agenda Smart",
+	"properties": {
+		"activities": [
+			{
+				"name": "Busca Banco",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT DISTINCT a.ESTABELECIMENTO ,A.NOME_KEYVAULT_SECRET\nFROM ADF.ctr_origem_destino A\nWHERE A.NOME_PLATAFORMA = 'SMART'\n    AND A.ESTABELECIMENTO IN (90,91)",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "SQL_ORIGEM_DW",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEach1",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Busca Banco",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Busca Banco').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Copy data1",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlServerSource",
+									"additionalColumns": [
+										{
+											"name": "ESTABELECIMENTO",
+											"value": {
+												"value": "@item().ESTABELECIMENTO",
+												"type": "Expression"
+											}
+										}
+									],
+									"sqlReaderQuery": "-- Varáveis utilizadas \nDECLARE @data_inicial DATE;\nDECLARE @data_final DATE;\nDECLARE @ano_inicio int;\nDECLARE @ano_final int;\n\nSET @ano_inicio = -1\nSET @ano_final = 1\n\n-- SET @data_inicial = cast(DATEADD(day, @dias, cast(GETDATE() as date)) as datetime)\nSET @data_inicial = CAST(CAST(YEAR(DATEADD(YEAR,@ano_inicio,GETDATE())) AS VARCHAR(4)) + '-01-01' AS DATE)  \nSET @data_final =  CAST(CAST(YEAR(DATEADD(YEAR,@ano_final,GETDATE())) AS VARCHAR(4)) + '-12-31' AS DATE)  \n\n-- PRINT @data_inicial\n\n-- Populando a #tabela de marcações\nWITH marcacoes AS (\n    SELECT agm_med\n        , agm_loc\n        , agm_hini\n        , agm_ext\n        , agm_pac\n        , agm_stat\n        , agm_canc_dthr\n        , agm_str_cod\n        , agm_dtmrc\n        , CASE \n            WHEN ISNULL(PATINDEX('%#%', agm_obs), 0) > 0\n                THEN UPPER(LEFT(REPLACE(SUBSTRING(agm_obs, PATINDEX('%#%', agm_obs), 5), ' ', ''), 4))\n            ELSE '#PNI'\n            END AS agm_proced\n        , agm_usr_login\n        , agm_confirm_stat\n        , agm_confirm_usr\n        , agm_confirm_dthr\n        , agm_confirm_moc\n        , agm_confirm_obs\n        , agm_canc_usr_login\n        , agm_cnv_cod\n        , agm_smk\n        , agm_tpsmk\n        , agm_canc_mot_tipo\n        , agm_canc_mot_cod\n        , agm_proc\n        , DATEADD(dd, DATEDIFF(dd, 0, agm_hini), 0) AS agm_data\n        , agm_ctf\n    FROM agm WITH (NOLOCK)\n    WHERE (\n            agm.agm_hini >= @data_inicial\n            -- AND agm.agm_hini <= @data_limite\n            )\n        AND agm_pac > 0\n    )\n\n-- Populando a #tabela de fila (presença)\n, fila AS (\n    SELECT DATEADD(dd, DATEDIFF(dd, 0, fle_dthr_chegada), 0) AS fle_data\n        , fle_pac_reg\n        , COUNT(*) AS fle_qtd\n    FROM fle WITH (NOLOCK)\n    WHERE fle_dthr_chegada >= @data_inicial\n        AND fle_dthr_chegada <= @data_final\n        AND fle_pac_reg IN (\n            SELECT DISTINCT agm_pac\n            FROM marcacoes WITH (NOLOCK)\n            )\n    GROUP BY DATEADD(dd, DATEDIFF(dd, 0, fle_dthr_chegada), 0)\n        , fle_pac_reg\n    )\n\n-- Selecionando os registros do relatório\nSELECT \n    str_e.str_nome AS DS_ESTABELECIMENTO\n    ,str_e.str_cod AS CD_ESTABELECIMENTO\n    ,agm_pac      \n    -- , pac_nome\n    , agm_dtmrc AS DT_AGENDAMENTO\n    , agm_hini  AS DT_AGENDA\n    , agm_canc_dthr\n    , agm_stat as IE_STATUS_AGENDA\n    , case\n        when UPPER(agm_stat) = 'E' THEN  'Executada'\n        when UPPER(agm_stat) = 'C' THEN  'Cancelada'\n        when UPPER(agm_stat) = 'B' THEN  'Bloqueada'\n        when UPPER(agm_stat) = 'A' THEN  'Aberta'\n      END DS_STATUS_AGENDA\n    , agm_canc_mot_cod CD_MOTIVO_CANCELAMENTO\n    , agm_cnv_cod   \n    -- , cnv_nome\n    , agm_str_cod  AS CD_AGENDA\n    , str.str_nome AS DS_AGENDA\n    , agm_med  AS CD_MEDICO\n    -- , psv_apel\n    , smk_ctf  AS CD_PROCEDIMENTO\n    -- , smk_rot AS DS_PROCEDIMENTO\n    , ctf_cod\n    , ctf_nome AS DS_CLASSIF_AGENDA\n    , ctf_tipo\n    , ctf_categ\n    , CASE \n        WHEN fle_qtd IS NULL\n            THEN 'S'\n        ELSE 'N'\n        END AS falta\n    , CASE \n        WHEN fle_qtd IS NOT NULL\n            THEN (\n                    SELECT TOP 1 t.agm_hini\n                    FROM marcacoes t\n                    WHERE marcacoes.agm_hini > t.agm_hini\n                        AND t.agm_pac = marcacoes.agm_pac\n                        AND t.agm_ctf = marcacoes.agm_ctf\n                        AND t.agm_tpsmk = marcacoes.agm_tpsmk\n                    ORDER BY agm_hini DESC\n                    )\n        END AS remarcacao\n    -- , dbo.fdu_getNumber(isnull(pac_fone, '')) AS telefone1\n    -- , dbo.fdu_getNumber(isnull(pac_fone2, '')) AS telefone2\n    -- , dbo.fdu_getNumber(isnull(pac_celular, '')) AS celular\n    -- , pac_email\n    , agm_proced\n    , agm_usr_login as NM_USUARIO\n    , agm_confirm_stat\n    , agm_proc AS CD_PROCEDENCIA\n    , agm_confirm_usr AS NM_USUARIO_CONFIRM\n    , agm_confirm_dthr\n    , agm_confirm_moc\n    , agm_confirm_obs\n    , mot_descr\n    , agm_canc_usr_login\nFROM marcacoes\n-- LEFT OUTER JOIN pac WITH (NOLOCK)    ON agm_pac = pac.pac_reg\n-- LEFT OUTER JOIN cnv WITH (NOLOCK)    ON agm_cnv_cod COLLATE DATABASE_DEFAULT = cnv.cnv_cod COLLATE DATABASE_DEFAULT\nLEFT OUTER JOIN loc WITH (NOLOCK)    ON loc_cod COLLATE DATABASE_DEFAULT = agm_loc COLLATE DATABASE_DEFAULT\nLEFT OUTER JOIN str WITH (NOLOCK)    ON loc_str = str.str_cod\nLEFT OUTER JOIN str str_e WITH (NOLOCK)    ON str_e.str_cod = str.str_str_cod\n-- LEFT OUTER JOIN psv WITH (NOLOCK)    ON agm_med = psv.psv_cod\nLEFT OUTER JOIN smk WITH (NOLOCK)    ON (agm_smk COLLATE DATABASE_DEFAULT = smk_cod COLLATE DATABASE_DEFAULT AND agm_tpsmk COLLATE DATABASE_DEFAULT = smk_tipo COLLATE DATABASE_DEFAULT)\nLEFT OUTER JOIN ctf WITH (NOLOCK)    ON ctf_cod = smk_ctf\nLEFT OUTER JOIN mot WITH (NOLOCK)    ON mot_tipo COLLATE DATABASE_DEFAULT = agm_canc_mot_tipo COLLATE DATABASE_DEFAULT AND mot_cod COLLATE DATABASE_DEFAULT = agm_canc_mot_cod COLLATE DATABASE_DEFAULT\nLEFT OUTER JOIN fila WITH (NOLOCK)   ON fle_pac_reg = agm_pac  AND fle_data = agm_data\nWHERE CAST(agm_hini AS DATE) >= @data_inicial\n    AND CAST(agm_hini AS DATE) <= @data_final",
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false,
+									"tableOption": "autoCreate",
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "SQL_AGENDA",
+									"type": "DatasetReference",
+									"parameters": {
+										"KeyVaultSecret": {
+											"value": "@item().NOME_KEYVAULT_SECRET",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "SQL_AGENDA_DW",
+									"type": "DatasetReference",
+									"parameters": {
+										"nm_tabela": "stg.agenda_smart"
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"Keyvaultsecret": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "Agenda Smart"
+		},
+		"annotations": []
+	}
+}
