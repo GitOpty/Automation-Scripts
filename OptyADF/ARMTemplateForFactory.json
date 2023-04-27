@@ -18726,7 +18726,6 @@
 						}
 					}
 				],
-				"concurrency": 5,
 				"policy": {
 					"elapsedTimeMetric": {},
 					"cancelAfter": {}
@@ -19654,7 +19653,6 @@
 						}
 					}
 				],
-				"concurrency": 5,
 				"policy": {
 					"elapsedTimeMetric": {},
 					"cancelAfter": {}
@@ -20768,7 +20766,6 @@
 						}
 					}
 				],
-				"concurrency": 5,
 				"policy": {
 					"elapsedTimeMetric": {},
 					"cancelAfter": {}
@@ -20790,83 +20787,6 @@
 				"[concat(variables('factoryId'), '/pipelines/Send email')]",
 				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/datasets/ORACLE_DINAMICO')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CEOP')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Copy data1",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "CEOP_DS_EXCEL",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_STG",
-								"type": "DatasetReference",
-								"parameters": {
-									"SCHEMA": "stg",
-									"TABELA": "ceop"
-								}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/P&P"
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/CEOP_DS_EXCEL')]",
-				"[concat(variables('factoryId'), '/datasets/AZ_SQL_STG')]"
 			]
 		},
 		{
@@ -21020,7 +20940,7 @@
 											"parameters": {
 												"SCHEMA": "stg",
 												"TABELA": {
-													"value": "@activity('Lista arquivos').output.itemName",
+													"value": "CEOP_FPA",
 													"type": "Expression"
 												}
 											}
@@ -21362,7 +21282,7 @@
 											"parameters": {
 												"SCHEMA": "stg",
 												"TABELA": {
-													"value": "@concat(activity('Lista arquivos').output.itemName,'_fpa')",
+													"value": "CEOP_FPA",
 													"type": "Expression"
 												}
 											}
@@ -59299,6 +59219,74 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Maqplan_Vendas')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Maqplan_Vendas",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Maqplan/VendaPorItem_Carga"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureDatabricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Merge DW Maqplan",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Maqplan_Vendas",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_CARGA_MAQPLAN_VENDASITENS"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Maqplan"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureDatabricks')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Movimento_Estoque')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -92198,7 +92186,7 @@
 						}
 					},
 					"columnDelimiter": ";",
-					"encodingName": "ISO-8859-1",
+					"encodingName": "UTF-8",
 					"escapeChar": "\\",
 					"firstRowAsHeader": true,
 					"quoteChar": "\""
