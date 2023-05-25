@@ -101,7 +101,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "SELECT  \n    B.NOME_KEYVAULT_SECRET\n    ,B.NOME_SCHEMA_ORIGEM\n    ,B.NOME_TABELA_ORIGEM\n    ,A.NOME_SCHEMA AS NOME_SCHEMA_DESTINO\n    ,A.NOME_TABELA AS NOME_TABELA_DESTINO\nFROM adf.ctr_reprocessa_dw A WITH(NOLOCK)\nINNER JOIN adf.ctr_origem_destino B WITH(NOLOCK) ON A.NOME_PLATAFORMA = B.NOME_PLATAFORMA AND A.NOME_TABELA = 'tbl_'+REPLACE(REPLACE(B.NOME_TABELA_ORIGEM,'VW_',''),'_V2','')\n",
+						"sqlReaderQuery": "SELECT  \n    B.NOME_KEYVAULT_SECRET\n    ,B.NOME_SCHEMA_ORIGEM\n    ,B.NOME_TABELA_ORIGEM\n    ,A.NOME_SCHEMA AS NOME_SCHEMA_DESTINO\n    ,A.NOME_TABELA AS NOME_TABELA_DESTINO\nFROM adf.ctr_reprocessa_dw A WITH(NOLOCK)\nINNER JOIN adf.ctr_origem_destino B WITH(NOLOCK) ON A.NOME_PLATAFORMA = B.NOME_PLATAFORMA AND A.NOME_TABELA = 'tbl_'+REPLACE(REPLACE(B.NOME_TABELA_ORIGEM,'VW_',''),'_V2','')\nWHERE A.IE_ATIVA = 'S'\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -131,7 +131,7 @@
 					},
 					"activities": [
 						{
-							"name": "Copiar Dados",
+							"name": "Copiar Dados DW",
 							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
@@ -265,6 +265,90 @@
 									}
 								},
 								"firstRowOnly": true
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "LISTA INDEX ENABLE",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "CARGA COMPLETA",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.05:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT \nCONCAT('ALTER INDEX  ', A.index_name , ' ON ' ,a.schema_nm , '.' , A.table_nm, ' DISABLE ') as DISABLE_INDEX , \nCONCAT('ALTER INDEX  ', A.index_name  , ' ON ' ,a.schema_nm , '.' , A.table_nm, ' REBUILD ') as REBUILD_INDEX ,\nA.index_name ,a.schema_nm + '.' + A.table_nm as tb\nFROM index_aj_dw A\nINNER JOIN ADF.ctr_origem_destino B WITH(NOLOCK) ON A.TABLE_NM = B.NOME_TABELA_DESTINO\nINNER JOIN ADF.CTR_REPROCESSA_DW C WITH(NOLOCK) ON C.NOME_SCHEMA = A.SCHEMA_NM AND C.NOME_TABELA = A.TABLE_NM\nWHERE C.IE_ATIVA = 'S'",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "LISTA_TABELAS_ADF",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "FOR EACH REBUILD INDEX",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LISTA INDEX ENABLE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LISTA INDEX ENABLE').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "REBUILD INDEX",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSQL_DB_Procedimentos",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "NonQuery",
+										"text": {
+											"value": "@item().REBUILD_INDEX",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
 							}
 						}
 					]
