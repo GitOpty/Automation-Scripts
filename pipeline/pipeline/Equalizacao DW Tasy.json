@@ -101,6 +101,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT  \n    B.NOME_KEYVAULT_SECRET\n    ,B.NOME_SCHEMA_ORIGEM\n    ,B.NOME_TABELA_ORIGEM\n    ,A.NOME_SCHEMA AS NOME_SCHEMA_DESTINO\n    ,A.NOME_TABELA AS NOME_TABELA_DESTINO\nFROM adf.ctr_reprocessa_dw A WITH(NOLOCK)\nINNER JOIN adf.ctr_origem_destino B WITH(NOLOCK) ON A.NOME_PLATAFORMA = B.NOME_PLATAFORMA AND A.NOME_TABELA = 'tbl_'+REPLACE(REPLACE(B.NOME_TABELA_ORIGEM,'VW_',''),'_V2','')\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -109,6 +110,164 @@
 						"type": "DatasetReference"
 					},
 					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "CARGA COMPLETA",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LIMPA TABELAS DESTINO",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('BUSCA_TABELA').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Copiar Dados",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "OracleSource",
+									"oracleReaderQuery": {
+										"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA,'.',item().NOME_TABELA)",
+										"type": "Expression"
+									},
+									"partitionOption": "None",
+									"convertDecimalToInteger": false,
+									"queryTimeout": "02:00:00"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ORACLE_DINAMICO",
+									"type": "DatasetReference",
+									"parameters": {
+										"NOME_KEYVAULT_SECRET": {
+											"value": "@item().NOME_KEYVAULT_SECRET",
+											"type": "Expression"
+										},
+										"schema_name": {
+											"value": "@item().NOME_SCHEMA",
+											"type": "Expression"
+										},
+										"table_name": {
+											"value": "@item().NOME_TABELA",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DESTINO_TABELAS_ADF",
+									"type": "DatasetReference",
+									"parameters": {
+										"Schema_Destino": {
+											"value": "@item().NOME_SCHEMA_DESTINO",
+											"type": "Expression"
+										},
+										"Tabela_Destino": {
+											"value": "@item().NOME_TABELA_DESTINO",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "LIMPA TABELAS DESTINO",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "BUSCA_TABELA",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('BUSCA_TABELA').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 30,
+					"activities": [
+						{
+							"name": "LIMPA TABELA DESTINO",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.05:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('truncate table ',\nitem().NOME_SCHEMA_DESTINO,\n'.',\nitem().NOME_TABELA_DESTINO,\n' SELECT 0')",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "DESTINO_TABELAS_ADF",
+									"type": "DatasetReference",
+									"parameters": {
+										"Schema_Destino": {
+											"value": "@item().NOME_SCHEMA_DESTINO",
+											"type": "Expression"
+										},
+										"Tabela_Destino": {
+											"value": "@item().NOME_TABELA_DESTINO",
+											"type": "Expression"
+										}
+									}
+								},
+								"firstRowOnly": true
+							}
+						}
+					]
 				}
 			}
 		],
