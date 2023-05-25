@@ -1,0 +1,120 @@
+{
+	"name": "Equalizacao DW Tasy",
+	"properties": {
+		"activities": [
+			{
+				"name": "LISTA INDEX DISABLE",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.05:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT \nCONCAT('ALTER INDEX  ', A.index_name , ' ON ' ,a.schema_nm , '.' , A.table_nm, ' DISABLE ') as DISABLE_INDEX , \nCONCAT('ALTER INDEX  ', A.index_name  , ' ON ' ,a.schema_nm , '.' , A.table_nm, ' REBUILD ') as REBUILD_INDEX ,\nA.index_name ,a.schema_nm + '.' + A.table_nm as tb\nFROM index_aj_dw A\nINNER JOIN ADF.ctr_origem_destino B WITH(NOLOCK) ON A.TABLE_NM = B.NOME_TABELA_DESTINO\nINNER JOIN ADF.CTR_REPROCESSA_DW C WITH(NOLOCK) ON C.NOME_SCHEMA = A.SCHEMA_NM AND C.NOME_TABELA = A.TABLE_NM\nWHERE C.IE_ATIVA = 'S'",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "LISTA_TABELAS_ADF",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "FOR EACH DISABLE INDEX",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LISTA INDEX DISABLE",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LISTA INDEX DISABLE').output.value",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "DISABLE INDEX",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSQL_DB_Procedimentos",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "NonQuery",
+										"text": {
+											"value": "@item().DISABLE_INDEX",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "BUSCA_TABELA",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "FOR EACH DISABLE INDEX",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "LISTA_TABELAS_ADF",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			}
+		],
+		"folder": {
+			"name": "Data Warehouse/Ajuste DW Tasy"
+		},
+		"annotations": []
+	}
+}
