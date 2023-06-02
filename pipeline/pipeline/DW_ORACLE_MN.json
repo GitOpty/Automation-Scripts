@@ -25,7 +25,7 @@
 					"source": {
 						"type": "AzureSqlSource",
 						"sqlReaderQuery": {
-							"value": "@concat('SELECT A.NOME_SERVIDOR,A.NOME_USUARIO,A.NOME_KEYVAULT_SECRET,A.NOME_SCHEMA_ORIGEM,A.NOME_TABELA_ORIGEM,A.NOME_SCHEMA_DESTINO,A.NOME_TABELA_DESTINO FROM ADF.ctr_origem_destino A WHERE A.NOME_TABELA_ORIGEM = ','''',variables('nm_tabela'),'''')",
+							"value": "@concat('SELECT A.NOME_SERVIDOR,A.NOME_USUARIO,A.NOME_KEYVAULT_SECRET,A.NOME_SCHEMA_ORIGEM,A.NOME_TABELA_ORIGEM,A.NOME_SCHEMA_DESTINO,A.NOME_TABELA_DESTINO \n    ,A.NOME_PROC\n    FROM ADF.ctr_origem_destino A WHERE A.NOME_TABELA_ORIGEM = ','''',variables('nm_tabela'),'''')",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00",
@@ -45,7 +45,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"variableName": "nm_tabela",
-					"value": "VW_NOTA_FISCAL"
+					"value": "VW_TITULO_RECEBER"
 				}
 			},
 			{
@@ -148,41 +148,6 @@
 				}
 			},
 			{
-				"name": "Call SP_CARGA_TBL",
-				"type": "Script",
-				"dependsOn": [
-					{
-						"activity": "ForEach1",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "7.00:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"typeProperties": {
-					"scripts": [
-						{
-							"type": "NonQuery",
-							"text": {
-								"value": "@concat('EXEC sp_carga_tbl_',replace(toUpper(variables('nm_tabela')),'VW_','' ))",
-								"type": "Expression"
-							}
-						}
-					]
-				}
-			},
-			{
 				"name": "ForEach2",
 				"type": "ForEach",
 				"dependsOn": [
@@ -227,6 +192,55 @@
 									}
 								],
 								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "ForEach3",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "ForEach1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Busca Tabelas').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "Call SP_CARGA_TBL",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSQL_DB_Procedimentos",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "NonQuery",
+										"text": {
+											"value": "@item().NOME_PROC",
+											"type": "Expression"
+										}
+									}
+								]
 							}
 						}
 					]
