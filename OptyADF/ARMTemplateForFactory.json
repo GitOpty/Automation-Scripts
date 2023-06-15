@@ -14694,7 +14694,7 @@
 								"type": "Expression"
 							},
 							"isSequential": false,
-							"batchCount": 5,
+							"batchCount": 15,
 							"activities": [
 								{
 									"name": "SE CARGA COMPLETA",
@@ -103764,6 +103764,189 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Repasse_Medico')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "AuxAtendimento",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ParquetSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"wildcardFileName": {
+										"value": "aux_atendimento.parquet",
+										"type": "Expression"
+									},
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "ParquetReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "TRUNCATE TABLE STG.auxatend_repasse",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Parquet_AuxAtend",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AuxAtend_Repasse",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Repasse Médico"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/Parquet_AuxAtend')]",
+				"[concat(variables('factoryId'), '/datasets/AuxAtend_Repasse')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Parquet_AuxAtend')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureBlobStorage_RepasseMedico",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"folderPath": "base/aux_atendimento",
+						"container": "repassemedico"
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": [
+					{
+						"name": "FK_NR_SEQ_ITEM",
+						"type": "UTF8"
+					},
+					{
+						"name": "DS_TIPO_REPASSE",
+						"type": "UTF8"
+					},
+					{
+						"name": "FK_CD_ESTABELECIMENTO",
+						"type": "UTF8"
+					},
+					{
+						"name": "FK_NR_REPASSE_TERCEIRO",
+						"type": "UTF8"
+					},
+					{
+						"name": "FK_NR_SEQ_TERCEIRO",
+						"type": "UTF8"
+					},
+					{
+						"name": "FK_NR_ATENDIMENTO",
+						"type": "UTF8"
+					},
+					{
+						"name": "FK_CD_MEDICO",
+						"type": "UTF8"
+					},
+					{
+						"name": "DS_OBSERVACAO",
+						"type": "UTF8"
+					},
+					{
+						"name": "DT_MESANO_REFERENCIA_REPASSE",
+						"type": "UTF8"
+					},
+					{
+						"name": "DT_MESANO_REFERENCIA_REPASSE_TERCEIRO",
+						"type": "UTF8"
+					},
+					{
+						"name": "DT_LIBERACAO",
+						"type": "UTF8"
+					},
+					{
+						"name": "DT_ATUALIZACAO",
+						"type": "UTF8"
+					},
+					{
+						"name": "VL_LIBERADO",
+						"type": "DECIMAL",
+						"precision": 15,
+						"scale": 2
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureBlobStorage_RepasseMedico')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AuxAtend_Repasse')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "auxatend_repasse"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
 		}
 	]
 }
