@@ -7,6 +7,14 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		},
+		"SMART_HOSL_NEW_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SMART_HOSL_NEW'"
+		},
+		"SMART_INOB_NEW_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SMART_INOB_NEW'"
+		},
 		"SMART_IOF_NEW_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'SMART_IOF_NEW'"
@@ -60,6 +68,40 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/SMART_HOSL_NEW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SMART_HOSL_NEW_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SMART_INOB_NEW')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": "[parameters('SMART_INOB_NEW_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/SMART_IOF_NEW')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -308,103 +350,6 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/Parquet_AuxAtend')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureBlobStorage_RepasseMedico",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "Parquet",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobStorageLocation",
-						"folderPath": "base/aux_atendimento",
-						"container": "repassemedico"
-					},
-					"compressionCodec": "snappy"
-				},
-				"schema": [
-					{
-						"name": "FK_NR_SEQ_ITEM",
-						"type": "UTF8"
-					},
-					{
-						"name": "DS_TIPO_REPASSE",
-						"type": "UTF8"
-					},
-					{
-						"name": "FK_CD_ESTABELECIMENTO",
-						"type": "UTF8"
-					},
-					{
-						"name": "FK_NR_REPASSE_TERCEIRO",
-						"type": "UTF8"
-					},
-					{
-						"name": "FK_NR_SEQ_TERCEIRO",
-						"type": "UTF8"
-					},
-					{
-						"name": "FK_NR_ATENDIMENTO",
-						"type": "UTF8"
-					},
-					{
-						"name": "FK_CD_MEDICO",
-						"type": "UTF8"
-					},
-					{
-						"name": "DS_OBSERVACAO",
-						"type": "UTF8"
-					},
-					{
-						"name": "DT_MESANO_REFERENCIA_REPASSE",
-						"type": "UTF8"
-					},
-					{
-						"name": "DT_MESANO_REFERENCIA_REPASSE_TERCEIRO",
-						"type": "UTF8"
-					},
-					{
-						"name": "DT_LIBERACAO",
-						"type": "UTF8"
-					},
-					{
-						"name": "DT_ATUALIZACAO",
-						"type": "UTF8"
-					},
-					{
-						"name": "VL_LIBERADO",
-						"type": "DECIMAL",
-						"precision": 15,
-						"scale": 2
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AuxAtend_Repasse')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [],
-				"typeProperties": {
-					"schema": "stg",
-					"table": "auxatend_repasse"
-				}
-			},
-			"dependsOn": []
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/2_Processa_DataMart')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -503,6 +448,12 @@
 														]
 													}
 												],
+												"policy": {
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
 												"userProperties": [],
 												"typeProperties": {
 													"variableName": "email",
@@ -3473,6 +3424,12 @@
 														]
 													}
 												],
+												"policy": {
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
 												"userProperties": [],
 												"typeProperties": {
 													"variableName": "email",

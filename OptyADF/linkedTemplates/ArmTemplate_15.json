@@ -2557,6 +2557,12 @@
 									"name": "Data_File",
 									"type": "SetVariable",
 									"dependsOn": [],
+									"policy": {
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
 									"userProperties": [],
 									"typeProperties": {
 										"variableName": "modif_dt",
@@ -2602,6 +2608,12 @@
 												"name": "DtModificao",
 												"type": "SetVariable",
 												"dependsOn": [],
+												"policy": {
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
 												"userProperties": [],
 												"typeProperties": {
 													"variableName": "dt_modif",
@@ -2617,6 +2629,12 @@
 												"name": "DtCriacao",
 												"type": "SetVariable",
 												"dependsOn": [],
+												"policy": {
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
 												"userProperties": [],
 												"typeProperties": {
 													"variableName": "dt_criacao",
@@ -2846,6 +2864,85 @@
 				},
 				"folder": {
 					"name": "Data Warehouse/Outros"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Repasse_Medico')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "AuxAtendimento",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ParquetSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"wildcardFileName": {
+										"value": "aux_atendimento.parquet",
+										"type": "Expression"
+									},
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "ParquetReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "TRUNCATE TABLE STG.auxatend_repasse",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "Parquet_AuxAtend",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AuxAtend_Repasse",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Repasse Médico"
 				},
 				"annotations": []
 			},
@@ -5943,38 +6040,6 @@
 					"location": {
 						"type": "FileServerLocation",
 						"fileName": "BilheteLigacoesCSI.csv"
-					},
-					"columnDelimiter": ";",
-					"escapeChar": "",
-					"firstRowAsHeader": true,
-					"quoteChar": ""
-				},
-				"schema": [
-					{
-						"type": "String"
-					}
-				]
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CSI_CSV_NC_FilasPorHora')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "Folder_Nexcore_Consolidado",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Nexcore/CSI"
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "FileServerLocation",
-						"fileName": "FilasPorHoraCSI.csv"
 					},
 					"columnDelimiter": ";",
 					"escapeChar": "",
