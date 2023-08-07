@@ -1,0 +1,111 @@
+{
+	"name": "DM_ProdDiaria_Tasy_Sadalla",
+	"properties": {
+		"activities": [
+			{
+				"name": "DT_INICIO",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "DT_INICIO",
+					"value": {
+						"value": "@concat('01/01/',string(add(int(formatDateTime(utcnow(),'yyyy')),-2)))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "DT_FINAL",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "DT_FINAL",
+					"value": {
+						"value": "@replace(formatDateTime(utcnow(),'dd-MM-yyyy'),'-','/')",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "Prod Diaria Sadalla",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "DT_FINAL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "DT_INICIO",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": {
+							"value": "@concat('SELECT * FROM VW_PROD_DIARIA_DW WHERE DT_ENTRADA between ''',variables('DT_INICIO'), ''' and ''',variables('DT_FINAL'),'''')",
+							"type": "Expression"
+						},
+						"partitionOption": "None",
+						"convertDecimalToInteger": false,
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "TRUNCATE TABLE stg.prod_diaria_sadalla",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "SadallaTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "SQL_PROD_DIARIA_SADALLA",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"variables": {
+			"DT_INICIO": {
+				"type": "String"
+			},
+			"DT_FINAL": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+		},
+		"annotations": []
+	}
+}
