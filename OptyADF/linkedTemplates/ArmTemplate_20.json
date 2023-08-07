@@ -13,283 +13,6 @@
 	},
 	"resources": [
 		{
-			"name": "[concat(parameters('factoryName'), '/AJ_PROCEDIMENTO_PACIENTE')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "DW_GERA_BUSCA_DT_PROCEDIMENTO_PACIENTE",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "SP_AJ_DW_GERA_BUSCA_DT_PROCEDIMENTO_PACIENTE"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						}
-					},
-					{
-						"name": "Busca Dt Reprocessar Proc",
-						"type": "Lookup",
-						"dependsOn": [
-							{
-								"activity": "DW_GERA_BUSCA_DT_PROCEDIMENTO_PACIENTE",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "\nSELECT\n    A.ESTABELECIMENTO\n    ,A.NOME_KEYVAULT_SECRET\n    ,CAST(A.INICIO_MES AS VARCHAR(200)) as INICIO_MES\n    ,CAST(A.FIM_MES AS VARCHAR(200)) as FIM_MES\n    ,'PROCEDIMENTO_PACIENTE' AS NM_PROCESSO\n   ,'DT_PROCEDIMENTO' AS NM_COLUMN\nFROM STG.tmp_aj_dw_procedimento_paciente  A",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "AZ_SQL",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "Carga Dados Novos",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Limpa Tabela Procedimento",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Busca Dt Reprocessar Proc').output.value",
-								"type": "Expression"
-							},
-							"isSequential": false,
-							"batchCount": 10,
-							"activities": [
-								{
-									"name": "Gerar Dados",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "0.12:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "OracleSource",
-											"oracleReaderQuery": {
-												"value": "@concat('SELECT * FROM VW_PROCEDIMENTO_PACIENTE WHERE DT_ATUALIZACAO BETWEEN','''',item().INICIO_MES,'''',' and ','''',item().FIM_MES,'''')",
-												"type": "Expression"
-											},
-											"partitionOption": "None",
-											"convertDecimalToInteger": false,
-											"queryTimeout": "02:00:00"
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"tableOption": "autoCreate",
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "ORACLE_LOG",
-											"type": "DatasetReference",
-											"parameters": {
-												"nm_keyvault": {
-													"value": "@item().NOME_KEYVAULT_SECRET",
-													"type": "Expression"
-												}
-											}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "stg",
-												"tabela_destino": {
-													"value": "@concat('AJ_',item().NM_PROCESSO)",
-													"type": "Expression"
-												}
-											}
-										}
-									]
-								}
-							]
-						}
-					},
-					{
-						"name": "Merge Dw Proc Paciente",
-						"type": "Script",
-						"dependsOn": [
-							{
-								"activity": "Delete Periodo DW",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": "--Sincronize a tabela de destino com dados atualizados da tabela de origem\n\nMERGE\n\t[dw].[TBL_PROCEDIMENTO_PACIENTE] AS destino\nUSING \n\tstg.AJ_PROCEDIMENTO_PACIENTE AS origem\n\n\tON (destino.NR_SEQUENCIA = origem.NR_SEQUENCIA AND destino.estabelecimento = origem.estabelecimento)\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração\nWHEN MATCHED \nTHEN UPDATE SET      \ndestino.[ESTABELECIMENTO] = origem.[ESTABELECIMENTO],\ndestino.[NR_SEQUENCIA] = origem.[NR_SEQUENCIA],\ndestino.[NR_ATENDIMENTO] = origem.[NR_ATENDIMENTO],\ndestino.[DT_ENTRADA_UNIDADE] = origem.[DT_ENTRADA_UNIDADE],\ndestino.[CD_PROCEDIMENTO] = origem.[CD_PROCEDIMENTO],\ndestino.[DT_PROCEDIMENTO] = origem.[DT_PROCEDIMENTO],\ndestino.[QT_PROCEDIMENTO] = origem.[QT_PROCEDIMENTO],\ndestino.[DT_ATUALIZACAO] = origem.[DT_ATUALIZACAO],\ndestino.[NM_USUARIO] = origem.[NM_USUARIO],\ndestino.[CD_MEDICO] = origem.[CD_MEDICO],\ndestino.[CD_CONVENIO] = origem.[CD_CONVENIO],\ndestino.[CD_CATEGORIA] = origem.[CD_CATEGORIA],\ndestino.[CD_PESSOA_FISICA] = origem.[CD_PESSOA_FISICA],\ndestino.[DT_PRESCRICAO] = origem.[DT_PRESCRICAO],\ndestino.[DS_OBSERVACAO] = origem.[DS_OBSERVACAO],\ndestino.[VL_PROCEDIMENTO] = origem.[VL_PROCEDIMENTO],\ndestino.[VL_MEDICO] = origem.[VL_MEDICO],\ndestino.[VL_ANESTESISTA] = origem.[VL_ANESTESISTA],\ndestino.[VL_MATERIAIS] = origem.[VL_MATERIAIS],\ndestino.[CD_EDICAO_AMB] = origem.[CD_EDICAO_AMB],\ndestino.[CD_TABELA_SERVICO] = origem.[CD_TABELA_SERVICO],\ndestino.[DT_VIGENCIA_PRECO] = origem.[DT_VIGENCIA_PRECO],\ndestino.[CD_PROCEDIMENTO_PRINC] = origem.[CD_PROCEDIMENTO_PRINC],\ndestino.[DT_PROCEDIMENTO_PRINC] = origem.[DT_PROCEDIMENTO_PRINC],\ndestino.[DT_ACERTO_CONTA] = origem.[DT_ACERTO_CONTA],\ndestino.[DT_ACERTO_CONVENIO] = origem.[DT_ACERTO_CONVENIO],\ndestino.[DT_ACERTO_MEDICO] = origem.[DT_ACERTO_MEDICO],\ndestino.[VL_AUXILIARES] = origem.[VL_AUXILIARES],\ndestino.[VL_CUSTO_OPERACIONAL] = origem.[VL_CUSTO_OPERACIONAL],\ndestino.[TX_MEDICO] = origem.[TX_MEDICO],\ndestino.[TX_ANESTESIA] = origem.[TX_ANESTESIA],\ndestino.[NR_PRESCRICAO] = origem.[NR_PRESCRICAO],\ndestino.[NR_SEQUENCIA_PRESCRICAO] = origem.[NR_SEQUENCIA_PRESCRICAO],\ndestino.[CD_MOTIVO_EXC_CONTA] = origem.[CD_MOTIVO_EXC_CONTA],\ndestino.[DS_COMPL_MOTIVO_EXCON] = origem.[DS_COMPL_MOTIVO_EXCON],\ndestino.[CD_ACAO] = origem.[CD_ACAO],\ndestino.[QT_DEVOLVIDA] = origem.[QT_DEVOLVIDA],\ndestino.[CD_MOTIVO_DEVOLUCAO] = origem.[CD_MOTIVO_DEVOLUCAO],\ndestino.[NR_CIRURGIA] = origem.[NR_CIRURGIA],\ndestino.[NR_DOC_CONVENIO] = origem.[NR_DOC_CONVENIO],\ndestino.[CD_MEDICO_EXECUTOR] = origem.[CD_MEDICO_EXECUTOR],\ndestino.[IE_COBRA_PF_PJ] = origem.[IE_COBRA_PF_PJ],\ndestino.[NR_LAUDO] = origem.[NR_LAUDO],\ndestino.[DT_CONTA] = origem.[DT_CONTA],\ndestino.[CD_SETOR_ATENDIMENTO] = origem.[CD_SETOR_ATENDIMENTO],\ndestino.[CD_CONTA_CONTABIL] = origem.[CD_CONTA_CONTABIL],\ndestino.[CD_PROCEDIMENTO_AIH] = origem.[CD_PROCEDIMENTO_AIH],\ndestino.[IE_ORIGEM_PROCED] = origem.[IE_ORIGEM_PROCED],\ndestino.[NR_AIH] = origem.[NR_AIH],\ndestino.[IE_RESPONSAVEL_CREDITO] = origem.[IE_RESPONSAVEL_CREDITO],\ndestino.[TX_PROCEDIMENTO] = origem.[TX_PROCEDIMENTO],\ndestino.[CD_EQUIPAMENTO] = origem.[CD_EQUIPAMENTO],\ndestino.[IE_VALOR_INFORMADO] = origem.[IE_VALOR_INFORMADO],\ndestino.[CD_ESTABELECIMENTO_CUSTO] = origem.[CD_ESTABELECIMENTO_CUSTO],\ndestino.[CD_TABELA_CUSTO] = origem.[CD_TABELA_CUSTO],\ndestino.[CD_SITUACAO_GLOSA] = origem.[CD_SITUACAO_GLOSA],\ndestino.[NR_LOTE_CONTABIL] = origem.[NR_LOTE_CONTABIL],\ndestino.[CD_PROCEDIMENTO_CONVENIO] = origem.[CD_PROCEDIMENTO_CONVENIO],\ndestino.[NR_SEQ_AUTORIZACAO] = origem.[NR_SEQ_AUTORIZACAO],\ndestino.[IE_TIPO_SERVICO_SUS] = origem.[IE_TIPO_SERVICO_SUS],\ndestino.[IE_TIPO_ATO_SUS] = origem.[IE_TIPO_ATO_SUS],\ndestino.[CD_CGC_PRESTADOR] = origem.[CD_CGC_PRESTADOR],\ndestino.[NR_NF_PRESTADOR] = origem.[NR_NF_PRESTADOR],\ndestino.[CD_ATIVIDADE_PROF_BPA] = origem.[CD_ATIVIDADE_PROF_BPA],\ndestino.[NR_INTERNO_CONTA] = origem.[NR_INTERNO_CONTA],\ndestino.[NR_SEQ_PROC_PRINC] = origem.[NR_SEQ_PROC_PRINC],\ndestino.[IE_GUIA_INFORMADA] = origem.[IE_GUIA_INFORMADA],\ndestino.[DT_INICIO_PROCEDIMENTO] = origem.[DT_INICIO_PROCEDIMENTO],\ndestino.[IE_EMITE_CONTA] = origem.[IE_EMITE_CONTA],\ndestino.[IE_FUNCAO_MEDICO] = origem.[IE_FUNCAO_MEDICO],\ndestino.[IE_CLASSIF_SUS] = origem.[IE_CLASSIF_SUS],\ndestino.[CD_ESPECIALIDADE] = origem.[CD_ESPECIALIDADE],\ndestino.[NM_USUARIO_ORIGINAL] = origem.[NM_USUARIO_ORIGINAL],\ndestino.[NR_SEQ_PROC_PACOTE] = origem.[NR_SEQ_PROC_PACOTE],\ndestino.[IE_TIPO_PROC_SUS] = origem.[IE_TIPO_PROC_SUS],\ndestino.[CD_SETOR_RECEITA] = origem.[CD_SETOR_RECEITA],\ndestino.[VL_ADIC_PLANT] = origem.[VL_ADIC_PLANT],\ndestino.[QT_PORTE_ANESTESICO] = origem.[QT_PORTE_ANESTESICO],\ndestino.[TX_HORA_EXTRA] = origem.[TX_HORA_EXTRA],\ndestino.[IE_EMITE_CONTA_HONOR] = origem.[IE_EMITE_CONTA_HONOR],\ndestino.[NR_SEQ_ATEPACU] = origem.[NR_SEQ_ATEPACU],\ndestino.[IE_PROC_PRINC_ATEND] = origem.[IE_PROC_PRINC_ATEND],\ndestino.[CD_MEDICO_REQ] = origem.[CD_MEDICO_REQ],\ndestino.[IE_TIPO_GUIA] = origem.[IE_TIPO_GUIA],\ndestino.[IE_VIDEO] = origem.[IE_VIDEO],\ndestino.[NR_DOC_INTERNO] = origem.[NR_DOC_INTERNO],\ndestino.[IE_AUDITORIA] = origem.[IE_AUDITORIA],\ndestino.[NR_SEQ_GRUPO_REC] = origem.[NR_SEQ_GRUPO_REC],\ndestino.[CD_MEDICO_CONVENIO] = origem.[CD_MEDICO_CONVENIO],\ndestino.[CD_MOTIVO_AJUSTE] = origem.[CD_MOTIVO_AJUSTE],\ndestino.[IE_VIA_ACESSO] = origem.[IE_VIA_ACESSO],\ndestino.[NR_SEQ_COR_EXEC] = origem.[NR_SEQ_COR_EXEC],\ndestino.[NR_SEQ_EXAME] = origem.[NR_SEQ_EXAME],\ndestino.[IE_INTERCORRENCIA] = origem.[IE_INTERCORRENCIA],\ndestino.[NR_SEQ_ORIGEM] = origem.[NR_SEQ_ORIGEM],\ndestino.[IE_DISPERSAO] = origem.[IE_DISPERSAO],\ndestino.[CD_SETOR_PACIENTE] = origem.[CD_SETOR_PACIENTE],\ndestino.[NR_SEQ_CONTA_ORIGEM] = origem.[NR_SEQ_CONTA_ORIGEM],\ndestino.[NR_SEQ_PARCIAL] = origem.[NR_SEQ_PARCIAL],\ndestino.[NR_SEQ_PROC_INTERNO] = origem.[NR_SEQ_PROC_INTERNO],\ndestino.[CD_SENHA] = origem.[CD_SENHA],\ndestino.[NR_SEQ_AIH] = origem.[NR_SEQ_AIH],\ndestino.[NR_DOC_HONOR_CONV] = origem.[NR_DOC_HONOR_CONV],\ndestino.[DT_CONFERENCIA] = origem.[DT_CONFERENCIA],\ndestino.[IE_TIPO_ATEND_BPA] = origem.[IE_TIPO_ATEND_BPA],\ndestino.[IE_GRUPO_ATEND_BPA] = origem.[IE_GRUPO_ATEND_BPA],\ndestino.[CD_CGC_PRESTADOR_CONTA] = origem.[CD_CGC_PRESTADOR_CONTA],\ndestino.[CD_MEDICO_EXEC_CONTA] = origem.[CD_MEDICO_EXEC_CONTA],\ndestino.[NR_SEQ_PQ_PROC] = origem.[NR_SEQ_PQ_PROC],\ndestino.[QT_FILME] = origem.[QT_FILME],\ndestino.[NR_SEQ_PROC_CRIT_REPASSE] = origem.[NR_SEQ_PROC_CRIT_REPASSE],\ndestino.[CD_SENHA_AUTOR] = origem.[CD_SENHA_AUTOR],\ndestino.[CD_AUTOR_CONVENIO] = origem.[CD_AUTOR_CONVENIO],\ndestino.[NR_SEQ_REGRA_LANC] = origem.[NR_SEQ_REGRA_LANC],\ndestino.[IE_TISS_TIPO_GUIA] = origem.[IE_TISS_TIPO_GUIA],\ndestino.[NR_SEQ_TISS_TABELA] = origem.[NR_SEQ_TISS_TABELA],\ndestino.[NR_MINUTO_DURACAO] = origem.[NR_MINUTO_DURACAO],\ndestino.[IE_TISS_TIPO_GUIA_HONOR] = origem.[IE_TISS_TIPO_GUIA_HONOR],\ndestino.[NR_SEQ_REGRA_PRECO] = origem.[NR_SEQ_REGRA_PRECO],\ndestino.[IE_TISS_TIPO_GUIA_DESP] = origem.[IE_TISS_TIPO_GUIA_DESP],\ndestino.[IE_TECNICA_UTILIZADA] = origem.[IE_TECNICA_UTILIZADA],\ndestino.[IE_TISS_TIPO_DESPESA] = origem.[IE_TISS_TIPO_DESPESA],\ndestino.[CD_CGC_PRESTADOR_TISS] = origem.[CD_CGC_PRESTADOR_TISS],\ndestino.[CD_CGC_HONORARIO_TISS] = origem.[CD_CGC_HONORARIO_TISS],\ndestino.[IE_INTEGRACAO] = origem.[IE_INTEGRACAO],\ndestino.[NR_SEQ_PROC_ACERTO] = origem.[NR_SEQ_PROC_ACERTO],\ndestino.[VL_ORIGINAL_TABELA] = origem.[VL_ORIGINAL_TABELA],\ndestino.[CD_DOENCA_CID] = origem.[CD_DOENCA_CID],\ndestino.[NR_SEQ_APAC] = origem.[NR_SEQ_APAC],\ndestino.[NR_SEQ_AJUSTE_PROC] = origem.[NR_SEQ_AJUSTE_PROC],\ndestino.[CD_TAB_CUSTO_PRECO] = origem.[CD_TAB_CUSTO_PRECO],\ndestino.[NR_SEQ_PROC_AUTOR] = origem.[NR_SEQ_PROC_AUTOR],\ndestino.[IE_DOC_EXECUTOR] = origem.[IE_DOC_EXECUTOR],\ndestino.[NR_SEQ_REGRA_DOC] = origem.[NR_SEQ_REGRA_DOC],\ndestino.[CD_CBO] = origem.[CD_CBO],\ndestino.[CD_PRESTADOR_TISS] = origem.[CD_PRESTADOR_TISS],\ndestino.[CD_CGC_PREST_SOLIC_TISS] = origem.[CD_CGC_PREST_SOLIC_TISS],\ndestino.[CD_SETOR_RESP] = origem.[CD_SETOR_RESP],\ndestino.[DT_FINAL_PROCEDIMENTO] = origem.[DT_FINAL_PROCEDIMENTO],\ndestino.[IE_TISS_DESP_HONOR] = origem.[IE_TISS_DESP_HONOR],\ndestino.[NR_SEQ_PROC_EST] = origem.[NR_SEQ_PROC_EST],\ndestino.[CD_PREST_RESP] = origem.[CD_PREST_RESP],\ndestino.[CD_MEDICO_EXEC_TISS] = origem.[CD_MEDICO_EXEC_TISS],\ndestino.[DS_PROC_TISS] = origem.[DS_PROC_TISS],\ndestino.[NR_SEQ_TAMANHO_FILME] = origem.[NR_SEQ_TAMANHO_FILME],\ndestino.[DS_PRESTADOR_TISS] = origem.[DS_PRESTADOR_TISS],\ndestino.[NR_SEQ_PROC_CRIT_HOR] = origem.[NR_SEQ_PROC_CRIT_HOR],\ndestino.[NR_SEQ_REG_TEMPLATE] = origem.[NR_SEQ_REG_TEMPLATE],\ndestino.[CD_PROCEDIMENTO_TUSS] = origem.[CD_PROCEDIMENTO_TUSS],\ndestino.[IE_RATEAR_ITEM] = origem.[IE_RATEAR_ITEM],\ndestino.[IE_COMPLEXIDADE] = origem.[IE_COMPLEXIDADE],\ndestino.[IE_TIPO_FINANCIAMENTO] = origem.[IE_TIPO_FINANCIAMENTO],\ndestino.[CD_FUNCAO] = origem.[CD_FUNCAO],\ndestino.[CD_PERFIL] = origem.[CD_PERFIL],\ndestino.[NR_SEQ_REGRA_QTDE_EXEC] = origem.[NR_SEQ_REGRA_QTDE_EXEC],\ndestino.[CD_CENTRO_CUSTO_RECEITA] = origem.[CD_CENTRO_CUSTO_RECEITA],\ndestino.[NR_SEQ_REGRA_GUIA_TISS] = origem.[NR_SEQ_REGRA_GUIA_TISS],\ndestino.[NR_SEQ_REGRA_HONOR_TISS] = origem.[NR_SEQ_REGRA_HONOR_TISS],\ndestino.[IE_TIPO_ATEND_TISS] = origem.[IE_TIPO_ATEND_TISS],\ndestino.[VL_DESP_TISS] = origem.[VL_DESP_TISS],\ndestino.[IE_RESP_CRED_MANUAL] = origem.[IE_RESP_CRED_MANUAL],\ndestino.[NR_SEQ_JUST_VALOR_INF] = origem.[NR_SEQ_JUST_VALOR_INF],\ndestino.[CD_MEDICO_SOLIC_TISS] = origem.[CD_MEDICO_SOLIC_TISS],\ndestino.[CD_MEDICO_PROF_SOLIC_TISS] = origem.[CD_MEDICO_PROF_SOLIC_TISS],\ndestino.[VL_REPASSE_CALC] = origem.[VL_REPASSE_CALC],\ndestino.[TX_CUSTO_OPER_QT] = origem.[TX_CUSTO_OPER_QT],\ndestino.[IE_SPECT] = origem.[IE_SPECT],\ndestino.[NR_SEQ_AGENDA_RXT] = origem.[NR_SEQ_AGENDA_RXT],\ndestino.[CD_PRESTADOR_SOLIC_TISS] = origem.[CD_PRESTADOR_SOLIC_TISS],\ndestino.[DS_PRESTADOR_SOLIC_TISS] = origem.[DS_PRESTADOR_SOLIC_TISS],\ndestino.[VL_TX_DESCONTO] = origem.[VL_TX_DESCONTO],\ndestino.[VL_TX_ADM] = origem.[VL_TX_ADM],\ndestino.[CD_MEDICO_HONOR_TISS] = origem.[CD_MEDICO_HONOR_TISS],\ndestino.[NR_CONTROLE] = origem.[NR_CONTROLE],\ndestino.[NR_SEQ_REGRA_TAXA_CIR] = origem.[NR_SEQ_REGRA_TAXA_CIR],\ndestino.[NR_SEQ_PROC_ORIG] = origem.[NR_SEQ_PROC_ORIG],\ndestino.[NR_SEQUENCIA_GAS] = origem.[NR_SEQUENCIA_GAS],\ndestino.[NR_SEQ_ETAPA_CHECKUP] = origem.[NR_SEQ_ETAPA_CHECKUP],\ndestino.[NR_SEQ_CHECKUP_ETAPA] = origem.[NR_SEQ_CHECKUP_ETAPA],\ndestino.[IE_VIA_HEMODINAMICA] = origem.[IE_VIA_HEMODINAMICA],\ndestino.[CD_REGRA_REPASSE] = origem.[CD_REGRA_REPASSE],\ndestino.[IE_TRAT_CONTA_RN] = origem.[IE_TRAT_CONTA_RN],\ndestino.[NR_SEQ_REG_PROCED] = origem.[NR_SEQ_REG_PROCED],\ndestino.[NR_SEQ_PEPO] = origem.[NR_SEQ_PEPO],\ndestino.[NR_SEQ_MOTIVO_INCL] = origem.[NR_SEQ_MOTIVO_INCL],\ndestino.[DT_CONVERSAO_MANUAL] = origem.[DT_CONVERSAO_MANUAL],\ndestino.[NR_SEQ_TRANSFUSAO] = origem.[NR_SEQ_TRANSFUSAO],\ndestino.[NR_SEQ_RESERVA] = origem.[NR_SEQ_RESERVA],\ndestino.[CD_CGC_PREST_HONOR_TISS] = origem.[CD_CGC_PREST_HONOR_TISS],\ndestino.[IE_LADO] = origem.[IE_LADO],\ndestino.[NR_SEQ_HC_EQUIPAMENTO] = origem.[NR_SEQ_HC_EQUIPAMENTO],\ndestino.[DT_VINC_PROCED_ADIC] = origem.[DT_VINC_PROCED_ADIC],\ndestino.[DS_INDICACAO] = origem.[DS_INDICACAO],\ndestino.[CD_TIPO_ANESTESIA] = origem.[CD_TIPO_ANESTESIA],\ndestino.[NR_SEQ_MATERIAL] = origem.[NR_SEQ_MATERIAL],\ndestino.[IE_CARATER_CIRURGIA] = origem.[IE_CARATER_CIRURGIA],\ndestino.[CD_MEDICO_PREV_LAUDO] = origem.[CD_MEDICO_PREV_LAUDO],\ndestino.[DS_JUST_VALOR_INF] = origem.[DS_JUST_VALOR_INF],\ndestino.[NR_FONE_INTEGRACAO] = origem.[NR_FONE_INTEGRACAO],\ndestino.[DT_LIGACAO_INTEGRACAO] = origem.[DT_LIGACAO_INTEGRACAO],\ndestino.[NR_SEQ_LANC_ACAO] = origem.[NR_SEQ_LANC_ACAO],\ndestino.[DS_JUST_ALTER_DATA] = origem.[DS_JUST_ALTER_DATA],\ndestino.[NR_SEQ_ORIG_AUDIT] = origem.[NR_SEQ_ORIG_AUDIT],\ndestino.[NR_SEQ_SERVICO] = origem.[NR_SEQ_SERVICO],\ndestino.[NR_SEQ_SERVICO_CLASSIF] = origem.[NR_SEQ_SERVICO_CLASSIF],\ndestino.[NR_SEQ_SUS_EQUIPE] = origem.[NR_SEQ_SUS_EQUIPE],\ndestino.[NR_SEQ_PROC_DITADO] = origem.[NR_SEQ_PROC_DITADO],\ndestino.[NR_SEQ_CRIT_HONORARIO] = origem.[NR_SEQ_CRIT_HONORARIO],\ndestino.[IE_TX_CIR_TEMPO] = origem.[IE_TX_CIR_TEMPO],\ndestino.[NR_SEQ_PE_PRESCR] = origem.[NR_SEQ_PE_PRESCR],\ndestino.[NR_SEQ_PRESCR_MAT] = origem.[NR_SEQ_PRESCR_MAT],\ndestino.[NR_SEQ_SOLUCAO] = origem.[NR_SEQ_SOLUCAO],\ndestino.[CD_MEDICO_AUTENTICACAO] = origem.[CD_MEDICO_AUTENTICACAO],\ndestino.[DT_AUTENTICACAO] = origem.[DT_AUTENTICACAO],\ndestino.[DS_BIOMETRIA] = origem.[DS_BIOMETRIA],\ndestino.[NR_SEQ_PROC_DESDOB] = origem.[NR_SEQ_PROC_DESDOB],\ndestino.[CD_MEDICO_RESIDENTE] = origem.[CD_MEDICO_RESIDENTE],\ndestino.[IE_RETORNO] = origem.[IE_RETORNO],\ndestino.[NR_ATO_IPASGO] = origem.[NR_ATO_IPASGO],\ndestino.[NR_SEQ_CONTA_REVERSAO] = origem.[NR_SEQ_CONTA_REVERSAO],\ndestino.[NR_SEQ_REGRA_PEPO] = origem.[NR_SEQ_REGRA_PEPO],\ndestino.[DS_PROC_TUSS] = origem.[DS_PROC_TUSS],\ndestino.[NR_SEQ_TUSS_ITEM] = origem.[NR_SEQ_TUSS_ITEM]\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino\nWHEN NOT MATCHED BY TARGET \nTHEN INSERT \n\tVALUES (  \norigem.[ESTABELECIMENTO],\norigem.[NR_SEQUENCIA],\norigem.[NR_ATENDIMENTO],\norigem.[DT_ENTRADA_UNIDADE],\norigem.[CD_PROCEDIMENTO],\norigem.[DT_PROCEDIMENTO],\norigem.[QT_PROCEDIMENTO],\norigem.[DT_ATUALIZACAO],\norigem.[NM_USUARIO],\norigem.[CD_MEDICO],\norigem.[CD_CONVENIO],\norigem.[CD_CATEGORIA],\norigem.[CD_PESSOA_FISICA],\norigem.[DT_PRESCRICAO],\norigem.[DS_OBSERVACAO],\norigem.[VL_PROCEDIMENTO],\norigem.[VL_MEDICO],\norigem.[VL_ANESTESISTA],\norigem.[VL_MATERIAIS],\norigem.[CD_EDICAO_AMB],\norigem.[CD_TABELA_SERVICO],\norigem.[DT_VIGENCIA_PRECO],\norigem.[CD_PROCEDIMENTO_PRINC],\norigem.[DT_PROCEDIMENTO_PRINC],\norigem.[DT_ACERTO_CONTA],\norigem.[DT_ACERTO_CONVENIO],\norigem.[DT_ACERTO_MEDICO],\norigem.[VL_AUXILIARES],\norigem.[VL_CUSTO_OPERACIONAL],\norigem.[TX_MEDICO],\norigem.[TX_ANESTESIA],\norigem.[NR_PRESCRICAO],\norigem.[NR_SEQUENCIA_PRESCRICAO],\norigem.[CD_MOTIVO_EXC_CONTA],\norigem.[DS_COMPL_MOTIVO_EXCON],\norigem.[CD_ACAO],\norigem.[QT_DEVOLVIDA],\norigem.[CD_MOTIVO_DEVOLUCAO],\norigem.[NR_CIRURGIA],\norigem.[NR_DOC_CONVENIO],\norigem.[CD_MEDICO_EXECUTOR],\norigem.[IE_COBRA_PF_PJ],\norigem.[NR_LAUDO],\norigem.[DT_CONTA],\norigem.[CD_SETOR_ATENDIMENTO],\norigem.[CD_CONTA_CONTABIL],\norigem.[CD_PROCEDIMENTO_AIH],\norigem.[IE_ORIGEM_PROCED],\norigem.[NR_AIH],\norigem.[IE_RESPONSAVEL_CREDITO],\norigem.[TX_PROCEDIMENTO],\norigem.[CD_EQUIPAMENTO],\norigem.[IE_VALOR_INFORMADO],\norigem.[CD_ESTABELECIMENTO_CUSTO],\norigem.[CD_TABELA_CUSTO],\norigem.[CD_SITUACAO_GLOSA],\norigem.[NR_LOTE_CONTABIL],\norigem.[CD_PROCEDIMENTO_CONVENIO],\norigem.[NR_SEQ_AUTORIZACAO],\norigem.[IE_TIPO_SERVICO_SUS],\norigem.[IE_TIPO_ATO_SUS],\norigem.[CD_CGC_PRESTADOR],\norigem.[NR_NF_PRESTADOR],\norigem.[CD_ATIVIDADE_PROF_BPA],\norigem.[NR_INTERNO_CONTA],\norigem.[NR_SEQ_PROC_PRINC],\norigem.[IE_GUIA_INFORMADA],\norigem.[DT_INICIO_PROCEDIMENTO],\norigem.[IE_EMITE_CONTA],\norigem.[IE_FUNCAO_MEDICO],\norigem.[IE_CLASSIF_SUS],\norigem.[CD_ESPECIALIDADE],\norigem.[NM_USUARIO_ORIGINAL],\norigem.[NR_SEQ_PROC_PACOTE],\norigem.[IE_TIPO_PROC_SUS],\norigem.[CD_SETOR_RECEITA],\norigem.[VL_ADIC_PLANT],\norigem.[QT_PORTE_ANESTESICO],\norigem.[TX_HORA_EXTRA],\norigem.[IE_EMITE_CONTA_HONOR],\norigem.[NR_SEQ_ATEPACU],\norigem.[IE_PROC_PRINC_ATEND],\norigem.[CD_MEDICO_REQ],\norigem.[IE_TIPO_GUIA],\norigem.[IE_VIDEO],\norigem.[NR_DOC_INTERNO],\norigem.[IE_AUDITORIA],\norigem.[NR_SEQ_GRUPO_REC],\norigem.[CD_MEDICO_CONVENIO],\norigem.[CD_MOTIVO_AJUSTE],\norigem.[IE_VIA_ACESSO],\norigem.[NR_SEQ_COR_EXEC],\norigem.[NR_SEQ_EXAME],\norigem.[IE_INTERCORRENCIA],\norigem.[NR_SEQ_ORIGEM],\norigem.[IE_DISPERSAO],\norigem.[CD_SETOR_PACIENTE],\norigem.[NR_SEQ_CONTA_ORIGEM],\norigem.[NR_SEQ_PARCIAL],\norigem.[NR_SEQ_PROC_INTERNO],\norigem.[CD_SENHA],\norigem.[NR_SEQ_AIH],\norigem.[NR_DOC_HONOR_CONV],\norigem.[DT_CONFERENCIA],\norigem.[IE_TIPO_ATEND_BPA],\norigem.[IE_GRUPO_ATEND_BPA],\norigem.[CD_CGC_PRESTADOR_CONTA],\norigem.[CD_MEDICO_EXEC_CONTA],\norigem.[NR_SEQ_PQ_PROC],\norigem.[QT_FILME],\norigem.[NR_SEQ_PROC_CRIT_REPASSE],\norigem.[CD_SENHA_AUTOR],\norigem.[CD_AUTOR_CONVENIO],\norigem.[NR_SEQ_REGRA_LANC],\norigem.[IE_TISS_TIPO_GUIA],\norigem.[NR_SEQ_TISS_TABELA],\norigem.[NR_MINUTO_DURACAO],\norigem.[IE_TISS_TIPO_GUIA_HONOR],\norigem.[NR_SEQ_REGRA_PRECO],\norigem.[IE_TISS_TIPO_GUIA_DESP],\norigem.[IE_TECNICA_UTILIZADA],\norigem.[IE_TISS_TIPO_DESPESA],\norigem.[CD_CGC_PRESTADOR_TISS],\norigem.[CD_CGC_HONORARIO_TISS],\norigem.[IE_INTEGRACAO],\norigem.[NR_SEQ_PROC_ACERTO],\norigem.[VL_ORIGINAL_TABELA],\norigem.[CD_DOENCA_CID],\norigem.[NR_SEQ_APAC],\norigem.[NR_SEQ_AJUSTE_PROC],\norigem.[CD_TAB_CUSTO_PRECO],\norigem.[NR_SEQ_PROC_AUTOR],\norigem.[IE_DOC_EXECUTOR],\norigem.[NR_SEQ_REGRA_DOC],\norigem.[CD_CBO],\norigem.[CD_PRESTADOR_TISS],\norigem.[CD_CGC_PREST_SOLIC_TISS],\norigem.[CD_SETOR_RESP],\norigem.[DT_FINAL_PROCEDIMENTO],\norigem.[IE_TISS_DESP_HONOR],\norigem.[NR_SEQ_PROC_EST],\norigem.[CD_PREST_RESP],\norigem.[CD_MEDICO_EXEC_TISS],\norigem.[DS_PROC_TISS],\norigem.[NR_SEQ_TAMANHO_FILME],\norigem.[DS_PRESTADOR_TISS],\norigem.[NR_SEQ_PROC_CRIT_HOR],\norigem.[NR_SEQ_REG_TEMPLATE],\norigem.[CD_PROCEDIMENTO_TUSS],\norigem.[IE_RATEAR_ITEM],\norigem.[IE_COMPLEXIDADE],\norigem.[IE_TIPO_FINANCIAMENTO],\norigem.[CD_FUNCAO],\norigem.[CD_PERFIL],\norigem.[NR_SEQ_REGRA_QTDE_EXEC],\norigem.[CD_CENTRO_CUSTO_RECEITA],\norigem.[NR_SEQ_REGRA_GUIA_TISS],\norigem.[NR_SEQ_REGRA_HONOR_TISS],\norigem.[IE_TIPO_ATEND_TISS],\norigem.[VL_DESP_TISS],\norigem.[IE_RESP_CRED_MANUAL],\norigem.[NR_SEQ_JUST_VALOR_INF],\norigem.[CD_MEDICO_SOLIC_TISS],\norigem.[CD_MEDICO_PROF_SOLIC_TISS],\norigem.[VL_REPASSE_CALC],\norigem.[TX_CUSTO_OPER_QT],\norigem.[IE_SPECT],\norigem.[NR_SEQ_AGENDA_RXT],\norigem.[CD_PRESTADOR_SOLIC_TISS],\norigem.[DS_PRESTADOR_SOLIC_TISS],\norigem.[VL_TX_DESCONTO],\norigem.[VL_TX_ADM],\norigem.[CD_MEDICO_HONOR_TISS],\norigem.[NR_CONTROLE],\norigem.[NR_SEQ_REGRA_TAXA_CIR],\norigem.[NR_SEQ_PROC_ORIG],\norigem.[NR_SEQUENCIA_GAS],\norigem.[NR_SEQ_ETAPA_CHECKUP],\norigem.[NR_SEQ_CHECKUP_ETAPA],\norigem.[IE_VIA_HEMODINAMICA],\norigem.[CD_REGRA_REPASSE],\norigem.[IE_TRAT_CONTA_RN],\norigem.[NR_SEQ_REG_PROCED],\norigem.[NR_SEQ_PEPO],\norigem.[NR_SEQ_MOTIVO_INCL],\norigem.[DT_CONVERSAO_MANUAL],\norigem.[NR_SEQ_TRANSFUSAO],\norigem.[NR_SEQ_RESERVA],\norigem.[CD_CGC_PREST_HONOR_TISS],\norigem.[IE_LADO],\norigem.[NR_SEQ_HC_EQUIPAMENTO],\norigem.[DT_VINC_PROCED_ADIC],\norigem.[DS_INDICACAO],\norigem.[CD_TIPO_ANESTESIA],\norigem.[NR_SEQ_MATERIAL],\norigem.[IE_CARATER_CIRURGIA],\norigem.[CD_MEDICO_PREV_LAUDO],\norigem.[DS_JUST_VALOR_INF],\norigem.[NR_FONE_INTEGRACAO],\norigem.[DT_LIGACAO_INTEGRACAO],\norigem.[NR_SEQ_LANC_ACAO],\norigem.[DS_JUST_ALTER_DATA],\norigem.[NR_SEQ_ORIG_AUDIT],\norigem.[NR_SEQ_SERVICO],\norigem.[NR_SEQ_SERVICO_CLASSIF],\norigem.[NR_SEQ_SUS_EQUIPE],\norigem.[NR_SEQ_PROC_DITADO],\norigem.[NR_SEQ_CRIT_HONORARIO],\norigem.[IE_TX_CIR_TEMPO],\norigem.[NR_SEQ_PE_PRESCR],\norigem.[NR_SEQ_PRESCR_MAT],\norigem.[NR_SEQ_SOLUCAO],\norigem.[CD_MEDICO_AUTENTICACAO],\norigem.[DT_AUTENTICACAO],\norigem.[DS_BIOMETRIA],\norigem.[NR_SEQ_PROC_DESDOB],\norigem.[CD_MEDICO_RESIDENTE],\norigem.[IE_RETORNO],\norigem.[NR_ATO_IPASGO],\norigem.[NR_SEQ_CONTA_REVERSAO],\norigem.[NR_SEQ_REGRA_PEPO],\norigem.[DS_PROC_TUSS],\norigem.[NR_SEQ_TUSS_ITEM]\n\t         ) ;\n \n"
-								}
-							],
-							"scriptBlockExecutionTimeout": "02:00:00"
-						}
-					},
-					{
-						"name": "Limpa Tabela Procedimento",
-						"type": "Script",
-						"dependsOn": [
-							{
-								"activity": "Busca Dt Reprocessar Proc",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": "truncate table stg.AJ_PROCEDIMENTO_PACIENTE"
-								}
-							],
-							"scriptBlockExecutionTimeout": "02:00:00"
-						}
-					},
-					{
-						"name": "Delete Periodo DW",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Limpa Tabela Procedimento",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Busca Dt Reprocessar Proc').output.value",
-								"type": "Expression"
-							},
-							"activities": [
-								{
-									"name": "DELETE FROM DW",
-									"type": "Script",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "0.12:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"linkedServiceName": {
-										"referenceName": "AzureSQL_DB_Procedimentos",
-										"type": "LinkedServiceReference"
-									},
-									"typeProperties": {
-										"scripts": [
-											{
-												"type": "NonQuery",
-												"text": {
-													"value": "@concat('DELETE FROM DW.TBL_',item().NM_PROCESSO,' WHERE CAST(',item().NM_COLUMN,' as date) BETWEEN ','''',item().INICIO_MES,'''',' and ','''',item().FIM_MES,'''', ' and ESTABELECIMENTO=',item().ESTABELECIMENTO)",
-													"type": "Expression"
-												}
-											}
-										],
-										"scriptBlockExecutionTimeout": "20:00:00"
-									}
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/Ajuste DW Tasy/Antigo"
-				},
-				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/ANTERIOR_Movimento_Estoque')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -12453,6 +12176,917 @@
 						"linkedServiceName": {
 							"referenceName": "AzureSQL_DB_Procedimentos",
 							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"concurrency": 5,
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"variables": {
+					"StartTime": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/CARGA_DINAMICA_ADF_NAJA_DW')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "LISTA ORIGEM DESTINO",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.05:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderStoredProcedureName": "[[adf].[sp_origem_destino]",
+								"storedProcedureParameters": {
+									"COD_TABELA": {
+										"type": "String",
+										"value": null
+									},
+									"Dt_inicio_manual": {
+										"type": "DateTime",
+										"value": null
+									},
+									"manual": {
+										"type": "String",
+										"value": "N"
+									},
+									"plataforma": {
+										"type": "String",
+										"value": "NAJA"
+									}
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "LISTA_TABELAS_ADF",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "PROCESSA ETL",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "DROPA TABELAS DESTINO",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LISTA ORIGEM DESTINO').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "SE CARGA COMPLETA",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@equals(item().TIPO_CARGA,'COMPLETA')",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "DATA_HORA_INICIO_PARCIAL",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"policy": {
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "StartTime",
+													"value": {
+														"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "CARGA PARCIAL",
+												"type": "Copy",
+												"dependsOn": [
+													{
+														"activity": "DATA_HORA_INICIO_PARCIAL",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.05:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "OracleSource",
+														"oracleReaderQuery": {
+															"value": "@concat(\n'select * from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' where ', item().nome_coluna_referencia,' >= ''',\nitem().Data_Inicio, ''' and  ', item().nome_coluna_referencia,' <= ''', item().Data_Fim, ''''\n)",
+															"type": "Expression"
+														},
+														"partitionOption": "None",
+														"queryTimeout": "02:00:00"
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"writeBehavior": "insert"
+													},
+													"enableStaging": false
+												},
+												"inputs": [
+													{
+														"referenceName": "ORACLE_DINAMICO",
+														"type": "DatasetReference",
+														"parameters": {
+															"NOME_KEYVAULT_SECRET": "@item().NOME_KEYVAULT_SECRET",
+															"schema_name": "@item().NOME_SCHEMA_ORIGEM",
+															"table_name": "@item().NOME_TABELA_ORIGEM"
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DESTINO_TABELAS_ADF",
+														"type": "DatasetReference",
+														"parameters": {
+															"Schema_Destino": {
+																"value": "@item().NOME_SCHEMA_DESTINO",
+																"type": "Expression"
+															},
+															"Tabela_Destino": {
+																"value": "@item().NOME_TABELA_DESTINO",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "LOG PROCESSAMENTO PARCIAL SUCESSO",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA PARCIAL",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.05:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('startTime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": {
+																"value": "CARGA_COMPLETA",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA PARCIAL').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": {
+																"value": "SUCESSO",
+																"type": "Expression"
+															},
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											},
+											{
+												"name": "LOG PROCESSAMENTO PARCIAL ERRO",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA PARCIAL",
+														"dependencyConditions": [
+															"Failed"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.05:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('startTime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": {
+																"value": "@activity('CARGA PARCIAL').error.message",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": {
+																"value": "CARGA_COMPLETA",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA PARCIAL').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": {
+																"value": "ERRO",
+																"type": "Expression"
+															},
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "DATA_HORA_INICIO_COMPLETA",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"policy": {
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "StartTime",
+													"value": {
+														"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "CARGA COMPLETA",
+												"type": "Copy",
+												"dependsOn": [
+													{
+														"activity": "DATA_HORA_INICIO_COMPLETA",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.10:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "SqlServerSource",
+														"queryTimeout": "02:00:00",
+														"partitionOption": "None"
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"writeBehavior": "insert",
+														"sqlWriterUseTableLock": false,
+														"tableOption": "autoCreate",
+														"disableMetricsCollection": false
+													},
+													"enableStaging": false
+												},
+												"inputs": [
+													{
+														"referenceName": "SQL_DINAMICO",
+														"type": "DatasetReference",
+														"parameters": {
+															"NOME_KEYVAULT_SECRET": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"schema_name": {
+																"value": "@item().NOME_SCHEMA_ORIGEM",
+																"type": "Expression"
+															},
+															"table_name": {
+																"value": "@item().NOME_TABELA_ORIGEM",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DESTINO_TABELAS_ADF",
+														"type": "DatasetReference",
+														"parameters": {
+															"Schema_Destino": {
+																"value": "@item().NOME_SCHEMA_DESTINO",
+																"type": "Expression"
+															},
+															"Tabela_Destino": {
+																"value": "@item().NOME_TABELA_DESTINO",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "LOG PROCESSAMENTO COMPLETA SUCESSO",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA COMPLETA",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.05:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('startTime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": {
+																"value": "CARGA_COMPLETA",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA COMPLETA').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": {
+																"value": "SUCESSO",
+																"type": "Expression"
+															},
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											},
+											{
+												"name": "LOG PROCESSAMENTO COMPLETA ERRO",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA COMPLETA",
+														"dependencyConditions": [
+															"Failed"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.05:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('startTime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": {
+																"value": "@activity('CARGA COMPLETA').error.message",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": {
+																"value": "CARGA_COMPLETA",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA COMPLETA').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": {
+																"value": "ERRO",
+																"type": "Expression"
+															},
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "DROPA TABELAS DESTINO",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LISTA ORIGEM DESTINO",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('LISTA ORIGEM DESTINO').output.value",
+								"type": "Expression"
+							},
+							"isSequential": false,
+							"batchCount": 30,
+							"activities": [
+								{
+									"name": "LIMPA TABELA DESTINO",
+									"type": "Lookup",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.05:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@concat('IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N',\n'''',   \nitem().NOME_SCHEMA_DESTINO,\n'.',\nitem().NOME_TABELA_DESTINO,\n'''',\n') AND type in (N',\n'''',\n'U',\n'''',\n'))',\n' DROP TABLE ',\nitem().NOME_SCHEMA_DESTINO,\n'.',\nitem().NOME_TABELA_DESTINO,\n'  SELECT 0'\n)",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "DESTINO_TABELAS_ADF",
+											"type": "DatasetReference",
+											"parameters": {
+												"Schema_Destino": {
+													"value": "@item().NOME_SCHEMA_DESTINO",
+													"type": "Expression"
+												},
+												"Tabela_Destino": {
+													"value": "@item().NOME_TABELA_DESTINO",
+													"type": "Expression"
+												}
+											}
+										},
+										"firstRowOnly": true
+									}
+								}
+							]
 						}
 					}
 				],

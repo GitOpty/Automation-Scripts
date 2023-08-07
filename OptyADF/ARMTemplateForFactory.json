@@ -625,318 +625,6 @@
 	},
 	"resources": [
 		{
-			"name": "[concat(parameters('factoryName'), '/1_Processa_Cargas_DW')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "CARGA_DINAMICA_ADF_TASY",
-						"type": "ExecutePipeline",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "CARGA_DINAMICA_ADF_TASY",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": false,
-							"parameters": {}
-						}
-					},
-					{
-						"name": "CARGA_DINAMICA_ADF_SMART",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "CARGA_DINAMICA_ADF_TASY",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "CARGA_DINAMICA_ADF_SMART",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					},
-					{
-						"name": "Chama Inicializador Datamart",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "CARGA_DINAMICA_ADF_SMART",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "2_Processa_DataMart",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					},
-					{
-						"name": "CARGA_DINAMICA_ADF_NAJA",
-						"type": "ExecutePipeline",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "CARGA_DINAMICA_ADF_NAJA_DW",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/1_Inicializador"
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_TASY')]",
-				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_SMART')]",
-				"[concat(variables('factoryId'), '/pipelines/2_Processa_DataMart')]",
-				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_NAJA_DW')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/2_Processa_DataMart')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Verifica Start Datamart",
-						"type": "Lookup",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT\n    COUNT(1) as QT_REGISTRO \nFROM(\n    SELECT \n        A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n        ,MAX(A.DT_INICIO_PROCESS) DT_INICIO_PROCESS \n        ,CAST(MAX(A.DT_FIM_PROCESS) AS DATE) DT_FIM_PROCESS         \n    FROM DBO.LOG_PROCESSAMENTO_DW A\n    INNER JOIN DBO.cfg_plataforma_dw B ON B.ID_PLATAFORMA = A.ID_PLATAFORMA\n    WHERE UPPER(A.NOME_PROCESSO) LIKE '%CARGA_DW'\n    GROUP BY A.ID_PLATAFORMA\n        ,B.DS_PLATAFORMA\n        ,A.TIPO_PROCESSO\n)TMP    \nWHERE TMP.DT_FIM_PROCESS = CAST(GETDATE() AS DATE)\n",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "AZ_SQL",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "Processo",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Verifica Start Datamart",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Verifica Start Datamart').output.value",
-								"type": "Expression"
-							},
-							"activities": [
-								{
-									"name": "Inicia Atualizacao Datamart",
-									"type": "IfCondition",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"expression": {
-											"value": "@greaterOrEquals(item().QT_REGISTRO,2 )",
-											"type": "Expression"
-										},
-										"ifFalseActivities": [
-											{
-												"name": "Busca Email",
-												"type": "Lookup",
-												"dependsOn": [],
-												"policy": {
-													"timeout": "7.00:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"source": {
-														"type": "AzureSqlSource",
-														"sqlReaderQuery": "SELECT * FROM ADF.OWNER",
-														"queryTimeout": "02:00:00",
-														"partitionOption": "None"
-													},
-													"dataset": {
-														"referenceName": "AZ_SQL",
-														"type": "DatasetReference",
-														"parameters": {}
-													}
-												}
-											},
-											{
-												"name": "Variable Email",
-												"type": "SetVariable",
-												"dependsOn": [
-													{
-														"activity": "Busca Email",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"policy": {
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"variableName": "email",
-													"value": {
-														"value": "@activity('Busca Email').output.firstRow['Email']",
-														"type": "Expression"
-													}
-												}
-											},
-											{
-												"name": "Disparado de Erro Datamart Receb",
-												"type": "ExecutePipeline",
-												"dependsOn": [
-													{
-														"activity": "Variable Email",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "Send email",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {
-														"EmailTo": {
-															"value": "@variables('email')",
-															"type": "Expression"
-														},
-														"Subject": {
-															"value": "@pipeline().Pipeline",
-															"type": "Expression"
-														},
-														"ErrorMessage": "Falha na atualização do Datamart "
-													}
-												}
-											}
-										],
-										"ifTrueActivities": [
-											{
-												"name": "Execute Datamart Recebimento",
-												"type": "ExecutePipeline",
-												"dependsOn": [],
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "DM_Recebimento",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {}
-												}
-											},
-											{
-												"name": "Exec Datamart Prod Diaria Tasy",
-												"type": "ExecutePipeline",
-												"dependsOn": [],
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "DM_ProdDiaria_TasyV2",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {}
-												}
-											},
-											{
-												"name": "Exec Datamart Prod Diaria Smart",
-												"type": "ExecutePipeline",
-												"dependsOn": [],
-												"userProperties": [],
-												"typeProperties": {
-													"pipeline": {
-														"referenceName": "DM_ProdDiariaSMARTV2",
-														"type": "PipelineReference"
-													},
-													"waitOnCompletion": true,
-													"parameters": {}
-												}
-											}
-										]
-									}
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"variables": {
-					"email": {
-						"type": "String"
-					},
-					"qt_registro": {
-						"type": "String"
-					}
-				},
-				"folder": {
-					"name": "Data Warehouse/1_Inicializador"
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/AZ_SQL')]",
-				"[concat(variables('factoryId'), '/pipelines/Send email')]",
-				"[concat(variables('factoryId'), '/pipelines/DM_Recebimento')]",
-				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_TasyV2')]",
-				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiariaSMARTV2')]"
-			]
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/AJ_MATERIAL_ATEND_PACIENTE')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -20870,6 +20558,27 @@
 							"waitOnCompletion": true,
 							"parameters": {}
 						}
+					},
+					{
+						"name": "Sadalla Prod Diaria",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "LIMPA TABELAS DESTINO",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "DM_ProdDiaria_Tasy_Sadalla",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
 					}
 				],
 				"policy": {
@@ -20878,6 +20587,12 @@
 				},
 				"variables": {
 					"StartTime": {
+						"type": "String"
+					},
+					"DT_INICIO": {
+						"type": "String"
+					},
+					"DT_FINAL": {
 						"type": "String"
 					}
 				},
@@ -20890,6 +20605,7 @@
 				"[concat(variables('factoryId'), '/datasets/LISTA_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
 				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_TASY_ONPREMISES')]",
+				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_Tasy_Sadalla')]",
 				"[concat(variables('factoryId'), '/pipelines/Send email')]",
 				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/datasets/ORACLE_DINAMICO')]"
@@ -21615,7 +21331,7 @@
 					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "Data Warehouse/1_Inicializador"
+					"name": "Data Warehouse/3_Pipeline_Datamart"
 				},
 				"annotations": []
 			},
@@ -31060,7 +30776,7 @@
 					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+					"name": "Data Warehouse/Ajuste DW Tasy/Antigo"
 				},
 				"annotations": []
 			},
@@ -31537,7 +31253,7 @@
 					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+					"name": "Data Warehouse/Ajuste DW Tasy/Antigo"
 				},
 				"annotations": []
 			},
@@ -31546,17 +31262,58 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/DM_Recebimento')]",
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_Tasy_Sadalla')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"activities": [
 					{
-						"name": "Processa Datamart Recebimento",
-						"type": "SqlServerStoredProcedure",
+						"name": "DT_INICIO AUT",
+						"type": "SetVariable",
 						"dependsOn": [],
 						"policy": {
-							"timeout": "7.00:00:00",
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "DT_INICIO",
+							"value": {
+								"value": "@concat('01/01/',string(add(int(formatDateTime(utcnow(),'yyyy')),-2)))",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "DT_FINAL AUT",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "DT_FINAL",
+							"value": {
+								"value": "@replace(formatDateTime(utcnow(),'dd-MM-yyyy'),'-','/')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Prod Diaria Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "DT_FINAL AUT",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
 							"retry": 0,
 							"retryIntervalInSeconds": 30,
 							"secureOutput": false,
@@ -31564,7 +31321,61 @@
 						},
 						"userProperties": [],
 						"typeProperties": {
-							"storedProcedureName": "SP_PROCESSA_RECEBIMENTO_SYS_LEG"
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": {
+									"value": "@concat('SELECT * FROM VW_PROD_DIARIA_DW WHERE DT_ENTRADA between ''',variables('DT_INICIO'), ''' and ''',variables('DT_FINAL'),'''')",
+									"type": "Expression"
+								},
+								"partitionOption": "None",
+								"convertDecimalToInteger": false,
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "TRUNCATE TABLE stg.prod_diaria_sadalla",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SQL_PROD_DIARIA_SADALLA",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Processa Rawdata Sadalla",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Prod Diaria Sadalla",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_PROCESSA_RAWDATA_SADALLA"
 						},
 						"linkedServiceName": {
 							"referenceName": "AzureSQL_DB_Procedimentos",
@@ -31576,12 +31387,22 @@
 					"elapsedTimeMetric": {},
 					"cancelAfter": {}
 				},
+				"variables": {
+					"DT_INICIO": {
+						"type": "String"
+					},
+					"DT_FINAL": {
+						"type": "String"
+					}
+				},
 				"folder": {
-					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_Recebimento"
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
 				},
 				"annotations": []
 			},
 			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/SQL_PROD_DIARIA_SADALLA')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
 			]
 		},
@@ -34934,7 +34755,7 @@
 						"typeProperties": {
 							"source": {
 								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT  \n    B.NOME_KEYVAULT_SECRET\n    ,B.NOME_SCHEMA_ORIGEM\n    ,B.NOME_TABELA_ORIGEM\n    ,A.NOME_SCHEMA AS NOME_SCHEMA_DESTINO\n    ,A.NOME_TABELA AS NOME_TABELA_DESTINO\nFROM adf.ctr_reprocessa_dw A WITH(NOLOCK)\nINNER JOIN adf.ctr_origem_destino B WITH(NOLOCK) ON A.NOME_PLATAFORMA = B.NOME_PLATAFORMA AND A.NOME_TABELA = 'tbl_'+REPLACE(REPLACE(B.NOME_TABELA_ORIGEM,'VW_',''),'_V2','')\nWHERE A.IE_ATIVA = 'S'\n",
+								"sqlReaderQuery": "SELECT  \n    B.NOME_KEYVAULT_SECRET\n    ,B.NOME_SCHEMA_ORIGEM\n    ,B.NOME_TABELA_ORIGEM\n    ,A.NOME_SCHEMA AS NOME_SCHEMA_DESTINO\n    ,A.NOME_TABELA AS NOME_TABELA_DESTINO\nFROM adf.ctr_reprocessa_dw A WITH(NOLOCK)\nINNER JOIN adf.ctr_origem_destino B WITH(NOLOCK) ON A.NOME_PLATAFORMA = B.NOME_PLATAFORMA AND A.NOME_TABELA = 'tbl_'+REPLACE(REPLACE(B.NOME_TABELA_ORIGEM,'VW_',''),'_V2','')\nWHERE A.IE_ATIVA = 'S'\n AND B.REPROCESSAR = 'S'\n",
 								"queryTimeout": "02:00:00",
 								"partitionOption": "None"
 							},
@@ -98931,6 +98752,161 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/SQL_PROD_DIARIA_SADALLA')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [
+					{
+						"name": "NR_SEQ_PROC_CRIT_REPASSE",
+						"type": "decimal",
+						"precision": 10,
+						"scale": 0
+					},
+					{
+						"name": "CD_PESSOA_FISICA",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CD_ESTABELECIMENTO",
+						"type": "decimal",
+						"precision": 4,
+						"scale": 0
+					},
+					{
+						"name": "CD_CONVENIO_PARAMETRO",
+						"type": "decimal",
+						"precision": 5,
+						"scale": 0
+					},
+					{
+						"name": "DT_ENTRADA",
+						"type": "datetime2",
+						"scale": 0
+					},
+					{
+						"name": "NR_ATENDIMENTO",
+						"type": "decimal",
+						"precision": 10,
+						"scale": 0
+					},
+					{
+						"name": "NR_INTERNO_CONTA",
+						"type": "decimal",
+						"precision": 10,
+						"scale": 0
+					},
+					{
+						"name": "CD_MEDICO_ATENDIMENTO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CD_MEDICO_SOLICITANTE",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CD_MEDICO_RESPONSAVEL",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CD_MEDICO_EXECUTOR",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CONVENIO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CONVENIO_AJUST",
+						"type": "nvarchar"
+					},
+					{
+						"name": "NOME_MEDICO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "MEDICO_AJUST",
+						"type": "nvarchar"
+					},
+					{
+						"name": "TIPO",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CLASSE",
+						"type": "nvarchar"
+					},
+					{
+						"name": "CD_PROCEDIMENTO",
+						"type": "decimal",
+						"precision": 15,
+						"scale": 0
+					},
+					{
+						"name": "QT_PROCEDIMENTO",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "QT_AJUST",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "VL_CONTA",
+						"type": "decimal",
+						"precision": 15,
+						"scale": 2
+					},
+					{
+						"name": "VL_MEDICO",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "VL_HOSPITAL",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "VALOR_MATERIAL",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "REPASSE_MEDICO",
+						"type": "float",
+						"precision": 15
+					},
+					{
+						"name": "VL_REPASSE",
+						"type": "decimal",
+						"precision": 15,
+						"scale": 2
+					},
+					{
+						"name": "NR_SEQ_PROC_PACOTE",
+						"type": "decimal",
+						"precision": 10,
+						"scale": 0
+					}
+				],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "prod_diaria_sadalla"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/SadallaTasyPrdDataSet')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -103623,13 +103599,6 @@
 				"pipelines": [
 					{
 						"pipelineReference": {
-							"referenceName": "CARGA_DINAMICA_ADF_TASY_CLOUD",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					},
-					{
-						"pipelineReference": {
 							"referenceName": "Plan_Recebimento",
 							"type": "PipelineReference"
 						},
@@ -103655,8 +103624,45 @@
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_TASY_CLOUD')]",
 				"[concat(variables('factoryId'), '/pipelines/Plan_Recebimento')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Daily 02h20 AM')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "CARGA_DINAMICA_ADF_TASY_CLOUD",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2023-07-31T20:46:00",
+						"timeZone": "E. South America Standard Time",
+						"schedule": {
+							"minutes": [
+								20
+							],
+							"hours": [
+								2
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_TASY_CLOUD')]"
 			]
 		},
 		{
@@ -104155,44 +104161,6 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Daily 02h20 AM')]",
-			"type": "Microsoft.DataFactory/factories/triggers",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"runtimeState": "Started",
-				"pipelines": [
-					{
-						"pipelineReference": {
-							"referenceName": "CARGA_DINAMICA_ADF_TASY_CLOUD",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					}
-				],
-				"type": "ScheduleTrigger",
-				"typeProperties": {
-					"recurrence": {
-						"frequency": "Day",
-						"interval": 1,
-						"startTime": "2023-07-31T20:46:00",
-						"timeZone": "E. South America Standard Time",
-						"schedule": {
-							"minutes": [
-								20
-							],
-							"hours": [
-								2
-							]
-						}
-					}
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/CARGA_DINAMICA_ADF_TASY_CLOUD')]"
-			]
 		}
 	]
 }
