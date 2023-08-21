@@ -14,7 +14,7 @@
 				"typeProperties": {
 					"variableName": "DT_INICIO",
 					"value": {
-						"value": "@concat('01/01/',string(add(int(formatDateTime(utcnow(),'yyyy')),-1)))",
+						"value": "@concat('01/01/',string(add(int(formatDateTime(utcnow(),'yyyy')),-3)))",
 						"type": "Expression"
 					}
 				}
@@ -74,10 +74,9 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"preCopyScript": "--TRUNCATE TABLE stg.prod_diaria_sadalla",
+						"preCopyScript": "TRUNCATE TABLE stg.prod_diaria_sadalla",
 						"writeBehavior": "insert",
 						"sqlWriterUseTableLock": false,
-						"tableOption": "autoCreate",
 						"disableMetricsCollection": false
 					},
 					"enableStaging": false
@@ -115,7 +114,34 @@
 				},
 				"userProperties": [],
 				"typeProperties": {
-					"storedProcedureName": "SP_PROCESSA_RAWDATA_SADALLA"
+					"storedProcedureName": "SP_PROCESSA_RAWDATA_PROD_DIARIA_SADALLA"
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Processa Anos Atual Prod Diaria Sadalla",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "Processa Rawdata Sadalla",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "SP_PROCESSA_RAWDATA_PROD_DIARIA_SADALLA"
 				},
 				"linkedServiceName": {
 					"referenceName": "AzureSQL_DB_Procedimentos",
