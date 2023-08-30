@@ -1,0 +1,184 @@
+{
+	"name": "Posicao Estoque Tasy",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lista Query",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[dbo].[SP_ADF_SEARCH_STORAGE_QUERY_SYS]",
+						"storedProcedureParameters": {
+							"nm_plataforma": {
+								"type": "String",
+								"value": "TASY"
+							},
+							"nm_query": {
+								"type": "String",
+								"value": "SUPRIMENTOS_MOVIMENTO_ESTOQUE"
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "QUERY_DINAMICO",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "Limpa Tabela Destino",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Lista Query",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lista Query').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "LIMPA TABELA DESTINO",
+							"type": "Script",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSQL_DB_Procedimentos",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "Query",
+										"text": {
+											"value": "@concat('TRUNCATE TABLE ',item().NOME_TABELA_DESTINO)",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "EXTRACAO DADOS ORIGEM",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "Limpa Tabela Destino",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('Lista Query').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "CARGA TASY",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "OracleSource",
+									"oracleReaderQuery": {
+										"value": "@item().DS_SQL",
+										"type": "Expression"
+									},
+									"partitionOption": "None",
+									"convertDecimalToInteger": false,
+									"queryTimeout": "02:00:00"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false,
+									"tableOption": "autoCreate",
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ORACLE_LOG",
+									"type": "DatasetReference",
+									"parameters": {
+										"nm_keyvault": {
+											"value": "@item().NOME_KEYVAULT_SECRET",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DESTINO_TABELAS_ADF",
+									"type": "DatasetReference",
+									"parameters": {
+										"Schema_Destino": "stg",
+										"Tabela_Destino": {
+											"value": "@replace(item().NOME_TABELA_DESTINO,'stg.','')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"folder": {
+			"name": "Data Warehouse/Suprimentos"
+		},
+		"annotations": []
+	}
+}
