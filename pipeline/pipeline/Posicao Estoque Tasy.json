@@ -39,63 +39,25 @@
 				}
 			},
 			{
-				"name": "Limpa Tabela Destino",
-				"type": "ForEach",
-				"dependsOn": [
-					{
-						"activity": "Lista Query",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"userProperties": [],
-				"typeProperties": {
-					"items": {
-						"value": "@activity('Lista Query').output.value",
-						"type": "Expression"
-					},
-					"activities": [
-						{
-							"name": "LIMPA TABELA DESTINO",
-							"type": "Script",
-							"dependsOn": [],
-							"policy": {
-								"timeout": "0.12:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"linkedServiceName": {
-								"referenceName": "AzureSQL_DB_Procedimentos",
-								"type": "LinkedServiceReference"
-							},
-							"typeProperties": {
-								"scripts": [
-									{
-										"type": "NonQuery",
-										"text": {
-											"value": "@concat('TRUNCATE TABLE ',item().NOME_TABELA_DESTINO)",
-											"type": "Expression"
-										}
-									}
-								],
-								"scriptBlockExecutionTimeout": "02:00:00"
-							}
-						}
-					]
-				}
-			},
-			{
 				"name": "EXTRACAO DADOS ORIGEM",
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "Limpa Tabela Destino",
+						"activity": "LIMPA TABELA DESTINO",
 						"dependencyConditions": [
 							"Completed"
+						]
+					},
+					{
+						"activity": "PERIODO INICIAL",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "PERIODO FINAL",
+						"dependencyConditions": [
+							"Succeeded"
 						]
 					}
 				],
@@ -122,7 +84,7 @@
 								"source": {
 									"type": "OracleSource",
 									"oracleReaderQuery": {
-										"value": "@item().DS_SQL",
+										"value": "@concat(item().DS_SQL,' WHERE A.DT_MOVIMENTO_ESTOQUE BETWEEN ','''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FINAL'),'''')",
 										"type": "Expression"
 									},
 									"partitionOption": "None",
@@ -174,8 +136,80 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "LIMPA TABELA DESTINO",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Lista Query",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": {
+								"value": "TRUNCATE TABLE stg.movimento_estoque_tasy",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "PERIODO INICIAL",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "DT_INICIO",
+					"value": "01/01/2023"
+				}
+			},
+			{
+				"name": "PERIODO FINAL",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "DT_FINAL",
+					"value": "01/02/2023"
+				}
 			}
 		],
+		"variables": {
+			"DT_INICIO": {
+				"type": "String"
+			},
+			"DT_FINAL": {
+				"type": "String"
+			}
+		},
 		"folder": {
 			"name": "Data Warehouse/Suprimentos"
 		},
