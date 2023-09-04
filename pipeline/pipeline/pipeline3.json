@@ -1,0 +1,124 @@
+{
+	"name": "pipeline3",
+	"properties": {
+		"activities": [
+			{
+				"name": "Procedimento Repasse",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Material Repasse",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT \nNR_SEQUENCIA\n,A.NR_SEQ_PROCEDIMENTO\n,A.VL_REPASSE\n,A.DT_ATUALIZACAO\n,A.NM_USUARIO\n,A.NR_SEQ_TERCEIRO\n,A.NR_LOTE_CONTABIL\n,A.NR_REPASSE_TERCEIRO\n,A.CD_CONTA_CONTABIL\n,A.NR_SEQ_TRANS_FIN\n,A.NR_SEQ_ITEM_RETORNO\n,A.VL_LIBERADO\n,A.IE_STATUS\n,A.NR_SEQ_ORIGEM\n,A.CD_REGRA\n,A.DT_LIBERACAO\n,A.CD_MEDICO\n,A.DT_CONTABIL_TITULO\n,A.NR_SEQ_RET_GLOSA\n,A.DT_CONTABIL\n,A.NR_SEQ_PARTIC\n,A.DS_OBSERVACAO\n,A.NR_PROCESSO_AIH\n,A.DT_ATUALIZACAO_NREC\n,A.NM_USUARIO_NREC\n,A.NM_USUARIO_LIB\n,A.NR_INTERNO_CONTA_EST\n,A.NR_SEQ_CRITERIO\n,A.NR_SEQ_TRANS_FIN_REP_MAIOR\n,A.IE_ESTORNO\n,A.IE_REPASSE_CALC\n,A.VL_ORIGINAL_REPASSE\n,A.NR_SEQ_REGRA_ITEM\n,A.IE_ANALISADO\n,A.NR_SEQ_LOTE_AUDIT_HIST\n,A.NR_SEQ_MOTIVO_DES\n,A.IE_DESC_CAIXA\n,A.VL_DESP_CARTAO\n,A.NR_SEQ_PARCELA\n,A.VL_CUSTO_ITEM\n,A.VL_DESCONTO\n,A.NR_ATENDIMENTO\n,A.NM_PESSOA_FISICA\n,A.DS_PROCEDIMENTO\n,A.DS_STATUS\n,A.NM_MEDICO\n,A.NM_MEDICO_EXECUTOR\n,A.DS_TRANSACAO\n,A.DS_CONVENIO\n,A.DS_REGRA\n,A.DT_PROCEDIMENTO\n,A.DS_TIPO_ATENDIMENTO\n,A.DT_MESANO_REFERENCIA\n,A.CD_PROCEDIMENTO\n,A.NR_INTERNO_CONTA\n,A.DS_CENTRO_CUSTO\n,A.NM_USUARIO_ORIGINAL\n,A.DT_ENTRADA_ATEND\n,A.DS_CONTA_CONTABIL\n,A.DS_OBS_FORMA_REPASSE\n,A.DS_SETOR_ATENDIMENTO\n,A.DS_FUNCAO_MED\n,A.NM_MEDICO_REQ\n,A.DS_OBSERVACAO_CRITERIO\n,A.DS_CATEGORIA\n,A.NR_PRESCRICAO\n,A.DS_VIA_ACESSO\n,A.DS_MEDICO_RESP\n,A.DS_CARATER\n,A.DS_MEDICO_LAUDO\n,A.QT_PROCEDIMENTO\n,A.IE_ORIGEM_PROCED\n,A.CD_PESSOA_FISICA\n,A.NR_SEQ_PROC_CRIT_REPASSE\n,A.DS_CLASSIF_ATUA_MEDICO\n,A.CD_CONVENIO\n,A.IE_TIPO_CONVENIO\n,A.IE_TIPO_ATENDIMENTO\n,A.CD_MEDICO_LAUDO\n,A.NR_LAUDO\n,A.IE_BLOQ_LAUDO_LIBERADO\n,A.VL_CUSTO\n,A.VL_IMPOSTO\n,A.DT_ENTREGA_CONVENIO\n,A.DS_TIPO_CONV\n,A.IE_ALTA_COMPLEXIDADE\n,A.DS_LOG\n,A.NR_CODIGO_CONTROLE\n-- ,A.VL_RVG\n-- ,A.IE_CONTESTADO    \nFROM STG.tbl_procedimento_repasse A\nINNER JOIN DW.tbl_atendimento_paciente AP ON AP.ESTABELECIMENTO = A.ESTABELECIMENTO AND AP.NR_ATENDIMENTO = A.NR_ATENDIMENTO\nINNER JOIN V_EMPRESAS_TASY EMP ON EMP.PK_CD_ESTABELECIMENTO = CAST(AP.ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(AP.CD_ESTABELECIMENTO AS VARCHAR(20))\nWHERE A.ESTABELECIMENTO = 1 AND EMP.DS_NOME_CURTO = 'HOB BRASILIA'\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SQL_DIN",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_PROCEDIMENTO_REPASSE",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Material Repasse",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT \na.NR_SEQUENCIA\n,a.NR_SEQ_MATERIAL\n,a.VL_REPASSE\n,a.DT_ATUALIZACAO\n,a.NM_USUARIO\n,a.NR_SEQ_TERCEIRO\n,a.NR_LOTE_CONTABIL\n,a.NR_REPASSE_TERCEIRO\n,a.CD_CONTA_CONTABIL\n,a.NR_SEQ_TRANS_FIN\n,a.VL_LIBERADO\n,a.NR_SEQ_ITEM_RETORNO\n,a.IE_STATUS\n,a.NR_SEQ_ORIGEM\n,a.CD_REGRA\n,a.DT_LIBERACAO\n,a.CD_MEDICO\n,a.DT_CONTABIL_TITULO\n,a.NR_SEQ_RET_GLOSA\n,a.DT_CONTABIL\n,a.DT_ATUALIZACAO_NREC\n,a.NM_USUARIO_NREC\n,a.DS_OBSERVACAO\n,a.NM_USUARIO_LIB\n,a.NR_INTERNO_CONTA_EST\n,a.NR_SEQ_TRANS_FIN_REP_MAIOR\n,a.NR_SEQ_CRITERIO\n,a.IE_ESTORNO\n,a.IE_REPASSE_CALC\n,a.VL_ORIGINAL_REPASSE\n,a.NR_SEQ_REGRA_ITEM\n,a.IE_ANALISADO\n,a.NR_SEQ_MOTIVO_DES\n,a.IE_DESC_CAIXA\n,a.NR_SEQ_LOTE_AUDIT_HIST\n,a.VL_DESP_CARTAO\n,a.NR_SEQ_PARCELA\n,a.VL_CUSTO_ITEM\n,a.VL_DESCONTO\n,a.DS_REGRA\n,a.CD_MATERIAL\n,a.DS_MATERIAL\n,a.NR_ATENDIMENTO\n,a.CD_PESSOA_FISICA\n,a.NM_PESSOA_FISICA\n,a.DS_STATUS\n,a.DS_TRANSACAO\n,a.DS_CONVENIO\n,a.NM_MEDICO\n,a.NR_INTERNO_CONTA\n,a.DT_CONTA\n,a.DS_TIPO_ATENDIMENTO\n,a.DS_CENTRO_CUSTO\n,a.NM_USUARIO_ORIGINAL\n,a.DS_OBSERVACAO_CRITERIO\n,a.DS_CATEGORIA\n,a.NR_PRESCRICAO\n,a.DS_CLASSIF_ATUA_MEDICO\n,a.DT_ENTRADA\n,a.CD_CONVENIO\n,a.IE_TIPO_CONVENIO\n,a.IE_TIPO_ATENDIMENTO\n,a.CD_SETOR_ATENDIMENTO\n,a.QT_MATERIAL\n,a.CD_MOTIVO_EXC_CONTA\n,a.CD_PROTOCOLO\n,a.NR_CICLO\n,a.VL_CUSTO\n,a.VL_IMPOSTO\n,a.NR_SEQ_MEDICACAO\n,a.DT_ENTREGA_CONVENIO\n,a.DS_TIPO_CONV\n,a.DS_CLINICA\n,a.CD_UNIDADE_BASICA\n,a.NM_MEDICO_REFERIDO\n,a.NR_ATENDIMENTO_MAE\n,a.DS_LOG\n,a.NR_CODIGO_CONTROLE\n\nFROM STG.tbl_material_repasse A\nINNER JOIN DW.tbl_atendimento_paciente AP ON AP.ESTABELECIMENTO = A.ESTABELECIMENTO AND AP.NR_ATENDIMENTO = A.NR_ATENDIMENTO\nINNER JOIN V_EMPRESAS_TASY EMP ON EMP.PK_CD_ESTABELECIMENTO = CAST(AP.ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(AP.CD_ESTABELECIMENTO AS VARCHAR(20))\nWHERE A.ESTABELECIMENTO = 1 AND EMP.DS_NOME_CURTO = 'HOB BRASILIA'\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SQL_DIN",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "CSV_MATERIAL_REPASSE",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Teste"
+		},
+		"annotations": []
+	}
+}
