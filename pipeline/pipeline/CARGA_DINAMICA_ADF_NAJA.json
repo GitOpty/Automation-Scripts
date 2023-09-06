@@ -81,6 +81,10 @@
 										"name": "DATA_HORA_INICIO_PARCIAL",
 										"type": "SetVariable",
 										"dependsOn": [],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
 										"userProperties": [],
 										"typeProperties": {
 											"variableName": "StartTime",
@@ -446,6 +450,10 @@
 										"name": "DATA_HORA_INICIO_COMPLETA",
 										"type": "SetVariable",
 										"dependsOn": [],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
 										"userProperties": [],
 										"typeProperties": {
 											"variableName": "StartTime",
@@ -930,6 +938,39 @@
 				"linkedServiceName": {
 					"referenceName": "AzureSQL_DB_Procedimentos",
 					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Remover Atendimento Cancelado Data mart",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "SP_CARGA_DATAMART_NAJA",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "-- APAGAR OS ATENDIMENTOS CANCELADOS NAJA\n\nWITH CANCELADOS AS(\nSELECT DISTINCT\nCAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(ATE_Isn AS VARCHAR(100)) AS FK_NR_ATENDIMENTO\nFROM dw.tbl_n_Atendimento with (nolock) \nWHERE ATE_Sta = 'C'\n)\n\nDELETE P\n  FROM DM.tbl_fprodiaria P\n  INNER JOIN CANCELADOS I ON P.FK_NR_ATENDIMENTO = I.FK_NR_ATENDIMENTO\n  WHERE P.ESTABELECIMENTO = 80"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
 				}
 			}
 		],
