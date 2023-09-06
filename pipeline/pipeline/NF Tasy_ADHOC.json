@@ -1,0 +1,596 @@
+{
+	"name": "NF Tasy_ADHOC",
+	"properties": {
+		"activities": [
+			{
+				"name": "NF HTML",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "with cate as(\nselect  \n        fast_ops.obter_nome_estab(a.cd_estabelecimento) estabelecimento,\n        A.NR_ORDEM_COMPRA,\n        a.dt_entrada_saida,\n        a.dt_emissao,\n        a.nr_nota_fiscal,\n        a.cd_cgc_emitente,\n        substr(fast_ops.obter_nome_pf_pj(null,a.cd_cgc_emitente),1,100) ds_fornecedor,\n        pj.CD_CEP,\n        pj.DS_ENDERECO,\n        pj.DS_BAIRRO,\n        pj.DS_MUNICIPIO,\n        pj.SG_ESTADO,\n        b.cd_material,\n        substr(fast_ops.obter_desc_material(b.cd_material),1,100) ds_material,\n        e.ds_grupo_material,\n        b.cd_local_estoque,\n        b.qt_item_nf,\n        b.cd_unidade_medida_compra,\n        b.vl_unitario_item_nf,\n        b.vl_total_item_nf, \n        b.vl_frete / b.qt_item_nf vl_frete,\n        d.vl_tributo / b.qt_item_nf tributo,\n        fast_ops.dividir(b.vl_liquido, b.qt_item_estoque) vl_custo_medio,\n        ((fast_ops.dividir(b.vl_liquido, b.qt_item_estoque)) *(b.qt_item_nf))total_item,\n        fast_ops.obter_desc_operacao_nota(a.CD_OPERACAO_NF) operacao\n        --obter_desc_local_estoque(b.CD_LOCAL_ESTOQUE) ds_local_estoque\nfrom    fast_ops.nota_fiscal a,\n        fast_ops.nota_fiscal_item b,\n        fast_ops.estrutura_material_v e,\n        fast_ops.nota_fiscal_item_trib d,\n        fast_ops.pessoa_juridica pj\nwhere   b.nr_sequencia = d.nr_sequencia (+)\n        and b.nr_item_nf = d.nr_item_nf (+)\n        and a.nr_sequencia = b.nr_sequencia\n        and b.cd_material = e.cd_material\n        and trunc(a.dt_entrada_saida,'mm') between to_date('01/08/2023','DD/MM/YYYY') and to_date('01/08/2023','DD/MM/YYYY')\n        and a.ie_situacao = 1\n        and a.ie_tipo_nota in ('EF','EN')\n        and a.CD_OPERACAO_NF <> 5\n        and a.dt_atualizacao_estoque is not null\n        and pj.cd_cgc = a.CD_CGC_EMITENTE (+)\n        --and ((a.cd_estabelecimento = :estab) or (:estab = 0))\norder by dt_entrada_saida,\n        nr_nota_fiscal,\n        ds_fornecedor,  \n        ds_material\n)  \nSELECT\n    '1' AS ESTABELECIMENTO\n    ,OC.DT_ORDEM_COMPRA\n    ,A.*\n    ,L.DS_LOCAL_ESTOQUE\nFROM CATE A\nLEFT JOIN fast_ops.ORDEM_COMPRA OC ON OC.NR_ORDEM_COMPRA = A.NR_ORDEM_COMPRA\nLEFT JOIN fast_ops.LOCAL_ESTOQUE L ON L.CD_LOCAL_ESTOQUE = A.CD_LOCAL_ESTOQUE",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": "TRUNCATE TABLE STG.SUP_NFS_TASY",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "DT_ORDEM_COMPRA"
+								},
+								"sink": {
+									"name": "DT_ORDEM_COMPRA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ESTABELECIMENTO"
+								},
+								"sink": {
+									"name": "ESTABELECIMENTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_ORDEM_COMPRA"
+								},
+								"sink": {
+									"name": "NR_ORDEM_COMPRA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_ENTRADA_SAIDA"
+								},
+								"sink": {
+									"name": "DT_ENTRADA_SAIDA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_EMISSAO"
+								},
+								"sink": {
+									"name": "DT_EMISSAO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_NOTA_FISCAL"
+								},
+								"sink": {
+									"name": "NR_NOTA_FISCAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CGC_EMITENTE"
+								},
+								"sink": {
+									"name": "CD_CGC_EMITENTE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_FORNECEDOR"
+								},
+								"sink": {
+									"name": "DS_FORNECEDOR",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CEP"
+								},
+								"sink": {
+									"name": "CD_CEP",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_ENDERECO"
+								},
+								"sink": {
+									"name": "DS_ENDERECO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_BAIRRO"
+								},
+								"sink": {
+									"name": "DS_BAIRRO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MUNICIPIO"
+								},
+								"sink": {
+									"name": "DS_MUNICIPIO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "SG_ESTADO"
+								},
+								"sink": {
+									"name": "SG_ESTADO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MATERIAL"
+								},
+								"sink": {
+									"name": "CD_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MATERIAL"
+								},
+								"sink": {
+									"name": "DS_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_LOCAL_ESTOQUE"
+								},
+								"sink": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_ITEM_NF"
+								},
+								"sink": {
+									"name": "QT_ITEM_NF",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_UNIDADE_MEDIDA_COMPRA"
+								},
+								"sink": {
+									"name": "CD_UNIDADE_MEDIDA_COMPRA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_UNITARIO_ITEM_NF"
+								},
+								"sink": {
+									"name": "VL_UNITARIO_ITEM_NF",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_TOTAL_ITEM_NF"
+								},
+								"sink": {
+									"name": "VL_TOTAL_ITEM_NF",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_FRETE"
+								},
+								"sink": {
+									"name": "VL_FRETE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TRIBUTO"
+								},
+								"sink": {
+									"name": "TRIBUTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_CUSTO_MEDIO"
+								},
+								"sink": {
+									"name": "VL_CUSTO_MEDIO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TOTAL_ITEM"
+								},
+								"sink": {
+									"name": "TOTAL_ITEM",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "OPERACAO"
+								},
+								"sink": {
+									"name": "OPERACAO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_LOCAL_ESTOQUE"
+								},
+								"sink": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Tasy_Ciclo",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_NFS_TASY",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "NF Sadalla",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "NF HTML",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "OracleSource",
+						"oracleReaderQuery": "with cate as(\nselect  \n        obter_nome_estab(a.cd_estabelecimento) estabelecimento,\n        A.NR_ORDEM_COMPRA,\n        a.dt_entrada_saida,\n        a.dt_emissao,\n        a.nr_nota_fiscal,\n        a.cd_cgc_emitente,\n        substr(obter_nome_pf_pj(null,a.cd_cgc_emitente),1,100) ds_fornecedor,\n        pj.CD_CEP,\n        pj.DS_ENDERECO,\n        pj.DS_BAIRRO,\n        pj.DS_MUNICIPIO,\n        pj.SG_ESTADO,\n        b.cd_material,\n        substr(obter_desc_material(b.cd_material),1,100) ds_material,\n        e.ds_grupo_material,\n        b.cd_local_estoque,\n        b.qt_item_nf,\n        b.cd_unidade_medida_compra,\n        b.vl_unitario_item_nf,\n        b.vl_total_item_nf, \n        b.vl_frete / b.qt_item_nf vl_frete,\n        d.vl_tributo / b.qt_item_nf tributo,\n        dividir(b.vl_liquido, b.qt_item_estoque) vl_custo_medio,\n        ((dividir(b.vl_liquido, b.qt_item_estoque)) *(b.qt_item_nf))total_item,\n        obter_desc_operacao_nota(a.CD_OPERACAO_NF) operacao\n        --obter_desc_local_estoque(b.CD_LOCAL_ESTOQUE) ds_local_estoque\nfrom    nota_fiscal a,\n        nota_fiscal_item b,\n        estrutura_material_v e,\n        nota_fiscal_item_trib d,\n        pessoa_juridica pj\nwhere   b.nr_sequencia = d.nr_sequencia (+)\n        and b.nr_item_nf = d.nr_item_nf (+)\n        and a.nr_sequencia = b.nr_sequencia\n        and b.cd_material = e.cd_material\n        and trunc(a.dt_entrada_saida,'mm') between to_date('01/08/2023','DD/MM/YYYY') and to_date('01/08/2023','DD/MM/YYYY')\n        and a.ie_situacao = 1\n        and a.ie_tipo_nota in ('EF','EN')\n        and a.CD_OPERACAO_NF <> 5\n        and a.dt_atualizacao_estoque is not null\n        and pj.cd_cgc = a.CD_CGC_EMITENTE (+)\n        --and ((a.cd_estabelecimento = :estab) or (:estab = 0))\norder by dt_entrada_saida,\n        nr_nota_fiscal,\n        ds_fornecedor,  \n        ds_material\n)  \nSELECT\n    '2' as ESTABELECIMENTO\n    ,OC.DT_ORDEM_COMPRA\n    ,A.*\n    ,L.DS_LOCAL_ESTOQUE\nFROM CATE A\nLEFT JOIN ORDEM_COMPRA OC ON OC.NR_ORDEM_COMPRA = A.NR_ORDEM_COMPRA\nLEFT JOIN LOCAL_ESTOQUE L ON L.CD_LOCAL_ESTOQUE = A.CD_LOCAL_ESTOQUE",
+						"partitionOption": "None",
+						"queryTimeout": "02:00:00"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "DT_ORDEM_COMPRA"
+								},
+								"sink": {
+									"name": "DT_ORDEM_COMPRA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "ESTABELECIMENTO"
+								},
+								"sink": {
+									"name": "ESTABELECIMENTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_ORDEM_COMPRA"
+								},
+								"sink": {
+									"name": "NR_ORDEM_COMPRA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_ENTRADA_SAIDA"
+								},
+								"sink": {
+									"name": "DT_ENTRADA_SAIDA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DT_EMISSAO"
+								},
+								"sink": {
+									"name": "DT_EMISSAO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "NR_NOTA_FISCAL"
+								},
+								"sink": {
+									"name": "NR_NOTA_FISCAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CGC_EMITENTE"
+								},
+								"sink": {
+									"name": "CD_CGC_EMITENTE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_FORNECEDOR"
+								},
+								"sink": {
+									"name": "DS_FORNECEDOR",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CEP"
+								},
+								"sink": {
+									"name": "CD_CEP",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_ENDERECO"
+								},
+								"sink": {
+									"name": "DS_ENDERECO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_BAIRRO"
+								},
+								"sink": {
+									"name": "DS_BAIRRO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MUNICIPIO"
+								},
+								"sink": {
+									"name": "DS_MUNICIPIO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "SG_ESTADO"
+								},
+								"sink": {
+									"name": "SG_ESTADO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MATERIAL"
+								},
+								"sink": {
+									"name": "CD_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MATERIAL"
+								},
+								"sink": {
+									"name": "DS_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_LOCAL_ESTOQUE"
+								},
+								"sink": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_ITEM_NF"
+								},
+								"sink": {
+									"name": "QT_ITEM_NF",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_UNIDADE_MEDIDA_COMPRA"
+								},
+								"sink": {
+									"name": "CD_UNIDADE_MEDIDA_COMPRA",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_UNITARIO_ITEM_NF"
+								},
+								"sink": {
+									"name": "VL_UNITARIO_ITEM_NF",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_TOTAL_ITEM_NF"
+								},
+								"sink": {
+									"name": "VL_TOTAL_ITEM_NF",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_FRETE"
+								},
+								"sink": {
+									"name": "VL_FRETE",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TRIBUTO"
+								},
+								"sink": {
+									"name": "TRIBUTO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_CUSTO_MEDIO"
+								},
+								"sink": {
+									"name": "VL_CUSTO_MEDIO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "TOTAL_ITEM"
+								},
+								"sink": {
+									"name": "TOTAL_ITEM",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "OPERACAO"
+								},
+								"sink": {
+									"name": "OPERACAO",
+									"type": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_LOCAL_ESTOQUE"
+								},
+								"sink": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String"
+								}
+							}
+						]
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SadallaTasyPrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_NFS_TASY",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Suprimentos/Nota Fiscal"
+		},
+		"annotations": []
+	}
+}
