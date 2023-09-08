@@ -7,6 +7,10 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		},
+		"Az_blob_UPO_FPA_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'Az_blob_UPO_FPA'"
+		},
 		"AzureBlobStorage_ANS_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'AzureBlobStorage_ANS'"
@@ -13399,6 +13403,39 @@
 							"referenceName": "AzureSQL_DB_Procedimentos",
 							"type": "LinkedServiceReference"
 						}
+					},
+					{
+						"name": "Remover Atendimento Cancelado Data mart",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "SP_CARGA_DATAMART_NAJA",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "-- APAGAR OS ATENDIMENTOS CANCELADOS NAJA\n\nWITH CANCELADOS AS(\nSELECT DISTINCT\nCAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(ATE_Isn AS VARCHAR(100)) AS FK_NR_ATENDIMENTO\nFROM dw.tbl_n_Atendimento with (nolock) \nWHERE ATE_Sta = 'C'\n)\n\nDELETE P\n  FROM DM.tbl_fprodiaria P\n  INNER JOIN CANCELADOS I ON P.FK_NR_ATENDIMENTO = I.FK_NR_ATENDIMENTO\n  WHERE P.ESTABELECIMENTO = 80"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
 					}
 				],
 				"concurrency": 5,
@@ -16285,7 +16322,7 @@
 							{
 								"activity": "PROCESSA ETL",
 								"dependencyConditions": [
-									"Succeeded"
+									"Completed"
 								]
 							}
 						],
@@ -30776,7 +30813,7 @@
 					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "Data Warehouse/Ajuste DW Tasy/Antigo"
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
 				},
 				"annotations": []
 			},
@@ -30964,7 +31001,7 @@
 					"cancelAfter": {}
 				},
 				"folder": {
-					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+					"name": "Data Warehouse/Ajuste DW Tasy/Antigo"
 				},
 				"annotations": []
 			},
@@ -70760,6 +70797,237 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Posicao Estoque Tasy')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lista Query",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderStoredProcedureName": "[[dbo].[SP_ADF_SEARCH_STORAGE_QUERY_SYS]",
+								"storedProcedureParameters": {
+									"nm_plataforma": {
+										"type": "String",
+										"value": "TASY"
+									},
+									"nm_query": {
+										"type": "String",
+										"value": "SUPRIMENTOS_MOVIMENTO_ESTOQUE"
+									}
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "QUERY_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "EXTRACAO DADOS ORIGEM",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LIMPA TABELA DESTINO",
+								"dependencyConditions": [
+									"Completed"
+								]
+							},
+							{
+								"activity": "PERIODO INICIAL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "PERIODO FINAL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista Query').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "CARGA TASY",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@concat(item().DS_SQL,' WHERE A.DT_MOVIMENTO_ESTOQUE BETWEEN ','''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FINAL'),'''')",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"convertDecimalToInteger": false,
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ORACLE_LOG",
+											"type": "DatasetReference",
+											"parameters": {
+												"nm_keyvault": {
+													"value": "@item().NOME_KEYVAULT_SECRET",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DESTINO_TABELAS_ADF",
+											"type": "DatasetReference",
+											"parameters": {
+												"Schema_Destino": "stg",
+												"Tabela_Destino": {
+													"value": "@replace(item().NOME_TABELA_DESTINO,'stg.','')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "LIMPA TABELA DESTINO",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Lista Query",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "TRUNCATE TABLE stg.movimento_estoque_tasy",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "PERIODO INICIAL",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "DT_INICIO",
+							"value": "01/01/2023"
+						}
+					},
+					{
+						"name": "PERIODO FINAL",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "DT_FINAL",
+							"value": "01/02/2023"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"variables": {
+					"DT_INICIO": {
+						"type": "String"
+					},
+					"DT_FINAL": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "Data Warehouse/Suprimentos"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/QUERY_DINAMICO')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/datasets/ORACLE_LOG')]",
+				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Posicao_Estoque')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -82406,6 +82674,80 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/UPO_FPA')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "UPO_FPA",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ExcelSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "BLOB_UPO_FPA",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_UPO_FPA",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/P&P"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/BLOB_UPO_FPA')]",
+				"[concat(variables('factoryId'), '/datasets/AZ_UPO_FPA')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/UROBRASIL')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -89413,6 +89755,27 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/AZ_UPO_FPA')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "stg",
+					"table": "UPO_FPA"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/AZ_WAC_REC_TASY')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -89945,6 +90308,165 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/AzureSqlDatabase')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/BLOB_UPO_FPA')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Az_blob_UPO_FPA",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Excel",
+				"typeProperties": {
+					"sheetName": "default_1",
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "UPO.xlsx",
+						"container": "upofpa"
+					},
+					"firstRowAsHeader": true
+				},
+				"schema": [
+					{
+						"name": "Estabelecimento",
+						"type": "String"
+					},
+					{
+						"name": "Data",
+						"type": "String"
+					},
+					{
+						"name": "Hora",
+						"type": "String"
+					},
+					{
+						"name": "Índice",
+						"type": "String"
+					},
+					{
+						"name": "Atendimento",
+						"type": "String"
+					},
+					{
+						"name": "Conta",
+						"type": "String"
+					},
+					{
+						"name": "CODCONVENIO",
+						"type": "String"
+					},
+					{
+						"name": "CONVENIO",
+						"type": "String"
+					},
+					{
+						"name": "Convenio Ajustado",
+						"type": "String"
+					},
+					{
+						"name": "Tipo Convenio",
+						"type": "String"
+					},
+					{
+						"name": "PACIENTE",
+						"type": "String"
+					},
+					{
+						"name": "Medico",
+						"type": "String"
+					},
+					{
+						"name": "SETOR",
+						"type": "String"
+					},
+					{
+						"name": "ID item",
+						"type": "String"
+					},
+					{
+						"name": "Cod Item",
+						"type": "String"
+					},
+					{
+						"name": "Item",
+						"type": "String"
+					},
+					{
+						"name": "CodProced Principal",
+						"type": "String"
+					},
+					{
+						"name": "Procedimento Principal",
+						"type": "String"
+					},
+					{
+						"name": "Status Conta",
+						"type": "String"
+					},
+					{
+						"name": "Categoria",
+						"type": "String"
+					},
+					{
+						"name": "Categoria Auxiliar",
+						"type": "String"
+					},
+					{
+						"name": "Classe",
+						"type": "String"
+					},
+					{
+						"name": "Especialidade",
+						"type": "String"
+					},
+					{
+						"name": "Procedimento",
+						"type": "String"
+					},
+					{
+						"name": "Patologia",
+						"type": "String"
+					},
+					{
+						"name": "Qtde",
+						"type": "String"
+					},
+					{
+						"name": "Qtde Ajuste",
+						"type": "String"
+					},
+					{
+						"name": "ROB",
+						"type": "String"
+					},
+					{
+						"name": "mês",
+						"type": "String"
+					},
+					{
+						"name": "Ano",
+						"type": "String"
+					},
+					{
+						"name": "DE_Para Unidades",
+						"type": "String"
+					},
+					{
+						"name": "De_Para Modelo de Convenio",
+						"type": "String"
+					},
+					{
+						"name": "Retorno",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Az_blob_UPO_FPA')]"
 			]
 		},
 		{
@@ -98541,6 +99063,24 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/QUERY_DINAMICO')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/SLFW_Dinamico')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -101085,6 +101625,19 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
 			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Az_blob_UPO_FPA')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('Az_blob_UPO_FPA_connectionString')]"
+				}
+			},
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/AzureBlobStorage_ANS')]",
