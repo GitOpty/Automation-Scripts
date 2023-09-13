@@ -1,5 +1,5 @@
 {
-	"name": "NF Smart",
+	"name": "NF",
 	"properties": {
 		"activities": [
 			{
@@ -112,7 +112,7 @@
 					"isSequential": true,
 					"activities": [
 						{
-							"name": "NF ITG",
+							"name": "SMART - NF ITG",
 							"type": "Copy",
 							"dependsOn": [],
 							"policy": {
@@ -168,11 +168,11 @@
 							]
 						},
 						{
-							"name": "NF ITB",
+							"name": "SMART - NF ITB",
 							"type": "Copy",
 							"dependsOn": [
 								{
-									"activity": "NF ITG",
+									"activity": "SMART - NF ITG",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -231,11 +231,11 @@
 							]
 						},
 						{
-							"name": "NF IOF",
+							"name": "SMART - NF IOF",
 							"type": "Copy",
 							"dependsOn": [
 								{
-									"activity": "NF ITB",
+									"activity": "SMART - NF ITB",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -294,11 +294,11 @@
 							]
 						},
 						{
-							"name": "NF OFT",
+							"name": "SMART - NF OFT",
 							"type": "Copy",
 							"dependsOn": [
 								{
-									"activity": "NF IOF",
+									"activity": "SMART - NF IOF",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -357,11 +357,11 @@
 							]
 						},
 						{
-							"name": "NF HOSL",
+							"name": "SMART - NF HOSL",
 							"type": "Copy",
 							"dependsOn": [
 								{
-									"activity": "NF OFT",
+									"activity": "SMART - NF OFT",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -418,6 +418,58 @@
 									}
 								}
 							]
+						},
+						{
+							"name": "TASY - NF Sadalla",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "SMART - NF HOSL",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "OracleSource",
+									"oracleReaderQuery": "with cate as(\nselect  \n        A.CD_ESTABELECIMENTO,\n        obter_nome_estab(a.cd_estabelecimento) ds_estabelecimento,\n        A.NR_ORDEM_COMPRA,\n        a.dt_entrada_saida,\n        a.dt_emissao,\n        a.nr_nota_fiscal,\n        a.cd_cgc_emitente,\n        substr(obter_nome_pf_pj(null,a.cd_cgc_emitente),1,100) ds_fornecedor,\n        pj.CD_CEP,\n        pj.DS_ENDERECO,\n        pj.DS_BAIRRO,\n        pj.DS_MUNICIPIO,\n        pj.SG_ESTADO,\n        b.cd_material,\n        substr(obter_desc_material(b.cd_material),1,100) ds_material,\n        e.ds_grupo_material,\n        b.cd_local_estoque,\n        b.qt_item_nf,\n        b.cd_unidade_medida_compra,\n        b.vl_unitario_item_nf,\n        b.vl_total_item_nf, \n        b.vl_frete / b.qt_item_nf vl_frete,\n        d.vl_tributo / b.qt_item_nf tributo,\n        dividir(b.vl_liquido, b.qt_item_estoque) vl_custo_medio,\n        ((dividir(b.vl_liquido, b.qt_item_estoque)) *(b.qt_item_nf))total_item,\n        obter_desc_operacao_nota(a.CD_OPERACAO_NF) operacao\n       -- ,obter_desc_local_estoque(b.CD_LOCAL_ESTOQUE) ds_local_estoque\nfrom    nota_fiscal a,\n        nota_fiscal_item b,\n        estrutura_material_v e,\n        nota_fiscal_item_trib d,\n        pessoa_juridica pj\nwhere   b.nr_sequencia = d.nr_sequencia (+)\n        and b.nr_item_nf = d.nr_item_nf (+)\n        and a.nr_sequencia = b.nr_sequencia\n        and b.cd_material = e.cd_material\n        and trunc(a.dt_entrada_saida,'mm') between to_date('01/01/2019','DD/MM/YYYY') and to_date('01/09/2023','DD/MM/YYYY')\n        and a.ie_situacao = 1\n        and a.ie_tipo_nota in ('EF','EN')\n        and a.CD_OPERACAO_NF <> 5\n        and a.dt_atualizacao_estoque is not null\n        and pj.cd_cgc = a.CD_CGC_EMITENTE (+)\n        --and ((a.cd_estabelecimento = :estab) or (:estab = 0))\norder by dt_entrada_saida,\n        nr_nota_fiscal,\n        ds_fornecedor,  \n        ds_material\n)  \nSELECT\n     2 AS ESTABELECIMENTO\n,A.CD_ESTABELECIMENTO\n,A.DS_ESTABELECIMENTO    \n,OC.DT_ORDEM_COMPRA\n,A.NR_ORDEM_COMPRA\n,A.DT_ENTRADA_SAIDA\n,A.DT_EMISSAO\n,A.NR_NOTA_FISCAL\n,A.CD_CGC_EMITENTE\n,A.DS_FORNECEDOR\n,A.CD_CEP\n,A.DS_ENDERECO\n,A.DS_BAIRRO\n,A.DS_MUNICIPIO\n,A.SG_ESTADO\n,A.CD_MATERIAL\n,A.DS_MATERIAL\n,A.DS_GRUPO_MATERIAL\n,A.CD_LOCAL_ESTOQUE\n,A.QT_ITEM_NF\n,A.CD_UNIDADE_MEDIDA_COMPRA\n,A.VL_UNITARIO_ITEM_NF\n,A.VL_TOTAL_ITEM_NF\n,A.VL_FRETE\n,A.TRIBUTO\n,A.VL_CUSTO_MEDIO\n,A.TOTAL_ITEM\n,A.OPERACAO\n,L.DS_LOCAL_ESTOQUE\nFROM CATE A\nLEFT JOIN ORDEM_COMPRA OC ON OC.NR_ORDEM_COMPRA = A.NR_ORDEM_COMPRA\nLEFT JOIN LOCAL_ESTOQUE L ON L.CD_LOCAL_ESTOQUE = A.CD_LOCAL_ESTOQUE",
+									"partitionOption": "None",
+									"queryTimeout": "02:00:00"
+								},
+								"sink": {
+									"type": "AzureSqlSink",
+									"writeBehavior": "insert",
+									"sqlWriterUseTableLock": false,
+									"tableOption": "autoCreate",
+									"disableMetricsCollection": false
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "SadallaTasyPrdDataSet",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "AZSQL_DINAMICO",
+									"type": "DatasetReference",
+									"parameters": {
+										"schema_destino": "STG",
+										"tabela_destino": "SUP_NFS_TASY"
+									}
+								}
+							]
 						}
 					]
 				}
@@ -427,7 +479,13 @@
 				"type": "Lookup",
 				"dependsOn": [
 					{
-						"activity": "LIMPA STAGE",
+						"activity": "LIMPA STAGE SMART",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "LIMPA STAGE TASY",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -455,7 +513,7 @@
 				}
 			},
 			{
-				"name": "LIMPA STAGE",
+				"name": "LIMPA STAGE SMART",
 				"type": "Script",
 				"dependsOn": [],
 				"policy": {
@@ -475,6 +533,32 @@
 						{
 							"type": "NonQuery",
 							"text": "truncate table STG.SUP_NFS_SMART"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "LIMPA STAGE TASY",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.1:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "truncate table STG.SUP_NFS_TASY"
 						}
 					],
 					"scriptBlockExecutionTimeout": "02:00:00"
