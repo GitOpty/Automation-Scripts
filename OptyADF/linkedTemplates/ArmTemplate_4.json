@@ -13,6 +13,110 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/Kill_Sessions_Sql')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Kill_Sessions_Sql",
+						"type": "Script",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": "declare @dsql nvarchar(max)=''\n\nselect @dsql = 'kill ' + cast(session_id as varchar(20)) + ';' from SYS.dm_exec_sessions\n\nwhere LOGIN_NAME = 'OPTY_RO_LOGIN'\n\nexec(@dsql)"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "SP_MAPPING_INDEX",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Kill_Sessions_Sql",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_MAPPING_INDEX]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Limpa Tabelas DW",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "SP_MAPPING_INDEX",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "TRUNCATE TABLE dw.tbl_AGENDA;\nTRUNCATE TABLE dw.tbl_AGENDA_PACIENTE;\nTRUNCATE TABLE dw.tbl_AGENDA_CONSULTA;\nTRUNCATE TABLE dw.tbl_AGENDA_CLASSIF;\nTRUNCATE TABLE dw.tbl_AGENDA_MOTIVO_CANCELAMENTO;\nTRUNCATE TABLE dw.tbl_AGENDA_PACIENTE_CLASSIF;\nTRUNCATE TABLE dw.tbl_CID_CATEGORIA;\nTRUNCATE TABLE dw.tbl_CID_DOENCA;\nTRUNCATE TABLE dw.tbl_CLASSE_MATERIAL;\nTRUNCATE TABLE dw.tbl_conta_paciente;\nTRUNCATE TABLE dw.tbl_CONTA_PACIENTE_RESUMO;\nTRUNCATE TABLE dw.tbl_convenio;\nTRUNCATE TABLE dw.tbl_CONVENIO_RETORNO;\nTRUNCATE TABLE dw.tbl_CONVENIO_RETORNO_ITEM;\nTRUNCATE TABLE dw.tbl_empresa;\nTRUNCATE TABLE dw.tbl_estabelecimento;\nTRUNCATE TABLE dw.tbl_estrutura_procedimento;\nTRUNCATE TABLE dw.tbl_local_estoque;\nTRUNCATE TABLE dw.tbl_material;\nTRUNCATE TABLE dw.tbl_medico;\nTRUNCATE TABLE dw.tbl_operacao_estoque;\nTRUNCATE TABLE dw.tbl_pessoa_juridica;\nTRUNCATE TABLE dw.tbl_procedencia;\nTRUNCATE TABLE dw.tbl_procedimento;\nTRUNCATE TABLE dw.tbl_setor_atendimento;\nTRUNCATE TABLE dw.tbl_tipo_valor;\nTRUNCATE TABLE dw.tbl_TITULO_RECEBER;\nTRUNCATE TABLE dw.tbl_TITULO_RECEBER_LIQ;\nTRUNCATE TABLE dw.tbl_valor_dominio;",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Procedure_Marca')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -1727,55 +1831,6 @@
 				"typeProperties": {
 					"schema": "dbo",
 					"table": "Ret_Consulta_Oft_Unidade"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZSQL_TB_Ret_Pacientes_unidade')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Retornos"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "ULTIMO_ATENDIMENTO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CD_PESSOA_FISICA",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "NM_PESSOA_FISICA",
-						"type": "varchar"
-					},
-					{
-						"name": "NR_TELEFONE_CELULAR",
-						"type": "varchar"
-					},
-					{
-						"name": "NR_TELEFONE",
-						"type": "varchar"
-					},
-					{
-						"name": "DS_EMAIL",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "Ret_Pacientes_Unidade"
 				}
 			},
 			"dependsOn": []

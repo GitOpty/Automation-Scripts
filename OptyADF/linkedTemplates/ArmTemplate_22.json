@@ -13,6 +13,3352 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/Chamados Requestia')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Clear all tables",
+						"description": "Truncate all Requestia's tables",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[sp_TRUNCATEREQUESTS]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Check request file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Clear all tables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_REQUESTS",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "FileServerReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Requests file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check request file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check request file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send requests failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "csi.ti@opty.com.br",
+											"Subject": "Arquivo Requestia\\REQUESTS não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\REQUESTS não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Calculate fields",
+									"description": "Update calculated fields (for example, SLA formula, datetime conversions, business hours difference) for time saving in queries",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Copy requests",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_CALCULATEREQUESTS]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "Altera chamado em pausa",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Calculate fields",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_ALTERACHAMADOSPAUSADOS]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "Copy requests",
+									"description": "Copy requests data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "FileServerReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "REQUEST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQUEST",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CLIENT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLIENT",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CURRANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CURRANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "GROUPANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "GROUPANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTANLGRP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTANLGRP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CURRGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CURRGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "GRGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "GRGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CATEGORY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CATEGORY",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "RPRIORITY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RPRIORITY",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "PRODUCT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PRODUCT",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "PROCESS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PROCESS",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "PROBLEM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PROBLEM",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "RSTATUS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RSTATUS"
+													}
+												},
+												{
+													"source": {
+														"name": "REQTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQTYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "REQSOURCE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQSOURCE"
+													}
+												},
+												{
+													"source": {
+														"name": "LOCATION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQLOCATION"
+													}
+												},
+												{
+													"source": {
+														"name": "ORGUNIT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORGUNIT"
+													}
+												},
+												{
+													"source": {
+														"name": "ORGUNIT_ROOT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORGUNIT_ROOT"
+													}
+												},
+												{
+													"source": {
+														"name": "CHARGE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CHARGE"
+													}
+												},
+												{
+													"source": {
+														"name": "SLEVEL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "SLEVEL"
+													}
+												},
+												{
+													"source": {
+														"name": "EQUIP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "EQUIP"
+													}
+												},
+												{
+													"source": {
+														"name": "RESOURCEID",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESOURCEID"
+													}
+												},
+												{
+													"source": {
+														"name": "REQUESTOR",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQUESTOR"
+													}
+												},
+												{
+													"source": {
+														"name": "OPENDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "OPENDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "CLOSEDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLOSEDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "CLOSED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLOSED"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTACTION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTACTION"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTANALYST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTANALYST"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTSTATUS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTSTATUS"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTPRIORITY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTPRIORITY"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTREOPEN",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTREOPEN"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTACTIONATEND",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTACTIONATEND"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTACTTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTACTTYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPTIME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPTIME"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLTIME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLTIME"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPMINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPMINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLMINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLMINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPREMAINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPREMAINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLREMAINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLREMAINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPMODE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPMODE"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLMODE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLMODE"
+													}
+												},
+												{
+													"source": {
+														"name": "NOCOMPUTE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "NOCOMPUTE"
+													}
+												},
+												{
+													"source": {
+														"name": "RLOCKED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RLOCKED"
+													}
+												},
+												{
+													"source": {
+														"name": "ESTIMCOST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ESTIMCOST"
+													}
+												},
+												{
+													"source": {
+														"name": "TOTALCOST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TOTALCOST"
+													}
+												},
+												{
+													"source": {
+														"name": "APROVANLTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "APROVANLTYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "APROVCLITYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "APROVCLITYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "MLEVELAPROV",
+														"type": "String"
+													},
+													"sink": {
+														"name": "MLEVELAPROV"
+													}
+												},
+												{
+													"source": {
+														"name": "CLIENTAPROV",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLIENTAPROV"
+													}
+												},
+												{
+													"source": {
+														"name": "PACKAGE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PACKAGE"
+													}
+												},
+												{
+													"source": {
+														"name": "PROJECT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PROJECT"
+													}
+												},
+												{
+													"source": {
+														"name": "WORKFLOW",
+														"type": "String"
+													},
+													"sink": {
+														"name": "WORKFLOW"
+													}
+												},
+												{
+													"source": {
+														"name": "REQWORKFLOW",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQWORKFLOW"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGCATEGORY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGCATEGORY"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGPRODUCT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGPRODUCT"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGPROCESS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGPROCESS"
+													}
+												},
+												{
+													"source": {
+														"name": "TOTALATTACH",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TOTALATTACH"
+													}
+												},
+												{
+													"source": {
+														"name": "TOTALATTACHACT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TOTALATTACHACT"
+													}
+												},
+												{
+													"source": {
+														"name": "INSERTDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "INSERTDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "QFORM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QFORM"
+													}
+												},
+												{
+													"source": {
+														"name": "QSURVEY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSURVEY"
+													}
+												},
+												{
+													"source": {
+														"name": "QSESSIONFORM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSIONFORM"
+													}
+												},
+												{
+													"source": {
+														"name": "QSESSIONSURVEY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSIONSURVEY"
+													}
+												},
+												{
+													"source": {
+														"name": "TEMPO_RESOLUCAO",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TEMPO_RESOLUCAO"
+													}
+												},
+												{
+													"source": {
+														"name": "PRAZO_RESL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PRAZO_RESL"
+													}
+												},
+												{
+													"source": {
+														"name": "TEMPO_REPOSTA",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TEMPO_REPOSTA"
+													}
+												},
+												{
+													"source": {
+														"name": "PRAZO_RESP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PRAZO_RESP"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_REQUESTS",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_REQUESTS",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Check sessions file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Clear all tables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_QSESSION",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "FileServerReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Sessions file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check sessions file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check sessions file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send session failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "sergio.queiroz@opty.com.br",
+											"Subject": "Arquivo Requestia\\QSESSION não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\QSESSION não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Copy sessions",
+									"description": "Copy sessions data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "FileServerReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"enableSkipIncompatibleRow": true,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "QSESSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSION"
+													}
+												},
+												{
+													"source": {
+														"name": "QSESSIONTITLE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSIONTITLE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QCLIENT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QCLIENT",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QFORM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QFORM",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QVERSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QVERSION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QSTATUS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSTATUS",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QEXPDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QEXPDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QAPPLICATION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QAPPLICATION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QSURVEYTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSURVEYTYPE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "REQLOCATION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQLOCATION",
+														"type": "String"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_QSESSION",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_QSESSION",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Check answers file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Clear all tables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_QANSWER",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "FileServerReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Answers file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check answers file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check answers file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send answers failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "sergio.queiroz@opty.com.br",
+											"Subject": "Arquivo Requestia\\QANSWER não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\QANSWER não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Copy answers",
+									"description": "Copy answers data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "FileServerReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"enableSkipIncompatibleRow": true,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "QSESSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QUESTION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QUESTION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWER",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWER",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWERED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWERED",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QSHOW",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSHOW",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QORDER",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QORDER",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QUPDATED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QUPDATED",
+														"type": "String"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_QANSWER",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_QANSWER",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								},
+								{
+									"name": "Update clients",
+									"description": "Transport [UNIDADE ATENDIMENTO] field from answers table to requests table, for time saving in queries",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Copy answers",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_UPDATEREQUESTCLIENT]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "Centro de Custo",
+									"description": "",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Update clients",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_DESCRICAOCENTRODECUSTO]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "Regionais",
+									"description": "",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Centro de Custo",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_REGIONALREQUESTIA]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Check table answers file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Clear all tables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_QTABLEANSWER",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "FileServerReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Table answers file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check table answers file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check table answers file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send table answer failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "sergio.queiroz@opty.com.br",
+											"Subject": "Arquivo Requestia\\QTABLEANSWER não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\QTABLEANSWER não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Copy table answers",
+									"description": "Copy anwers table data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "FileServerReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"enableSkipIncompatibleRow": true,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "QSESSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "TABLE_NAME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TABLE_NAME",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "TABLE_ROWID",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TABLE_ROWID",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "TABLE_ROWNUM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TABLE_ROWNUM",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_NAME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_NAME",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_VALUE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_VALUE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_POSITION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_POSITION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_ANSWERED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_ANSWERED",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_ANSWERDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_ANSWERDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_UPDATED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_UPDATED",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_VISIBLE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_VISIBLE",
+														"type": "String"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_QTABLEANSWER",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_QTABLEANSWER",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Apoio"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-02-17T17:43:08Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Chamados Requestia_Otimizado_Deadlock_OLD')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Clear all tables",
+						"description": "Truncate all Requestia's tables",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[sp_TRUNCATEREQUESTS]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Check request file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Clear all tables",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_REQUESTS",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "FileServerReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Requests file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check request file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check request file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send requests failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "csi.ti@opty.com.br",
+											"Subject": "Arquivo Requestia\\REQUESTS não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\REQUESTS não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Calculate fields",
+									"description": "Update calculated fields (for example, SLA formula, datetime conversions, business hours difference) for time saving in queries",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Copy requests",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_CALCULATEREQUESTS]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "Altera chamado em pausa",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Calculate fields",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_ALTERACHAMADOSPAUSADOS]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "Copy requests",
+									"description": "Copy requests data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "FileServerReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "REQUEST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQUEST",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CLIENT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLIENT",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CURRANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CURRANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "GROUPANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "GROUPANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTANAL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTANAL",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTANLGRP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTANLGRP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CURRGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CURRGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "GRGROUP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "GRGROUP",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "CATEGORY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CATEGORY",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "RPRIORITY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RPRIORITY",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "PRODUCT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PRODUCT",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "PROCESS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PROCESS",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "PROBLEM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PROBLEM",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "RSTATUS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RSTATUS"
+													}
+												},
+												{
+													"source": {
+														"name": "REQTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQTYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "REQSOURCE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQSOURCE"
+													}
+												},
+												{
+													"source": {
+														"name": "LOCATION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQLOCATION"
+													}
+												},
+												{
+													"source": {
+														"name": "ORGUNIT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORGUNIT"
+													}
+												},
+												{
+													"source": {
+														"name": "ORGUNIT_ROOT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORGUNIT_ROOT"
+													}
+												},
+												{
+													"source": {
+														"name": "CHARGE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CHARGE"
+													}
+												},
+												{
+													"source": {
+														"name": "SLEVEL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "SLEVEL"
+													}
+												},
+												{
+													"source": {
+														"name": "EQUIP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "EQUIP"
+													}
+												},
+												{
+													"source": {
+														"name": "RESOURCEID",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESOURCEID"
+													}
+												},
+												{
+													"source": {
+														"name": "REQUESTOR",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQUESTOR"
+													}
+												},
+												{
+													"source": {
+														"name": "OPENDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "OPENDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "CLOSEDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLOSEDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "CLOSED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLOSED"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTACTION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTACTION"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTANALYST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTANALYST"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTSTATUS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTSTATUS"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTPRIORITY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTPRIORITY"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTREOPEN",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTREOPEN"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTACTIONATEND",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTACTIONATEND"
+													}
+												},
+												{
+													"source": {
+														"name": "LASTACTTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "LASTACTTYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPTIME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPTIME"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLTIME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLTIME"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPMINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPMINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLMINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLMINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPREMAINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPREMAINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLREMAINS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLREMAINS"
+													}
+												},
+												{
+													"source": {
+														"name": "RESPMODE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESPMODE"
+													}
+												},
+												{
+													"source": {
+														"name": "RESLMODE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RESLMODE"
+													}
+												},
+												{
+													"source": {
+														"name": "NOCOMPUTE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "NOCOMPUTE"
+													}
+												},
+												{
+													"source": {
+														"name": "RLOCKED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "RLOCKED"
+													}
+												},
+												{
+													"source": {
+														"name": "ESTIMCOST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ESTIMCOST"
+													}
+												},
+												{
+													"source": {
+														"name": "TOTALCOST",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TOTALCOST"
+													}
+												},
+												{
+													"source": {
+														"name": "APROVANLTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "APROVANLTYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "APROVCLITYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "APROVCLITYPE"
+													}
+												},
+												{
+													"source": {
+														"name": "MLEVELAPROV",
+														"type": "String"
+													},
+													"sink": {
+														"name": "MLEVELAPROV"
+													}
+												},
+												{
+													"source": {
+														"name": "CLIENTAPROV",
+														"type": "String"
+													},
+													"sink": {
+														"name": "CLIENTAPROV"
+													}
+												},
+												{
+													"source": {
+														"name": "PACKAGE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PACKAGE"
+													}
+												},
+												{
+													"source": {
+														"name": "PROJECT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PROJECT"
+													}
+												},
+												{
+													"source": {
+														"name": "WORKFLOW",
+														"type": "String"
+													},
+													"sink": {
+														"name": "WORKFLOW"
+													}
+												},
+												{
+													"source": {
+														"name": "REQWORKFLOW",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQWORKFLOW"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGCATEGORY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGCATEGORY"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGPRODUCT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGPRODUCT"
+													}
+												},
+												{
+													"source": {
+														"name": "ORIGPROCESS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "ORIGPROCESS"
+													}
+												},
+												{
+													"source": {
+														"name": "TOTALATTACH",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TOTALATTACH"
+													}
+												},
+												{
+													"source": {
+														"name": "TOTALATTACHACT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TOTALATTACHACT"
+													}
+												},
+												{
+													"source": {
+														"name": "INSERTDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "INSERTDATE"
+													}
+												},
+												{
+													"source": {
+														"name": "QFORM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QFORM"
+													}
+												},
+												{
+													"source": {
+														"name": "QSURVEY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSURVEY"
+													}
+												},
+												{
+													"source": {
+														"name": "QSESSIONFORM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSIONFORM"
+													}
+												},
+												{
+													"source": {
+														"name": "QSESSIONSURVEY",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSIONSURVEY"
+													}
+												},
+												{
+													"source": {
+														"name": "TEMPO_RESOLUCAO",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TEMPO_RESOLUCAO"
+													}
+												},
+												{
+													"source": {
+														"name": "PRAZO_RESL",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PRAZO_RESL"
+													}
+												},
+												{
+													"source": {
+														"name": "TEMPO_REPOSTA",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TEMPO_REPOSTA"
+													}
+												},
+												{
+													"source": {
+														"name": "PRAZO_RESP",
+														"type": "String"
+													},
+													"sink": {
+														"name": "PRAZO_RESP"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_REQUESTS",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_REQUESTS",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Check sessions file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Requests file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_QSESSION",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "FileServerReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Sessions file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check sessions file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check sessions file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send session failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "sergio.queiroz@opty.com.br",
+											"Subject": "Arquivo Requestia\\QSESSION não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\QSESSION não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Copy sessions",
+									"description": "Copy sessions data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "FileServerReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"enableSkipIncompatibleRow": true,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "QSESSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSION"
+													}
+												},
+												{
+													"source": {
+														"name": "QSESSIONTITLE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSIONTITLE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QCLIENT",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QCLIENT",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QFORM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QFORM",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QVERSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QVERSION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QSTATUS",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSTATUS",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QEXPDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QEXPDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QAPPLICATION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QAPPLICATION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QSURVEYTYPE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSURVEYTYPE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "REQLOCATION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "REQLOCATION",
+														"type": "String"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_QSESSION",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_QSESSION",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Check answers file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Sessions file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_QANSWER",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "FileServerReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Answers file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check answers file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check answers file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send answers failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "sergio.queiroz@opty.com.br",
+											"Subject": "Arquivo Requestia\\QANSWER não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\QANSWER não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Copy answers",
+									"description": "Copy answers data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "FileServerReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"enableSkipIncompatibleRow": true,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "QSESSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QUESTION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QUESTION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWER",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWER",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWERED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWERED",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QANSWERDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QSHOW",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSHOW",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QORDER",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QORDER",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "QUPDATED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QUPDATED",
+														"type": "String"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_QANSWER",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_QANSWER",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								},
+								{
+									"name": "Update clients",
+									"description": "Transport [UNIDADE ATENDIMENTO] field from answers table to requests table, for time saving in queries",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Copy answers",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_UPDATEREQUESTCLIENT]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "Centro de Custo",
+									"description": "",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Update clients",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_DESCRICAOCENTRODECUSTO]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "Regionais",
+									"description": "",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "Centro de Custo",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[dbo].[sp_REGIONALREQUESTIA]"
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Check table answers file exists",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "Answers file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "FILE_QTABLEANSWER",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists"
+							],
+							"storeSettings": {
+								"type": "FileServerReadSettings",
+								"recursive": true
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Table answers file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "Check table answers file exists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@equals(\nactivity('Check table answers file exists').output.exists, \ntrue)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Send table answer failure",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "Send email",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"EmailTo": "sergio.queiroz@opty.com.br",
+											"Subject": "Arquivo Requestia\\QTABLEANSWER não encontrado!",
+											"ErrorMessage": "O arquivo Requestia\\QTABLEANSWER não foi encontrado",
+											"MasterPipeline": {
+												"value": "@{pipeline().Pipeline}",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "Copy table answers",
+									"description": "Copy anwers table data from CSV (stored on Power BI Gateway VM) to Azure SQL",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "FileServerReadSettings",
+												"recursive": true
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert"
+										},
+										"enableStaging": false,
+										"enableSkipIncompatibleRow": true,
+										"translator": {
+											"type": "TabularTranslator",
+											"mappings": [
+												{
+													"source": {
+														"name": "QSESSION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "QSESSION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "TABLE_NAME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TABLE_NAME",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "TABLE_ROWID",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TABLE_ROWID",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "TABLE_ROWNUM",
+														"type": "String"
+													},
+													"sink": {
+														"name": "TABLE_ROWNUM",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_NAME",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_NAME",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_VALUE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_VALUE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_POSITION",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_POSITION",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_ANSWERED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_ANSWERED",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_ANSWERDATE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_ANSWERDATE",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_UPDATED",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_UPDATED",
+														"type": "String"
+													}
+												},
+												{
+													"source": {
+														"name": "COLUMN_VISIBLE",
+														"type": "String"
+													},
+													"sink": {
+														"name": "COLUMN_VISIBLE",
+														"type": "String"
+													}
+												}
+											]
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "FILE_QTABLEANSWER",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "TABLE_QTABLEANSWER",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									]
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"folder": {
+					"name": "Apoio"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-02-17T17:43:08Z"
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Cirurgias e Exames Sadalla e HOB')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -9127,3660 +12473,6 @@
 					"name": "Atendimento/Jornada do Paciente"
 				},
 				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Filas por hora')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Start",
-						"description": "Step added to paralellize execution",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					},
-					{
-						"name": "Check HOB file exists",
-						"type": "GetMetadata",
-						"dependsOn": [
-							{
-								"activity": "Start",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataset": {
-								"referenceName": "HOB_CSV_NC_FilasPorHora",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"fieldList": [
-								"exists"
-							],
-							"storeSettings": {
-								"type": "FileServerReadSettings",
-								"recursive": true
-							},
-							"formatSettings": {
-								"type": "DelimitedTextReadSettings"
-							}
-						}
-					},
-					{
-						"name": "HOB file exists",
-						"type": "IfCondition",
-						"dependsOn": [
-							{
-								"activity": "Check HOB file exists",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"expression": {
-								"value": "@equals(\nactivity('Check HOB file exists').output.exists, \ntrue)",
-								"type": "Expression"
-							},
-							"ifFalseActivities": [
-								{
-									"name": "Send HOB failure",
-									"type": "ExecutePipeline",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"pipeline": {
-											"referenceName": "Send email",
-											"type": "PipelineReference"
-										},
-										"waitOnCompletion": true,
-										"parameters": {
-											"EmailTo": "sergio.queiroz@opty.com.br",
-											"Subject": "Arquivo Nexcore\\HOB não encontrado!",
-											"ErrorMessage": "O arquivo HOB\\FilasHora não foi encontrado",
-											"MasterPipeline": {
-												"value": "@{pipeline().Pipeline}",
-												"type": "Expression"
-											}
-										}
-									}
-								}
-							],
-							"ifTrueActivities": [
-								{
-									"name": "Copy HOB filas hora",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "FileServerReadSettings",
-												"recursive": true
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert"
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"mappings": [
-												{
-													"source": {
-														"name": "Fila",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fila",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Intervalo",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Anuncio Inicial",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Anuncio_Inicial",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Timeout",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Timeout",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Cheia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Cheia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Vazia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Vazia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Sem Ags. Disp.",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Sem_Ags_Disp",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Caixa Postal",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Caixa_Postal",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Antes",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Antes",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Intervalo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Depois",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Depois",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Total Recebidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Total_Recebidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Tratados",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Nao Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Nao_Tratados",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Toque",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Toque",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Pausa ACW",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Pausa_ACW",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Produtivo AHT",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Produtivo_AHT",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Nivel Servico",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Nivel_Servico",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Atendimento",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Atendimento",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Medio",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Medio",
-														"type": "Double"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera = Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Marca",
-														"type": "String"
-													},
-													"sink": {
-														"name": "MARCA",
-														"type": "String"
-													}
-												}
-											]
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "HOB_CSV_NC_FilasPorHora",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_TB_NC_FilasPorHoras",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									]
-								}
-							]
-						}
-					},
-					{
-						"name": "Check HOSAG file exists",
-						"type": "GetMetadata",
-						"dependsOn": [
-							{
-								"activity": "Start",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataset": {
-								"referenceName": "HOSAG_CSV_NC_FilasPorHora",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"fieldList": [
-								"exists"
-							],
-							"storeSettings": {
-								"type": "FileServerReadSettings",
-								"recursive": true
-							},
-							"formatSettings": {
-								"type": "DelimitedTextReadSettings"
-							}
-						}
-					},
-					{
-						"name": "HOSAG file exists",
-						"type": "IfCondition",
-						"dependsOn": [
-							{
-								"activity": "Check HOSAG file exists",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"expression": {
-								"value": "@equals(\nactivity('Check HOSAG file exists').output.exists, \ntrue)",
-								"type": "Expression"
-							},
-							"ifFalseActivities": [
-								{
-									"name": "Send HOSAG failure",
-									"type": "ExecutePipeline",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"pipeline": {
-											"referenceName": "Send email",
-											"type": "PipelineReference"
-										},
-										"waitOnCompletion": true,
-										"parameters": {
-											"EmailTo": "sergio.queiroz@opty.com.br",
-											"Subject": "Arquivo Nexcore\\HOSAG não encontrado!",
-											"ErrorMessage": "O arquivo HOSAG\\FilasHora não foi encontrado",
-											"MasterPipeline": {
-												"value": "@{pipeline().Pipeline}",
-												"type": "Expression"
-											}
-										}
-									}
-								}
-							],
-							"ifTrueActivities": [
-								{
-									"name": "Copy HOSAG filas horas",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "FileServerReadSettings",
-												"recursive": true
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert"
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"mappings": [
-												{
-													"source": {
-														"name": "Fila",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fila",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Intervalo",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Anuncio Inicial",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Anuncio_Inicial",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Timeout",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Timeout",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Cheia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Cheia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Vazia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Vazia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Sem Ags. Disp.",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Sem_Ags_Disp",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Caixa Postal",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Caixa_Postal",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Antes",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Antes",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Intervalo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Depois",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Depois",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Total Recebidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Total_Recebidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Tratados",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Nao Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Nao_Tratados",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Toque",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Toque",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Pausa ACW",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Pausa_ACW",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Produtivo AHT",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Produtivo_AHT",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Nivel Servico",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Nivel_Servico",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Atendimento",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Atendimento",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Medio",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Medio",
-														"type": "Double"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera = Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Marca",
-														"type": "String"
-													},
-													"sink": {
-														"name": "MARCA",
-														"type": "String"
-													}
-												}
-											]
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "HOSAG_CSV_NC_FilasPorHora",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_TB_NC_FilasPorHoras",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									]
-								}
-							]
-						}
-					},
-					{
-						"name": "Check DH file exists",
-						"type": "GetMetadata",
-						"dependsOn": [
-							{
-								"activity": "Start",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataset": {
-								"referenceName": "DH_CSV_NC_FilasPorHora",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"fieldList": [
-								"exists"
-							],
-							"storeSettings": {
-								"type": "FileServerReadSettings",
-								"recursive": true
-							},
-							"formatSettings": {
-								"type": "DelimitedTextReadSettings"
-							}
-						}
-					},
-					{
-						"name": "DH file exists",
-						"type": "IfCondition",
-						"dependsOn": [
-							{
-								"activity": "Check DH file exists",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"expression": {
-								"value": "@equals(\nactivity('Check DH file exists').output.exists, \ntrue)",
-								"type": "Expression"
-							},
-							"ifFalseActivities": [
-								{
-									"name": "Send DH failure",
-									"type": "ExecutePipeline",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"pipeline": {
-											"referenceName": "Send email",
-											"type": "PipelineReference"
-										},
-										"waitOnCompletion": true,
-										"parameters": {
-											"EmailTo": "sergio.queiroz@opty.com.br",
-											"Subject": "Arquivo Nexcore\\DH não encontrado!",
-											"ErrorMessage": "O arquivo DH\\FilasHora não foi encontrado",
-											"MasterPipeline": {
-												"value": "@{pipeline().Pipeline}",
-												"type": "Expression"
-											}
-										}
-									}
-								}
-							],
-							"ifTrueActivities": [
-								{
-									"name": "Copy DH filas hora",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "FileServerReadSettings",
-												"recursive": true
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert"
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"mappings": [
-												{
-													"source": {
-														"name": "Fila",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fila",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Intervalo",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Anuncio Inicial",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Anuncio_Inicial",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Timeout",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Timeout",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Cheia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Cheia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Vazia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Vazia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Sem Ags. Disp.",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Sem_Ags_Disp",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Caixa Postal",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Caixa_Postal",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Antes",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Antes",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Intervalo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Depois",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Depois",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Total Recebidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Total_Recebidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Tratados",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Nao Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Nao_Tratados",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Toque",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Toque",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Pausa ACW",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Pausa_ACW",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Produtivo AHT",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Produtivo_AHT",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Nivel Servico",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Nivel_Servico",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Atendimento",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Atendimento",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Medio",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Medio",
-														"type": "Double"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera = Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Marca",
-														"type": "String"
-													},
-													"sink": {
-														"name": "MARCA",
-														"type": "String"
-													}
-												}
-											]
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "DH_CSV_NC_FilasPorHora",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_TB_NC_FilasPorHoras",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									]
-								}
-							]
-						}
-					},
-					{
-						"name": "Check HOSL file exists",
-						"type": "GetMetadata",
-						"dependsOn": [
-							{
-								"activity": "Start",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataset": {
-								"referenceName": "HOSL_CSV_NC_BilheteLigacoes",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"fieldList": [
-								"exists"
-							],
-							"storeSettings": {
-								"type": "FileServerReadSettings",
-								"recursive": true
-							},
-							"formatSettings": {
-								"type": "DelimitedTextReadSettings"
-							}
-						}
-					},
-					{
-						"name": "HOSL file exists",
-						"type": "IfCondition",
-						"dependsOn": [
-							{
-								"activity": "Check HOSL file exists",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"expression": {
-								"value": "@equals(\nactivity('Check HOSL file exists').output.exists, \ntrue)",
-								"type": "Expression"
-							},
-							"ifFalseActivities": [
-								{
-									"name": "Send HOSL failure",
-									"type": "ExecutePipeline",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"pipeline": {
-											"referenceName": "Send email",
-											"type": "PipelineReference"
-										},
-										"waitOnCompletion": true,
-										"parameters": {
-											"EmailTo": "sergio.queiroz@opty.com.br",
-											"Subject": "Arquivo Nexcore\\HOSL não encontrado!",
-											"ErrorMessage": "O arquivo HOSL\\FilasHora não foi encontrado",
-											"MasterPipeline": {
-												"value": "@{pipeline().Pipeline}",
-												"type": "Expression"
-											}
-										}
-									}
-								}
-							],
-							"ifTrueActivities": [
-								{
-									"name": "Copy HOSL filas hora",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "FileServerReadSettings",
-												"recursive": true
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert"
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"mappings": [
-												{
-													"source": {
-														"name": "Fila",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fila",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Intervalo",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Anuncio Inicial",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Anuncio_Inicial",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Timeout",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Timeout",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Cheia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Cheia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Vazia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Vazia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Sem Ags. Disp.",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Sem_Ags_Disp",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Caixa Postal",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Caixa_Postal",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Antes",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Antes",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Intervalo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Depois",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Depois",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Total Recebidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Total_Recebidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Tratados",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Nao Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Nao_Tratados",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Toque",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Toque",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Pausa ACW",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Pausa_ACW",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Produtivo AHT",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Produtivo_AHT",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Nivel Servico",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Nivel_Servico",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Atendimento",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Atendimento",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Medio",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Medio",
-														"type": "Double"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera = Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Marca",
-														"type": "String"
-													},
-													"sink": {
-														"name": "MARCA",
-														"type": "String"
-													}
-												}
-											]
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "HOSL_CSV_NC_FilasPorHora",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_TB_NC_FilasPorHoras",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									]
-								}
-							]
-						}
-					},
-					{
-						"name": "Check INOB file exists",
-						"type": "GetMetadata",
-						"dependsOn": [
-							{
-								"activity": "Start",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataset": {
-								"referenceName": "INOB_CSV_NC_FilasPorHora",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"fieldList": [
-								"exists"
-							],
-							"storeSettings": {
-								"type": "FileServerReadSettings",
-								"recursive": true
-							},
-							"formatSettings": {
-								"type": "DelimitedTextReadSettings"
-							}
-						}
-					},
-					{
-						"name": "INOB file exists",
-						"type": "IfCondition",
-						"dependsOn": [
-							{
-								"activity": "Check INOB file exists",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"expression": {
-								"value": "@equals(\nactivity('Check INOB file exists').output.exists, \ntrue)",
-								"type": "Expression"
-							},
-							"ifFalseActivities": [
-								{
-									"name": "Send INOB failure",
-									"type": "ExecutePipeline",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"pipeline": {
-											"referenceName": "Send email",
-											"type": "PipelineReference"
-										},
-										"waitOnCompletion": true,
-										"parameters": {
-											"EmailTo": "sergio.queiroz@opty.com.br",
-											"Subject": "Arquivo Nexcore\\INOB não encontrado!",
-											"ErrorMessage": "O arquivo INOB\\FilasHoras não foi encontrado",
-											"MasterPipeline": {
-												"value": "@{pipeline().Pipeline}",
-												"type": "Expression"
-											}
-										}
-									}
-								}
-							],
-							"ifTrueActivities": [
-								{
-									"name": "Copy INOB filas horas",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "FileServerReadSettings",
-												"recursive": true
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert"
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"mappings": [
-												{
-													"source": {
-														"name": "Fila",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fila",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Intervalo",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Anuncio Inicial",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Anuncio_Inicial",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Timeout",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Timeout",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Cheia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Cheia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Vazia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Vazia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Sem Ags. Disp.",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Sem_Ags_Disp",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Caixa Postal",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Caixa_Postal",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Antes",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Antes",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Intervalo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Depois",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Depois",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Total Recebidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Total_Recebidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Tratados",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Nao Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Nao_Tratados"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Toque",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Toque",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Pausa ACW",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Pausa_ACW",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Produtivo AHT",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Produtivo_AHT",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Nivel Servico",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Nivel_Servico",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Atendimento",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Atendimento",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Medio",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Medio",
-														"type": "Double"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera = Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Marca",
-														"type": "String"
-													},
-													"sink": {
-														"name": "MARCA",
-														"type": "String"
-													}
-												}
-											]
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "INOB_CSV_NC_FilasPorHora",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_TB_NC_FilasPorHoras",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									]
-								}
-							]
-						}
-					},
-					{
-						"name": "Check CSI file exists",
-						"type": "GetMetadata",
-						"dependsOn": [
-							{
-								"activity": "Start",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataset": {
-								"referenceName": "CSI_CSV_NC_FilasPorHora",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"fieldList": [
-								"exists"
-							],
-							"storeSettings": {
-								"type": "FileServerReadSettings",
-								"recursive": true
-							},
-							"formatSettings": {
-								"type": "DelimitedTextReadSettings"
-							}
-						}
-					},
-					{
-						"name": "CSI file exists",
-						"type": "IfCondition",
-						"dependsOn": [
-							{
-								"activity": "Check CSI file exists",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"expression": {
-								"value": "@equals(\nactivity('Check CSI file exists').output.exists, \ntrue)",
-								"type": "Expression"
-							},
-							"ifFalseActivities": [
-								{
-									"name": "Send failure CSI",
-									"type": "ExecutePipeline",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"pipeline": {
-											"referenceName": "Send email",
-											"type": "PipelineReference"
-										},
-										"waitOnCompletion": true,
-										"parameters": {
-											"EmailTo": "sergio.queiroz@opty.com.br",
-											"Subject": "Arquivo Nexcore\\INOB não encontrado!",
-											"ErrorMessage": "O arquivo INOB\\Agentes por Dia não foi encontrado",
-											"MasterPipeline": {
-												"value": "@{pipeline().Pipeline}",
-												"type": "Expression"
-											}
-										}
-									}
-								}
-							],
-							"ifTrueActivities": [
-								{
-									"name": "Copy CSI FilasPorHora",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "DelimitedTextSource",
-											"storeSettings": {
-												"type": "FileServerReadSettings",
-												"recursive": true
-											},
-											"formatSettings": {
-												"type": "DelimitedTextReadSettings"
-											}
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert"
-										},
-										"enableStaging": false,
-										"enableSkipIncompatibleRow": true,
-										"translator": {
-											"type": "TabularTranslator",
-											"mappings": [
-												{
-													"source": {
-														"name": "Fila",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fila",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Intervalo",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Atendidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Atendidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Ate NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Ate_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Apos NS",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Apos_NS",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos Anuncio Inicial",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos_Anuncio_Inicial",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Abandonos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Abandonos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Timeout",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Timeout",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Cheia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Cheia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Vazia",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Vazia",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Fila Sem Ags. Disp.",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Fila_Sem_Ags_Disp",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos Caixa Postal",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos_Caixa_Postal",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Roteamentos",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Roteamentos",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Antes",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Antes",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Intervalo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Intervalo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario Depois",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario_Depois",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Fora Horario",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Fora_Horario",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Total Recebidas",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Total_Recebidas",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Tratados",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback Nao Tratados",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback_Nao_Tratados",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Callback",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Callback",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Toque",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Toque",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Falado",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Falado",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Pausa ACW",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Pausa_ACW",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Produtivo AHT",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Produtivo_AHT",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Nivel Servico",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Nivel_Servico",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Atendimento",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Atendimento",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "% Taxa Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Taxa_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Atender",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Atender",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Medio para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Medio_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total para Abandono",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_para_Abandono",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Tempo Total Espera",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Tempo_Total_Espera",
-														"type": "String"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Agentes Logados - Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Agentes_Logados_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Minimo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Minimo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera - Medio",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Medio",
-														"type": "Double"
-													}
-												},
-												{
-													"source": {
-														"name": "Chamadas em Espera = Maximo",
-														"type": "String"
-													},
-													"sink": {
-														"name": "Chamadas_em_Espera_Maximo",
-														"type": "Int32"
-													}
-												},
-												{
-													"source": {
-														"name": "Marca",
-														"type": "String"
-													},
-													"sink": {
-														"name": "MARCA",
-														"type": "String"
-													}
-												}
-											]
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "CSI_CSV_NC_FilasPorHora",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_TB_NC_FilasPorHoras",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									]
-								}
-							]
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Atendimento/Nexcore"
-				},
-				"annotations": [],
-				"lastPublishTime": "2019-11-13T13:27:46Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Geral Atendimentos HOB')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Alimenta as informações das tabelas:\n\nAtendimento_ Unidade \nAgendamento_Unidade\nUsuarios_Unidade\nConsultas_Unidade\nAgendas Unidade\n\nPara extração de relatórios do call center.",
-				"activities": [
-					{
-						"name": "Atendimento HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select pf.cd_pessoa_fisica, pf.nm_pessoa_fisica, \nto_char(at.dt_entrada,'yyyy-mm-dd') as dt_entrada,\nto_char(at.dt_entrada,'hh24:mi:ss') as hr_entrada, \n\nfast_ops.obter_nome_pf(at.cd_medico_resp) as nm_medico, c.cd_convenio, fast_ops.obter_nome_convenio(c.cd_convenio) AS ds_convenio, \nat.nr_atendimento,\ne.cd_cgc as CNPJ,\nnm_fantasia_estab DS_UNIDADE,\nem.nm_razao_social MARCA,\n\nat.cd_procedencia,\np.ds_procedencia,\n'NAO ENCONTRADO' as ID,\n\nto_char(at.dt_entrada,'dd') dia,\nto_char(at.dt_entrada,'mm') mes,\nto_char(at.dt_entrada,'yyyy') ano,\nto_char(at.dt_cancelamento, 'yyyy-mm-dd') dt_cancelamento,\nto_char(at.dt_atualizacao, 'yyyy-mm-dd') dt_atualizacao,\n'Tasy HTML' as BASE\n\nfrom \nfast_ops.atendimento_paciente at, \nfast_ops.pessoa_fisica pf,\nfast_ops.atend_categoria_convenio c,\nfast_ops.procedencia p,\nfast_ops.estabelecimento e,\nfast_ops.empresa em\nwhere at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand at.cd_procedencia = p.cd_procedencia (+)\nand at.nr_atendimento = c.nr_atendimento\nand at.cd_estabelecimento = e.cd_estabelecimento\nand e.cd_empresa = em.cd_empresa\n\nAND at.dt_entrada between SYSDATE - 730 AND SYSDATE",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Atendimento",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Consulta HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "1.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "-- Consulta HOB - Azure\n\nselect o.nr_sequencia as nr_sequencia, \nto_char(o.dt_atualizacao,'yyyy-mm-dd') as dt_atualizacao,\nto_char(o.dt_atualizacao,'hh24:mi:ss') as hr_atualizacao, \no.nr_atendimento, \no.cd_medico as cd_medico ,\nfast_ops.obter_nome_pf(o.cd_medico) as nm_medico, \nc.qt_periodo||' '||c.ie_periodo as ds_retorno,  \nsubstr(z.conduta,1,1000) as ds_conduta,\nfast_ops.obter_pessoa_atendimento(o.nr_atendimento, 'C') as cd_pessoa_fisica,\n\n(select unique d.cd_doenca ||' - '|| a.ds_doenca_cid\nfrom fast_ops.diagnostico_doenca d, \n     fast_ops.cid_doenca a\nwhere a.cd_doenca_cid = d.cd_doenca\nand d.nr_atendimento = o.nr_atendimento\nand d.nr_seq_interno = (select max(x.nr_seq_interno) from fast_ops.diagnostico_doenca x where x.nr_atendimento = d.nr_atendimento)) as ds_diagnostico,\n\nfast_ops.obter_nome_estab(fast_ops.obter_estab_atendimento(o.nr_atendimento)) as DS_UNIDADE,\n\ne.cd_cgc as cnpj,\n\n'HOB' as MARCA,\n'Tasy HTML' as BASE\n\nfrom fast_ops.oft_consulta o,\n     (SELECT a.nr_seq_consulta, b.ds_resultado as conduta\n      FROM   fast_ops.med_avaliacao_paciente a \n      inner join fast_ops.med_avaliacao_result b ON b.nr_seq_avaliacao = a.nr_sequencia \n      WHERE  a.nr_seq_tipo_avaliacao = 34 \n      and  b.nr_seq_item = 457 --456, 458 ) \n      GROUP  BY a.nr_seq_consulta, b.ds_resultado) z,\n      fast_ops.oft_conduta c,\n      fast_ops.estabelecimento e\nwhere o.nr_sequencia = z.nr_seq_consulta\nand o.nr_sequencia = c.nr_seq_consulta\nand o.nr_atendimento is not null\nand fast_ops.obter_estab_atendimento(o.nr_atendimento) = e.cd_estabelecimento\n\nand o.dt_atualizacao between SYSDATE - 730 AND SYSDATE",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Consulta",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Agendamento HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "-- AGENDAMENTO HOB - Azure\n\nselect  a.cd_pessoa_fisica, \na.cd_convenio, \nfast_ops.obter_cnpj_estabelecimento(ag.cd_estabelecimento) as cnpj,\nto_char((a.hr_inicio) , 'yyyy-mm-dd') as data_agenda,\nto_char((a.hr_inicio) , 'hh24:mi:ss') as hora_agenda,\n'Consulta' as tipo_agenda,\npf.nm_pessoa_fisica as nm_paciente,\nsubstr(fast_ops.obter_desc_procedimento(a.cd_procedimento, a.ie_origem_proced),1,1000) as ds_procedimento_princ,\nsubstr((select Listagg(fast_ops.Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced), ' ;') within GROUP (ORDER BY fast_ops.Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced))  from FAST_OPS.AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia),1,1000) as ds_procedimento_adic,\n1 + (select count(1)from FAST_OPS.AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia) as ie_quantidade,\nfast_ops.obter_nome_usuario(a.nm_usuario_orig) as nm_usuario,\nfast_ops.obter_nome_pf(a.cd_medico_exec) as nm_medico,\ne.nm_fantasia_estab DS_UNIDADE,\nem.nm_razao_social MARCA,\nfast_ops.obter_valor_dominio(83,a.ie_status_agenda) as status_agenda,\na.nr_atendimento,\na.nr_sequencia,\n'NAO ENCONTRADO' as ID,\na.cd_procedencia,\np.ds_procedencia,\nto_char(a.dt_agendamento, 'yyyy-mm-dd') dt_agendamento,\n\nto_char(a.dt_agenda,'dd') dia,\nto_char(a.dt_agenda,'mm') mes,\nto_char(a.dt_agenda,'yyyy') ano,\nac.ds_classificacao,\naa.ds_agrupamento ds_agrupamento,\na.cd_motivo_cancelamento,\nsubstr(fast_ops.obter_ds_motivo_status(a.nr_sequencia, a.cd_agenda),1,200) as ds_motivo_cancelamento,\na.cd_agenda,\nto_char(a.dt_atualizacao, 'yyyy-mm-dd') dt_atualizacao,\n'Tasy HTML' as BASE\n\nfrom FAST_OPS.agenda_paciente a,\n     FAST_OPS.agenda ag,\n     FAST_OPS.pessoa_fisica pf,\n     FAST_OPS.procedencia p,\n     FAST_OPS.agenda_paciente_classif ac,\n     FAST_OPS.agrupamento_agenda aa,\n     FAST_OPS.empresa em,\n     FAST_OPS.estabelecimento e\nwhere a.cd_agenda = ag.cd_agenda\nand a.cd_pessoa_fisica = pf.cd_pessoa_fisica (+)\nand a.cd_procedencia = p.cd_procedencia (+)\nand a.nr_seq_classif_agenda = ac.nr_sequencia (+)\nand ag.nr_seq_agrupamento = aa.nr_sequencia (+)\nand ag.cd_estabelecimento = e.cd_estabelecimento\nand e.cd_empresa = em.cd_empresa\nand a.cd_pessoa_fisica is not null\nand ag.cd_pessoa_fisica is not null\nand ag.cd_tipo_agenda = 2\n\nand a.dt_agendamento between SYSDATE - 730 AND SYSDATE",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Agendamento",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Wait1",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					},
-					{
-						"name": "Usuarios HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select u.nm_usuario, \nu.ds_usuario, \nu.ie_situacao, \nto_char(u.dt_atualizacao, 'yyyy-mm-dd') dt_atualizacao,\nfast_ops.obter_nome_estabelecimento(u.cd_estabelecimento) as DS_UNIDADE,\ne.cd_cgc as CNPJ,\nfast_ops.obter_nome_empresa(fast_ops.obter_empresa_estab(u.cd_estabelecimento)) as Marca,\n'Tasy HTML' as BASE\nfrom FAST_OPS.usuario u,\n     FAST_OPS.empresa em,\n     FAST_OPS.estabelecimento e\nwhere u.cd_estabelecimento = e.cd_estabelecimento\nand e.cd_empresa = em.cd_empresa",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Usuario",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Agendas HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "SELECT A.CD_AGENDA, A.DS_AGENDA, A.CD_TIPO_AGENDA, A.CD_PESSOA_FISICA, E.CD_CGC as CNPJ, (SELECT X.DS_AREA_ATUACAO FROM fast_ops.AREA_ATUACAO_MEDICA X\nWHERE X.NR_SEQUENCIA = A.NR_SEQ_AREA_ATUACAO) AS DS_AREA_ATUACAO, A.IE_SITUACAO,\nto_char(A.DT_ATUALIZACAO, 'yyyy-mm-dd') DT_ATUALIZACAO,\n'Tasy HTML' as BASE\nFROM FAST_OPS.AGENDA A,\n     FAST_OPS.ESTABELECIMENTO E\nWHERE A.CD_ESTABELECIMENTO = E.CD_ESTABELECIMENTO",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Agenda",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"folder": {
-					"name": "Atendimento"
-				},
-				"annotations": [],
-				"lastPublishTime": "2020-03-04T15:25:56Z"
 			},
 			"dependsOn": []
 		}

@@ -123,6 +123,10 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'SadallaTasyProd_NEW'"
 		},
+		"blob_din_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'blob_din'"
+		},
 		"sv_hmaisbrasildatadriven_accountKey": {
 			"type": "secureString",
 			"metadata": "Secure string for 'accountKey' of 'sv_hmaisbrasildatadriven'"
@@ -60850,7 +60854,7 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/NF Smart')]",
+			"name": "[concat(parameters('factoryName'), '/NF')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
@@ -60884,7 +60888,7 @@
 							"source": {
 								"type": "AzureSqlSource",
 								"sqlReaderQuery": {
-									"value": "@concat('\r\nSELECT DISTINCT\r\n    CAST(A.TheFirstOfMonth AS VARCHAR(20)) + '' 00:00:00.000'' AS DT_INICIO\r\n    ,CAST(A.TheLastOfMonth AS VARCHAR(20)) + '' 23:59:59.000'' AS DT_FIM\r\nFROM calendar A\r\nWHERE A.TheFirstOfMonth BETWEEN ','''',variables('DT_INICIO'),'''', ' AND  ','''',variables('DT_FIM'),'''')",
+									"value": "@concat('\nSELECT DISTINCT\n    CAST(A.TheFirstOfMonth AS VARCHAR(20)) + '' 00:00:00.000'' AS DT_INICIO\n    ,CAST(A.TheLastOfMonth AS VARCHAR(20)) + '' 23:59:59.000'' AS DT_FIM,\n\n     CONVERT(VARCHAR(20),A.TheFirstOfMonth  ,103)  AS DT_INICIO_ORACLE\n    ,CONVERT(VARCHAR(20),A.TheLastOfMonth ,103)  AS DT_FIM_ORACLE\n\nFROM calendar A\nWHERE A.TheFirstOfMonth BETWEEN ','''',variables('DT_INICIO'),'''', ' AND  ','''',variables('DT_FIM'),'''')",
 									"type": "Expression"
 								},
 								"queryTimeout": "02:00:00",
@@ -60966,9 +60970,16 @@
 							"isSequential": true,
 							"activities": [
 								{
-									"name": "NF ITG",
+									"name": "SMART - NF ITG",
 									"type": "Copy",
-									"dependsOn": [],
+									"dependsOn": [
+										{
+											"activity": "TASY - NF HTML",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
 									"policy": {
 										"timeout": "7.00:00:00",
 										"retry": 0,
@@ -61023,11 +61034,11 @@
 									]
 								},
 								{
-									"name": "NF ITB",
+									"name": "SMART - NF ITB",
 									"type": "Copy",
 									"dependsOn": [
 										{
-											"activity": "NF ITG",
+											"activity": "SMART - NF ITG",
 											"dependencyConditions": [
 												"Succeeded"
 											]
@@ -61087,11 +61098,11 @@
 									]
 								},
 								{
-									"name": "NF IOF",
+									"name": "SMART - NF IOF",
 									"type": "Copy",
 									"dependsOn": [
 										{
-											"activity": "NF ITB",
+											"activity": "SMART - NF ITB",
 											"dependencyConditions": [
 												"Succeeded"
 											]
@@ -61151,11 +61162,11 @@
 									]
 								},
 								{
-									"name": "NF OFT",
+									"name": "SMART - NF OFT",
 									"type": "Copy",
 									"dependsOn": [
 										{
-											"activity": "NF IOF",
+											"activity": "SMART - NF IOF",
 											"dependencyConditions": [
 												"Succeeded"
 											]
@@ -61215,11 +61226,11 @@
 									]
 								},
 								{
-									"name": "NF HOSL",
+									"name": "SMART - NF HOSL",
 									"type": "Copy",
 									"dependsOn": [
 										{
-											"activity": "NF OFT",
+											"activity": "SMART - NF OFT",
 											"dependencyConditions": [
 												"Succeeded"
 											]
@@ -61277,6 +61288,111 @@
 											}
 										}
 									]
+								},
+								{
+									"name": "TASY - NF Sadalla",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@concat(\n\n'with cate as(\nselect  \n        A.CD_ESTABELECIMENTO,\n        obter_nome_estab(a.cd_estabelecimento) ds_estabelecimento,\n        A.NR_ORDEM_COMPRA,\n        a.dt_entrada_saida,\n        a.dt_emissao,\n        a.nr_nota_fiscal,\n        a.cd_cgc_emitente,\n        substr(obter_nome_pf_pj(null,a.cd_cgc_emitente),1,100) ds_fornecedor,\n        pj.CD_CEP,\n        pj.DS_ENDERECO,\n        pj.DS_BAIRRO,\n        pj.DS_MUNICIPIO,\n        pj.SG_ESTADO,\n        b.cd_material,\n        substr(obter_desc_material(b.cd_material),1,100) ds_material,\n        e.ds_grupo_material,\n        b.cd_local_estoque,\n        b.qt_item_nf,\n        b.cd_unidade_medida_compra,\n        b.vl_unitario_item_nf,\n        b.vl_total_item_nf, \n        b.vl_frete / b.qt_item_nf vl_frete,\n        d.vl_tributo / b.qt_item_nf tributo,\n        dividir(b.vl_liquido, b.qt_item_estoque) vl_custo_medio,\n        ((dividir(b.vl_liquido, b.qt_item_estoque)) *(b.qt_item_nf))total_item,\n        obter_desc_operacao_nota(a.CD_OPERACAO_NF) operacao\n       -- ,obter_desc_local_estoque(b.CD_LOCAL_ESTOQUE) ds_local_estoque\nfrom    nota_fiscal a,\n        nota_fiscal_item b,\n        estrutura_material_v e,\n        nota_fiscal_item_trib d,\n        pessoa_juridica pj\nwhere   b.nr_sequencia = d.nr_sequencia (+)\n        and b.nr_item_nf = d.nr_item_nf (+)\n        and a.nr_sequencia = b.nr_sequencia\n        and b.cd_material = e.cd_material\n        and trunc(a.dt_entrada_saida,''mm'') between to_date(',\n\t\t\n\t\t'''', item().DT_INICIO_ORACLE, '''',\n\t\t\n\t\t\n\t\t\n\t\t',''DD/MM/YYYY'') and to_date(',\n                \n                '''', item().DT_FIM_ORACLE, '''',\n                \n                ',''DD/MM/YYYY'')\n        and a.ie_situacao = 1\n        and a.ie_tipo_nota in (''EF'',''EN'')\n        and a.CD_OPERACAO_NF <> 5\n        and a.dt_atualizacao_estoque is not null\n        and pj.cd_cgc = a.CD_CGC_EMITENTE (+)\n        --and ((a.cd_estabelecimento = :estab) or (:estab = 0))\norder by dt_entrada_saida,\n        nr_nota_fiscal,\n        ds_fornecedor,  \n        ds_material\n)  \nSELECT\n     2 AS ESTABELECIMENTO\n,A.CD_ESTABELECIMENTO\n,A.DS_ESTABELECIMENTO    \n,OC.DT_ORDEM_COMPRA\n,A.NR_ORDEM_COMPRA\n,A.DT_ENTRADA_SAIDA\n,A.DT_EMISSAO\n,A.NR_NOTA_FISCAL\n,A.CD_CGC_EMITENTE\n,A.DS_FORNECEDOR\n,A.CD_CEP\n,A.DS_ENDERECO\n,A.DS_BAIRRO\n,A.DS_MUNICIPIO\n,A.SG_ESTADO\n,A.CD_MATERIAL\n,A.DS_MATERIAL\n,A.DS_GRUPO_MATERIAL\n,A.CD_LOCAL_ESTOQUE\n,A.QT_ITEM_NF\n,A.CD_UNIDADE_MEDIDA_COMPRA\n,A.VL_UNITARIO_ITEM_NF\n,A.VL_TOTAL_ITEM_NF\n,A.VL_FRETE\n,A.TRIBUTO\n,A.VL_CUSTO_MEDIO\n,A.TOTAL_ITEM\n,A.OPERACAO\n,L.DS_LOCAL_ESTOQUE\nFROM CATE A\nLEFT JOIN ORDEM_COMPRA OC ON OC.NR_ORDEM_COMPRA = A.NR_ORDEM_COMPRA\nLEFT JOIN LOCAL_ESTOQUE L ON L.CD_LOCAL_ESTOQUE = A.CD_LOCAL_ESTOQUE'\n\n)\n\n\n \n",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"convertDecimalToInteger": false,
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "SadallaTasyPrdDataSet",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZSQL_DINAMICO",
+											"type": "DatasetReference",
+											"parameters": {
+												"schema_destino": "STG",
+												"tabela_destino": "SUP_NFS_TASY"
+											}
+										}
+									]
+								},
+								{
+									"name": "TASY - NF HTML",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "TASY - NF Sadalla",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@CONCAT(\n\n'with cate as(\nselect  \n        A.CD_ESTABELECIMENTO,\n        FAST_OPS.obter_nome_estab(a.cd_estabelecimento) ds_estabelecimento,\n        A.NR_ORDEM_COMPRA,\n        a.dt_entrada_saida,\n        a.dt_emissao,\n        a.nr_nota_fiscal,\n        a.cd_cgc_emitente,\n        substr(FAST_OPS.obter_nome_pf_pj(null,a.cd_cgc_emitente),1,100) ds_fornecedor,\n        pj.CD_CEP,\n        pj.DS_ENDERECO,\n        pj.DS_BAIRRO,\n        pj.DS_MUNICIPIO,\n        pj.SG_ESTADO,\n        b.cd_material,\n        substr(FAST_OPS.obter_desc_material(b.cd_material),1,100) ds_material,\n        e.ds_grupo_material,\n        b.cd_local_estoque,\n        b.qt_item_nf,\n        b.cd_unidade_medida_compra,\n        b.vl_unitario_item_nf,\n        b.vl_total_item_nf, \n        b.vl_frete / b.qt_item_nf vl_frete,\n        d.vl_tributo / b.qt_item_nf tributo,\n        FAST_OPS.dividir(b.vl_liquido, b.qt_item_estoque) vl_custo_medio,\n        ((FAST_OPS.dividir(b.vl_liquido, b.qt_item_estoque)) *(b.qt_item_nf))total_item,\n        FAST_OPS.obter_desc_operacao_nota(a.CD_OPERACAO_NF) operacao\n       -- ,obter_desc_local_estoque(b.CD_LOCAL_ESTOQUE) ds_local_estoque\nfrom    FAST_OPS.nota_fiscal a,\n        FAST_OPS.nota_fiscal_item b,\n        FAST_OPS.estrutura_material_v e,\n        FAST_OPS.nota_fiscal_item_trib d,\n        FAST_OPS.pessoa_juridica pj\nwhere   b.nr_sequencia = d.nr_sequencia (+)\n        and b.nr_item_nf = d.nr_item_nf (+)\n        and a.nr_sequencia = b.nr_sequencia\n        and b.cd_material = e.cd_material\n        and trunc(a.dt_entrada_saida,''mm'') between to_date(',\n\t\t\n\t\t'''', item().DT_INICIO_ORACLE, '''',\n\n\t\t',''DD/MM/YYYY'') and to_date(',\n\t\t\n\t\t'''', item().DT_FIM_ORACLE, '''',\n\t\t\n\t\t',''DD/MM/YYYY'')\n        and a.ie_situacao = 1\n        and a.ie_tipo_nota in (''EF'',''EN'')\n        and a.CD_OPERACAO_NF <> 5\n        and a.dt_atualizacao_estoque is not null\n        and pj.cd_cgc = a.CD_CGC_EMITENTE (+)\n        --and ((a.cd_estabelecimento = :estab) or (:estab = 0))\norder by dt_entrada_saida,\n        nr_nota_fiscal,\n        ds_fornecedor,  \n        ds_material\n)  \nSELECT\n1 AS ESTABELECIMENTO\n,A.CD_ESTABELECIMENTO\n,A.DS_ESTABELECIMENTO    \n,OC.DT_ORDEM_COMPRA\n,A.NR_ORDEM_COMPRA\n,A.DT_ENTRADA_SAIDA\n,A.DT_EMISSAO\n,A.NR_NOTA_FISCAL\n,A.CD_CGC_EMITENTE\n,A.DS_FORNECEDOR\n,A.CD_CEP\n,A.DS_ENDERECO\n,A.DS_BAIRRO\n,A.DS_MUNICIPIO\n,A.SG_ESTADO\n,A.CD_MATERIAL\n,A.DS_MATERIAL\n,A.DS_GRUPO_MATERIAL\n,A.CD_LOCAL_ESTOQUE\n,A.QT_ITEM_NF\n,A.CD_UNIDADE_MEDIDA_COMPRA\n,A.VL_UNITARIO_ITEM_NF\n,A.VL_TOTAL_ITEM_NF\n,A.VL_FRETE\n,A.TRIBUTO\n,A.VL_CUSTO_MEDIO\n,A.TOTAL_ITEM\n,A.OPERACAO\n,L.DS_LOCAL_ESTOQUE\nFROM CATE A\nLEFT JOIN FAST_OPS.ORDEM_COMPRA OC ON OC.NR_ORDEM_COMPRA = A.NR_ORDEM_COMPRA\nLEFT JOIN FAST_OPS.LOCAL_ESTOQUE L ON L.CD_LOCAL_ESTOQUE = A.CD_LOCAL_ESTOQUE'\n\n)",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"convertDecimalToInteger": false,
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false
+									},
+									"inputs": [
+										{
+											"referenceName": "CloudTasyPrdDataSet",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZSQL_DINAMICO",
+											"type": "DatasetReference",
+											"parameters": {
+												"schema_destino": "STG",
+												"tabela_destino": "SUP_NFS_TASY"
+											}
+										}
+									]
 								}
 							]
 						}
@@ -61286,7 +61402,13 @@
 						"type": "Lookup",
 						"dependsOn": [
 							{
-								"activity": "LIMPA STAGE",
+								"activity": "LIMPA STAGE SMART",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "LIMPA STAGE TASY",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -61303,7 +61425,7 @@
 						"typeProperties": {
 							"source": {
 								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT \nCASE \n\tWHEN day(getdate()) <= 8 THEN\n\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\n\tWHEN day(getdate()) > 8 THEN\n\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\nEND as Data_Inicial,\n\t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' \n",
+								"sqlReaderQuery": "SELECT \n\tCASE \n\t\tWHEN day(getdate()) <= 8 THEN\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\n\t\tWHEN day(getdate()) > 8 THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\n\tEND as Data_Inicial,\n\n\t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\n\tCASE\n\t\tWHEN day(getdate()) <= 8 THEN\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),103),1,8),'01')\n\tWHEN day(getdate()) > 8 THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\n\tEND as Data_Inicial_Oracle,\n        substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\n\n",
 								"queryTimeout": "02:00:00",
 								"partitionOption": "None"
 							},
@@ -61315,7 +61437,7 @@
 						}
 					},
 					{
-						"name": "LIMPA STAGE",
+						"name": "LIMPA STAGE SMART",
 						"type": "Script",
 						"dependsOn": [],
 						"policy": {
@@ -61335,6 +61457,104 @@
 								{
 									"type": "NonQuery",
 									"text": "truncate table STG.SUP_NFS_SMART"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "LIMPA STAGE TASY",
+						"type": "Script",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.1:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "truncate table STG.SUP_NFS_TASY"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "DELETE NFS",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "ForEach1",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "DELETE \nFROM DM.TBL_NFS_XPTO\nWHERE   TBL_NFS_XPTO.DT_ENTRADA_SAIDA IN \n(\nSELECT distinct convert(date,DT_ENTRADA_SAIDA,103) AS DT_ENTRADA from STG.SUP_NFS_TASY  with(nolock) \nUNION\nselect distinct convert(date,NFE_DT_ENTRADA,103) AS DT_ENTRADA  from STG.SUP_NFS_SMART  with(nolock)\n) \n",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "INSERT",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "DELETE NFS",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "WITH TB AS(\nSELECT\nA.estabelecimento AS ESTABELECIMENTO\n,null AS DT_ORDEM_COMPRA\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|0' AS FK_NR_ORDEM_COMPRA\n,nfe_dt_entrada AS DT_ENTRADA_SAIDA\n,nfe_dt_emissao AS DT_EMISSAO\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|'+ CAST(nfe_tipo AS VARCHAR(10)) + CAST(NFE_SERIE AS VARCHAR(10)) + CAST(nfe_num AS VARCHAR(50)) AS FK_NR_NOTA_FISCAL\n,CASE nfe_tipo\n    WHEN 'PR' THEN 'Entrada'\n    WHEN 'SR' THEN 'Simples Remessa'\n    WHEN 'SF' THEN 'Simples Faturamento'\n    WHEN 'DV' THEN 'Devolução'\n    WHEN 'TR' THEN 'Transferência'\n    ELSE 'N/A'\nEND  TP_OPERACAO\n,CAST(EMP.estabelecimento AS VARCHAR(5)) + '|' + CAST(EMP.emp_cgc AS VARCHAR(255)) AS FK_CD_CGC_EMITENTE\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) +'|'+CAST(ine_mat_cod AS varchar(100)) AS FK_CD_MATERIAL\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|0' AS FK_CD_LOCAL_ESTOQUE\n,ine_qtde_entrada AS QT_ITEM_NF\n,mat_unm_cod_entrada AS CD_UNIDADE_MEDIDA_COMPRA\n,CAST(ine_vlr_unit_entrada AS money) AS VL_UNITARIO_ITEM_NF\n,CAST(ine_vlr_unit_entrada * ine_qtde_entrada AS MONEY) AS VL_TOTAL_ITEM_NF\n,0 AS VL_FRETE\n,0 AS TRIBUTO\n,0 AS VL_CUSTO_MEDIO\n,0 AS TOTAL_ITEM\nFROM STG.SUP_NFS_SMART A\nLEFT JOIN DW.TBL_EMP EMP WITH(NOLOCK) ON EMP.estabelecimento = A.estabelecimento AND EMP.emp_fne_cod = A.fne_cod\n\nUNION ALL\n\nSELECT\n A.ESTABELECIMENTO\n,A.DT_ORDEM_COMPRA\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.NR_ORDEM_COMPRA AS VARCHAR(50)) FK_NR_ORGEM_COMPRA\n,A.DT_ENTRADA_SAIDA\n,A.DT_EMISSAO\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.NR_NOTA_FISCAL AS VARCHAR(50)) FK_NR_NOTA_FISCAL\n,A.OPERACAO AS TP_OPERACAO\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(A.CD_CGC_EMITENTE AS VARCHAR(255)) AS FK_CD_CGC_EMITENTE\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.CD_MATERIAL AS VARCHAR(50)) FK_CD_MATERIAL\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n,A.QT_ITEM_NF\n,A.CD_UNIDADE_MEDIDA_COMPRA\n,A.VL_UNITARIO_ITEM_NF\n,A.VL_TOTAL_ITEM_NF\n,A.VL_FRETE\n,A.TRIBUTO\n,A.VL_CUSTO_MEDIO\n,A.TOTAL_ITEM\nFROM STG.sup_nfs_tasy A\n\n)\n\nINSERT INTO [dm].[TBL_NFS_XPTO]\n           ([ESTABELECIMENTO]\n           ,[DT_ORDEM_COMPRA]\n           ,[FK_NR_ORDEM_COMPRA]\n           ,[DT_ENTRADA_SAIDA]\n           ,[DT_EMISSAO]\n           ,[FK_NR_NOTA_FISCAL]\n           ,[TP_OPERACAO]\n           ,[FK_CD_CGC_EMITENTE]\n           ,[FK_CD_MATERIAL]\n           ,[FK_CD_LOCAL_ESTOQUE]\n           ,[QT_ITEM_NF]\n           ,[CD_UNIDADE_MEDIDA_COMPRA]\n           ,[VL_UNITARIO_ITEM_NF]\n           ,[VL_TOTAL_ITEM_NF]\n           ,[VL_FRETE]\n           ,[TRIBUTO]\n           ,[VL_CUSTO_MEDIO]\n           ,[TOTAL_ITEM]\n\t\t   )\n\n\nSELECT      [ESTABELECIMENTO]\n           ,[DT_ORDEM_COMPRA]\n           ,[FK_NR_ORDEM_COMPRA]\n           ,[DT_ENTRADA_SAIDA]\n           ,[DT_EMISSAO]\n           ,[FK_NR_NOTA_FISCAL]\n           ,[TP_OPERACAO]\n           ,[FK_CD_CGC_EMITENTE]\n           ,[FK_CD_MATERIAL]\n           ,[FK_CD_LOCAL_ESTOQUE]\n           ,[QT_ITEM_NF]\n           ,[CD_UNIDADE_MEDIDA_COMPRA]\n           ,[VL_UNITARIO_ITEM_NF]\n           ,[VL_TOTAL_ITEM_NF]\n           ,[VL_FRETE]\n           ,[TRIBUTO]\n           ,[VL_CUSTO_MEDIO]\n           ,[TOTAL_ITEM]\n\t\t   \n\t\t   FROM TB\n\n",
+										"type": "Expression"
+									}
 								}
 							],
 							"scriptBlockExecutionTimeout": "02:00:00"
@@ -61366,7 +61586,9 @@
 				"[concat(variables('factoryId'), '/datasets/SMART_ITABUNA_PrdDataSet')]",
 				"[concat(variables('factoryId'), '/datasets/SMART_IOF_PrdDataSet')]",
 				"[concat(variables('factoryId'), '/datasets/SMART_Oftalmoclin_Prd_DataSet')]",
-				"[concat(variables('factoryId'), '/datasets/SMART_HOSL_PrdDataSet')]"
+				"[concat(variables('factoryId'), '/datasets/SMART_HOSL_PrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/CloudTasyPrdDataSet')]"
 			]
 		},
 		{
@@ -67698,6 +67920,39 @@
 									}
 								}
 							]
+						}
+					},
+					{
+						"name": "Apaga Pk NULL",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "MERGE",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "DELETE FROM DW.OTORRINOCENTER WHERE PK_OTORRINOCENTER IS NULL"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
 						}
 					}
 				],
@@ -83204,11 +83459,11 @@
 			"properties": {
 				"activities": [
 					{
-						"name": "UPO_FPA",
-						"type": "Copy",
+						"name": "Lista arquivos",
+						"type": "GetMetadata",
 						"dependsOn": [],
 						"policy": {
-							"timeout": "0.12:00:00",
+							"timeout": "0.02:00:00",
 							"retry": 0,
 							"retryIntervalInSeconds": 30,
 							"secureOutput": false,
@@ -83216,45 +83471,262 @@
 						},
 						"userProperties": [],
 						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobStorageReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "BLOB_UPO_FPA",
+							"dataset": {
+								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
 								"type": "DatasetReference",
-								"parameters": {}
+								"parameters": {
+									"FileSystem": "upofpa"
+								}
+							},
+							"fieldList": [
+								"childItems",
+								"itemType",
+								"itemName",
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filtro",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Lista arquivos",
+								"dependencyConditions": [
+									"Succeeded"
+								]
 							}
 						],
-						"outputs": [
-							{
-								"referenceName": "AZ_UPO_FPA",
-								"type": "DatasetReference",
-								"parameters": {}
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista arquivos').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'xlsx')",
+								"type": "Expression"
 							}
-						]
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filtro",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filtro').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Copia dados para a STG",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "ExcelSource",
+											"storeSettings": {
+												"type": "AzureBlobStorageReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": {
+												"value": "IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[stg].[upofpa]') AND type in (N'U'))\nDROP TABLE [stg].[upofpa]",
+												"type": "Expression"
+											},
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "EXECL_BLOB_DIN",
+											"type": "DatasetReference",
+											"parameters": {
+												"FileSystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_SQL_STG",
+											"type": "DatasetReference",
+											"parameters": {
+												"SCHEMA": "stg",
+												"TABELA": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Move arquivo para PROCESSADOS",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "STG DW",
+											"dependencyConditions": [
+												"Skipped"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@concat(item().name,'-',utcnow())",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "STG DW",
+									"type": "Script",
+									"dependsOn": [
+										{
+											"activity": "Copia dados para a STG",
+											"dependencyConditions": [
+												"Skipped"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "SQL_DESTINO",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": "MERGE\t           \n\tdw.upo AS destino           \nUSING            \n\tstg.upo AS origem           \n           \n    ON\t(        \norigem.Pedido\t\t\t=\tdestino.Pedido\t\tAND\norigem.PedidoSeq\t\t=\tdestino.PedidoSeq\tAND\norigem.Tipo \t\t\t=\tdestino.Tipo\t\tAND\norigem.CodPrest \t\t=\tdestino.CodPrest\tAND\norigem.num_crm_medico \t=\tdestino.num_crm_medico\t\n\t\t)        \n\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \n\ndestino.CdUnidade=origem.CdUnidade,\ndestino.Unidade=origem.Unidade,\ndestino.Pedido=origem.Pedido,\ndestino.TipoPedido=origem.TipoPedido,\ndestino.Conta=origem.Conta,\ndestino.CodPac=origem.CodPac,\ndestino.Paciente=origem.Paciente,\ndestino.data_nascimento=origem.data_nascimento,\ndestino.CodConv=origem.CodConv,\ndestino.ConvPlano=origem.ConvPlano,\ndestino.GrupoConv=origem.GrupoConv,\ndestino.cnpj=origem.cnpj,\ndestino.CodPrest=origem.CodPrest,\ndestino.NomePrestador=origem.NomePrestador,\ndestino.conselho_medico=origem.conselho_medico,\ndestino.num_crm_medico=origem.num_crm_medico,\ndestino.data_abertura=origem.data_abertura,\ndestino.Tipo=origem.Tipo,\ndestino.SubTipo=origem.SubTipo,\ndestino.datahora_cadastro=origem.datahora_cadastro,\ndestino.PedidoSeq=origem.PedidoSeq,\ndestino.Cod=origem.Cod,\ndestino.Item=origem.Item,\ndestino.quantidade=origem.quantidade,\ndestino.ValorParticular=origem.ValorParticular,\ndestino.ValorConvenio=origem.ValorConvenio\n\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.CdUnidade,\norigem.Unidade,\norigem.Pedido,\norigem.TipoPedido,\norigem.Conta,\norigem.CodPac,\norigem.Paciente,\norigem.data_nascimento,\norigem.CodConv,\norigem.ConvPlano,\norigem.GrupoConv,\norigem.cnpj,\norigem.CodPrest,\norigem.NomePrestador,\norigem.conselho_medico,\norigem.num_crm_medico,\norigem.data_abertura,\norigem.Tipo,\norigem.SubTipo,\norigem.datahora_cadastro,\norigem.PedidoSeq,\norigem.Cod,\norigem.Item,\norigem.quantidade,\norigem.ValorParticular,\norigem.ValorConvenio\n); "
+											}
+										]
+									}
+								}
+							]
+						}
 					}
 				],
 				"policy": {
@@ -83267,8 +83739,11 @@
 				"annotations": []
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/BLOB_UPO_FPA')]",
-				"[concat(variables('factoryId'), '/datasets/AZ_UPO_FPA')]"
+				"[concat(variables('factoryId'), '/datasets/DS_HMAISDATADRIVEN_BINARY')]",
+				"[concat(variables('factoryId'), '/datasets/EXECL_BLOB_DIN')]",
+				"[concat(variables('factoryId'), '/datasets/AZ_SQL_STG')]",
+				"[concat(variables('factoryId'), '/datasets/DS_HMAISDATADRIVEN')]",
+				"[concat(variables('factoryId'), '/linkedServices/SQL_DESTINO')]"
 			]
 		},
 		{
@@ -93232,6 +93707,49 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/EXECL_BLOB_DIN')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "blob_din",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FileSystem": {
+						"type": "string"
+					},
+					"File": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Excel",
+				"typeProperties": {
+					"sheetName": {
+						"value": "@concat('Base ',toUpper(replace(dataset().File,'.xlsx','')))",
+						"type": "Expression"
+					},
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@dataset().File",
+							"type": "Expression"
+						},
+						"container": {
+							"value": "@dataset().FileSystem",
+							"type": "Expression"
+						}
+					},
+					"firstRowAsHeader": true
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/blob_din')]"
 			]
 		},
 		{
@@ -104739,6 +105257,19 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/blob_din')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('blob_din_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/sv_hmaisbrasildatadriven')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
@@ -105021,7 +105552,7 @@
 					},
 					{
 						"pipelineReference": {
-							"referenceName": "NF Smart",
+							"referenceName": "NF",
 							"type": "PipelineReference"
 						},
 						"parameters": {}
@@ -105047,7 +105578,7 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/Chamados Requestia_Otim_Deadlock')]",
-				"[concat(variables('factoryId'), '/pipelines/NF Smart')]"
+				"[concat(variables('factoryId'), '/pipelines/NF')]"
 			]
 		},
 		{
@@ -105451,6 +105982,44 @@
 				"typeProperties": {}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Daily 06h30')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "UPO_FPA",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2023-09-14T15:08:00",
+						"timeZone": "E. South America Standard Time",
+						"schedule": {
+							"minutes": [
+								30
+							],
+							"hours": [
+								6
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/UPO_FPA')]"
+			]
 		}
 	]
 }
