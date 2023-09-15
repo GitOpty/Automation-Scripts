@@ -31,7 +31,7 @@
 					"source": {
 						"type": "AzureSqlSource",
 						"sqlReaderQuery": {
-							"value": "@concat('\nSELECT DISTINCT\n    CAST(A.TheFirstOfMonth AS VARCHAR(20)) + '' 00:00:00.000'' AS DT_INICIO\n    ,CAST(A.TheLastOfMonth AS VARCHAR(20)) + '' 23:59:59.000'' AS DT_FIM,\n\n     CONVERT(VARCHAR(20),A.TheFirstOfMonth  ,103)  AS DT_INICIO_ORACLE\n    ,CONVERT(VARCHAR(20),A.TheLastOfMonth ,103)  AS DT_FIM_ORACLE\n\nFROM calendar A\nWHERE A.TheFirstOfMonth BETWEEN ','''',variables('DT_INICIO'),'''', ' AND  ','''',variables('DT_FIM'),'''')",
+							"value": "@concat('\nSELECT DISTINCT\n    CAST(MIN(A.TheDate) AS VARCHAR(20)) + '' 00:00:00.000'' AS DT_INICIO\n    ,CAST(MAX(A.TheDate) AS VARCHAR(20)) + '' 23:59:59.000'' AS DT_FIM,\n\n     CONVERT(VARCHAR(20),MIN(A.TheDate)  ,103)  AS DT_INICIO_ORACLE\n    ,CONVERT(VARCHAR(20),Max(A.TheDate) ,103)  AS DT_FIM_ORACLE\n\nFROM calendar A\nWHERE A.TheDate BETWEEN ','''',variables('DT_INICIO'),'''', ' AND  ','''',variables('DT_FIM'),'''')",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00",
@@ -560,14 +560,15 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "SELECT \n\tCASE \n\t\tWHEN day(getdate()) <= 8 THEN\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\n\t\tWHEN day(getdate()) > 8 THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\n\tEND as Data_Inicial,\n\n\t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\n\tCASE\n\t\tWHEN day(getdate()) <= 8 THEN\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),103),1,8),'01')\n\tWHEN day(getdate()) > 8 THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\n\tEND as Data_Inicial_Oracle,\n        substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\n\n",
+						"sqlReaderQuery": "declare @qtde_dias integer\n\nset @qtde_dias = 8\n\n\nSELECT\n\tCASE \n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\n\tEND as Data_Inicial,\n\n\t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\n\n\n\tCASE\n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat('01' ,'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate()),120),6,2),'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate())),8,4))\n\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\n\tEND as Data_Inicial_Oracle,\n        substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
 					"dataset": {
 						"referenceName": "SQL_DIN",
 						"type": "DatasetReference"
-					}
+					},
+					"firstRowOnly": true
 				}
 			},
 			{
