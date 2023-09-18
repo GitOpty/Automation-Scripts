@@ -13,7 +13,7 @@
 	},
 	"resources": [
 		{
-			"name": "[concat(parameters('factoryName'), '/Daily 05h')]",
+			"name": "[concat(parameters('factoryName'), '/Daily 0130 AM')]",
 			"type": "Microsoft.DataFactory/factories/triggers",
 			"apiVersion": "2018-06-01",
 			"properties": {
@@ -22,14 +22,7 @@
 				"pipelines": [
 					{
 						"pipelineReference": {
-							"referenceName": "Chamados Requestia_Otim_Deadlock",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					},
-					{
-						"pipelineReference": {
-							"referenceName": "NF",
+							"referenceName": "Plan_Recebimento",
 							"type": "PipelineReference"
 						},
 						"parameters": {}
@@ -40,22 +33,20 @@
 					"recurrence": {
 						"frequency": "Day",
 						"interval": 1,
-						"startTime": "2021-11-24T12:05:00",
+						"startTime": "2022-12-08T20:04:00",
 						"timeZone": "E. South America Standard Time",
 						"schedule": {
 							"minutes": [
-								0
+								30
 							],
 							"hours": [
-								5
+								1
 							]
 						}
 					}
 				}
 			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/NF')]"
-			]
+			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Daily 06h30')]",
@@ -140,734 +131,6 @@
 						}
 					}
 				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/NF')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Calendario",
-						"type": "Lookup",
-						"dependsOn": [
-							{
-								"activity": "DT_INICIO",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "DT_FIM",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": {
-									"value": "@concat('\nSELECT DISTINCT\n    CAST(MIN(A.TheDate) AS VARCHAR(20)) + '' 00:00:00.000'' AS DT_INICIO\n    ,CAST(MAX(A.TheDate) AS VARCHAR(20)) + '' 23:59:59.000'' AS DT_FIM,\n\n     CONVERT(VARCHAR(20),MIN(A.TheDate)  ,103)  AS DT_INICIO_ORACLE\n    ,CONVERT(VARCHAR(20),Max(A.TheDate) ,103)  AS DT_FIM_ORACLE\n\nFROM calendar A\nWHERE A.TheDate BETWEEN ','''',variables('DT_INICIO'),'''', ' AND  ','''',variables('DT_FIM'),'''')",
-									"type": "Expression"
-								},
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "SQL_DIN",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "DT_INICIO",
-						"type": "SetVariable",
-						"dependsOn": [
-							{
-								"activity": "Lookup Periodo Inicial",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"variableName": "DT_INICIO",
-							"value": {
-								"value": "@activity('Lookup Periodo Inicial').output.firstRow.Data_Inicial",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "DT_FIM",
-						"type": "SetVariable",
-						"dependsOn": [
-							{
-								"activity": "Lookup Periodo Inicial",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"variableName": "DT_FIM",
-							"value": {
-								"value": "@activity('Lookup Periodo Inicial').output.firstRow.data_final",
-								"type": "Expression"
-							}
-						}
-					},
-					{
-						"name": "ForEach1",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Calendario",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Calendario').output.value",
-								"type": "Expression"
-							},
-							"isSequential": true,
-							"activities": [
-								{
-									"name": "SMART - NF ITG",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "TASY - NF HTML",
-											"dependencyConditions": [
-												"Completed"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "SqlServerSource",
-											"sqlReaderQuery": {
-												"value": "@concat(\n'DECLARE @DT_INICIO AS DATE\n DECLARE @DT_FIM     AS DATE\n\nSET @DT_INICIO = ','''', item().DT_INICIO,'''',\n'SET @DT_FIM = '  , '''', item().DT_FIM,'''',\n' SELECT \n 90 as estabelecimento  ',\n\n '\n     ,nfe_dt_emissao\n    , nfe_dt_entrada\n    , nfe_tipo\n    , nfe_serie\n    , nfe_num\n    , fne_cod\n    , fne_nome_fantasia\n    , ine_mat_cod\n    , mat_desc_resumida\n    , gmm_nome\n    , ine_qtde_entrada\n    , mat_unm_cod_entrada\n    , ine_vlr_unit_entrada\n    , nfe_ipg_aberto\n    , ine_vlr_desconto\n    , ine_vlr_ipi\n    , nfe_aft\n    , nfe_vlr_total\n    , ds_nfe_tipo\n    , nfe_crit_venc\n    , nfe_cpg_parcelas\n    , nfe_ipg_dt_vcto\n    , nfe_parcela_1\nFROM (\n    SELECT cfg.cfg_emp\n        , sba.sba_cod\n        , sba.sba_nome\n        , nfe.nfe_serie\n        , nfe.nfe_num\n        , nfe.nfe_fne_cod\n        , nfe.nfe_tipo\n        , CASE nfe.nfe_tipo\n\n                WHEN ''PR''\n                THEN ''Entrada''\n            WHEN ''SR''\n                THEN ''Simples Remessa''\n            WHEN ''SF''\n                THEN ''Simples Faturamento''\n            WHEN ''DV''\n                THEN ''Devolução''\n            WHEN ''TR''\n                THEN ''Transferência''\n            ELSE ''N/A''\n            END AS ds_nfe_tipo\n        , fne.fne_cod\n        , fne.fne_nome_fantasia\n        , nfe.nfe_vlr_total\n \n \n        , (\n            SELECT TOP 1 i.ipg_dt_vcto\n            FROM cpg c\n            INNER JOIN ipg i\n                ON (\n                        c.cpg_serie = i.ipg_cpg_serie\n                        AND c.cpg_num = i.ipg_cpg_num\n                        )\n            WHERE c.cpg_nfe_serie = nfe_serie\n                AND c.cpg_nfe_num = nfe_num\n                AND c.cpg_nfe_tipo = nfe_tipo\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\n            ORDER BY i.ipg_dt_vcto\n            ) AS nfe_ipg_dt_vcto\n        , (\n            SELECT count(ipg_parc)\n            FROM cpg c\n            INNER JOIN ipg i\n                ON (\n                        c.cpg_serie = i.ipg_cpg_serie\n                        AND c.cpg_num = i.ipg_cpg_num\n                        )\n            WHERE c.cpg_nfe_serie = nfe_serie\n                AND c.cpg_nfe_num = nfe_num\n                AND c.cpg_nfe_tipo = nfe_tipo\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\n            ) AS nfe_cpg_parcelas\n        , nfe.nfe_crit_venc\n        , nfe.nfe_parcela_1\n        , nfe.nfe_dt_emissao\n        , nfe.nfe_dt_entrada\n        , ine.ine_seq\n        , ine.ine_mat_cod\n        , mat.mat_desc_resumida\n        , mat.mat_lma_cod\n        , lma.lma_nome\n        , mat.mat_gmm_cod\n        , gmm.gmm_nome\n        , mat_unm_cod_entrada\n        , ine.ine_qtde AS ine_qtde_entrada\n        , ine.ine_vlr_unit AS ine_vlr_unit_entrada\n        , (\n            SELECT isnull(sum(ipg_valor), 0)\n            FROM cpg c\n            INNER JOIN ipg i\n                ON (\n                        c.cpg_serie = i.ipg_cpg_serie\n                        AND c.cpg_num = i.ipg_cpg_num\n                        )\n            WHERE c.cpg_nfe_serie = nfe_serie\n                AND c.cpg_nfe_num = nfe_num\n                AND c.cpg_nfe_tipo = nfe_tipo\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\n                AND i.ipg_status IN (''A'', ''R'')\n                AND i.ipg_dt_vcto <= @DT_FIM\n            ) AS nfe_ipg_aberto\n        , mat_unm_cod_saida\n        , '' AS solic\n        , '' AS DATA_solic\n        , convert(VARCHAR, ine_aft_serie) + ''.'' + convert(VARCHAR, ine_aft_num) AS nfe_aft\n        , aft_dthr\n        , ine.ine_qtde * mat_fat_conv_s_v AS ine_qtde_saida\n        , ine.ine_vlr_unit / mat_fat_conv_s_v AS ine_vlr_saida\n        , ine.ine_vlr_ipi\n        , ine.ine_vlr_desconto\n        , (\n            SELECT TOP 1 f.fne_cod\n            FROM nfe n WITH (NOLOCK)\n            INNER JOIN ine i WITH (NOLOCK)\n                ON (\n                        n.nfe_fne_cod = i.ine_fne_cod\n                        AND n.nfe_serie = i.ine_nfe_serie\n                        AND n.nfe_num = i.ine_nfe_num\n                        AND n.nfe_tipo = i.ine_nfe_tipo\n                          )\n            LEFT OUTER JOIN fne f WITH (NOLOCK)\n                ON ine.ine_fne_cod = fne.fne_cod\n            WHERE i.ine_mat_cod = ine.ine_mat_cod\n                AND f.fne_cod = ine.ine_fne_cod\n                AND (\n                    n.nfe_dt_entrada >= @DT_INICIO\n                    AND n.nfe_dt_entrada <= @DT_FIM\n                    )\n            ORDER BY n.nfe_dt_entrada DESC\n            ) AS ine_fne_cod\n        , (\n            SELECT TOP 1 f.fne_nome_fantasia\n            FROM nfe n WITH (NOLOCK)\n            INNER JOIN ine i WITH (NOLOCK)\n                ON (\n                        n.nfe_fne_cod = i.ine_fne_cod\n                        AND n.nfe_serie = i.ine_nfe_serie\n                        AND n.nfe_num = i.ine_nfe_num\n                        AND n.nfe_tipo = i.ine_nfe_tipo\n                        )\n            LEFT OUTER JOIN fne f WITH (NOLOCK)\n                ON ine.ine_fne_cod = fne.fne_cod\n            WHERE i.ine_mat_cod = ine.ine_mat_cod\n                AND f.fne_cod = ine.ine_fne_cod\n                AND (\n                   n.nfe_dt_entrada >= @DT_INICIO\n                 AND n.nfe_dt_entrada <= @DT_FIM\n                    )\n            ORDER BY n.nfe_dt_entrada DESC\n            ) AS ine_fne_nome_fantasia\n        , replace(replace(replace(emp_cgc, ''.'', ''''), ''/'', ''''), ''-'', '''') AS emp_cgc\n    FROM nfe WITH (NOLOCK)\n    INNER JOIN ine WITH (NOLOCK)\n        ON (\n                nfe.nfe_fne_cod = ine.ine_fne_cod\n                AND nfe.nfe_serie = ine.ine_nfe_serie\n                AND nfe.nfe_num = ine.ine_nfe_num\n                AND nfe.nfe_tipo = ine.ine_nfe_tipo\n                )\n    LEFT OUTER JOIN fne WITH (NOLOCK)\n        ON (convert(VARCHAR, ine.ine_fne_cod) = convert(VARCHAR, fne.fne_cod))\n    LEFT OUTER JOIN mat WITH (NOLOCK)\n        ON (mat.mat_cod = ine.ine_mat_cod)\n    LEFT OUTER JOIN lma WITH (NOLOCK)\n       ON (\n                lma.lma_cod = mat.mat_lma_cod\n                AND lma.lma_gmm_cod = mat.mat_gmm_cod\n                )\n    LEFT OUTER JOIN gmm WITH (NOLOCK)\n        ON (lma.lma_gmm_cod = gmm.gmm_cod)\n    LEFT OUTER JOIN sba WITH (NOLOCK)\n        ON (sba.sba_cod = nfe.nfe_sba_cod)\n    LEFT OUTER JOIN aft WITH (NOLOCK)\n        ON (\n               aft_serie = ine_aft_serie\n                AND aft_num = ine_aft_num\n                )\n    LEFT OUTER JOIN emp WITH (NOLOCK)\n        ON (emp.emp_fne_cod = fne.FNE_COD)\n    CROSS JOIN cfg\n    WHERE (\n            nfe.nfe_dt_entrada >= @DT_INICIO\n            AND nfe.nfe_dt_entrada <= @DT_FIM\n            )\n        AND (\n            fne.fne_cod IN (''%'')\n            OR (''%'' IN (''%''))\n            )\n    ) AS t1\nORDER BY sba_cod\n    , sba_nome\n    , nfe_tipo\n    , nfe_dt_entrada\n    , nfe_serie\n    , nfe_num\n    , ine_seq\n '\n\n)\n",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"tableOption": "autoCreate",
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "SMART_ITAIGARA_PrdDataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "STG",
-												"tabela_destino": "SUP_NFS_SMART"
-											}
-										}
-									]
-								},
-								{
-									"name": "SMART - NF ITB",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "SMART - NF ITG",
-											"dependencyConditions": [
-												"Completed"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "SqlServerSource",
-											"sqlReaderQuery": {
-												"value": "@concat(\r\n'DECLARE @DT_INICIO AS DATE\r\n DECLARE @DT_FIM     AS DATE\r\n\r\nSET @DT_INICIO = ','''', item().DT_INICIO,'''',\r\n'SET @DT_FIM = '  , '''', item().DT_FIM,'''',\r\n' SELECT \r\n 91 as estabelecimento  ',\r\n\r\n '\r\n     ,nfe_dt_emissao\r\n    , nfe_dt_entrada\r\n    , nfe_tipo\r\n    , nfe_serie\r\n    , nfe_num\r\n    , fne_cod\r\n    , fne_nome_fantasia\r\n    , ine_mat_cod\r\n    , mat_desc_resumida\r\n    , gmm_nome\r\n    , ine_qtde_entrada\r\n    , mat_unm_cod_entrada\r\n    , ine_vlr_unit_entrada\r\n    , nfe_ipg_aberto\r\n    , ine_vlr_desconto\r\n    , ine_vlr_ipi\r\n    , nfe_aft\r\n    , nfe_vlr_total\r\n    , ds_nfe_tipo\r\n    , nfe_crit_venc\r\n    , nfe_cpg_parcelas\r\n    , nfe_ipg_dt_vcto\r\n    , nfe_parcela_1\r\nFROM (\r\n    SELECT cfg.cfg_emp\r\n        , sba.sba_cod\r\n        , sba.sba_nome\r\n        , nfe.nfe_serie\r\n        , nfe.nfe_num\r\n        , nfe.nfe_fne_cod\r\n        , nfe.nfe_tipo\r\n        , CASE nfe.nfe_tipo\r\n\r\n                WHEN ''PR''\r\n                THEN ''Entrada''\r\n            WHEN ''SR''\r\n                THEN ''Simples Remessa''\r\n            WHEN ''SF''\r\n                THEN ''Simples Faturamento''\r\n            WHEN ''DV''\r\n                THEN ''Devolução''\r\n            WHEN ''TR''\r\n                THEN ''Transferência''\r\n            ELSE ''N/A''\r\n            END AS ds_nfe_tipo\r\n        , fne.fne_cod\r\n        , fne.fne_nome_fantasia\r\n        , nfe.nfe_vlr_total\r\n \r\n \r\n        , (\r\n            SELECT TOP 1 i.ipg_dt_vcto\r\n            FROM cpg c\r\n            INNER JOIN ipg i\r\n                ON (\r\n                        c.cpg_serie = i.ipg_cpg_serie\r\n                        AND c.cpg_num = i.ipg_cpg_num\r\n                        )\r\n            WHERE c.cpg_nfe_serie = nfe_serie\r\n                AND c.cpg_nfe_num = nfe_num\r\n                AND c.cpg_nfe_tipo = nfe_tipo\r\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\r\n            ORDER BY i.ipg_dt_vcto\r\n            ) AS nfe_ipg_dt_vcto\r\n        , (\r\n            SELECT count(ipg_parc)\r\n            FROM cpg c\r\n            INNER JOIN ipg i\r\n                ON (\r\n                        c.cpg_serie = i.ipg_cpg_serie\r\n                        AND c.cpg_num = i.ipg_cpg_num\r\n                        )\r\n            WHERE c.cpg_nfe_serie = nfe_serie\r\n                AND c.cpg_nfe_num = nfe_num\r\n                AND c.cpg_nfe_tipo = nfe_tipo\r\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\r\n            ) AS nfe_cpg_parcelas\r\n        , nfe.nfe_crit_venc\r\n        , nfe.nfe_parcela_1\r\n        , nfe.nfe_dt_emissao\r\n        , nfe.nfe_dt_entrada\r\n        , ine.ine_seq\r\n        , ine.ine_mat_cod\r\n        , mat.mat_desc_resumida\r\n        , mat.mat_lma_cod\r\n        , lma.lma_nome\r\n        , mat.mat_gmm_cod\r\n        , gmm.gmm_nome\r\n        , mat_unm_cod_entrada\r\n        , ine.ine_qtde AS ine_qtde_entrada\r\n        , ine.ine_vlr_unit AS ine_vlr_unit_entrada\r\n        , (\r\n            SELECT isnull(sum(ipg_valor), 0)\r\n            FROM cpg c\r\n            INNER JOIN ipg i\r\n                ON (\r\n                        c.cpg_serie = i.ipg_cpg_serie\r\n                        AND c.cpg_num = i.ipg_cpg_num\r\n                        )\r\n            WHERE c.cpg_nfe_serie = nfe_serie\r\n                AND c.cpg_nfe_num = nfe_num\r\n                AND c.cpg_nfe_tipo = nfe_tipo\r\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\r\n                AND i.ipg_status IN (''A'', ''R'')\r\n                AND i.ipg_dt_vcto <= @DT_FIM\r\n            ) AS nfe_ipg_aberto\r\n        , mat_unm_cod_saida\r\n        , '' AS solic\r\n        , '' AS DATA_solic\r\n        , convert(VARCHAR, ine_aft_serie) + ''.'' + convert(VARCHAR, ine_aft_num) AS nfe_aft\r\n        , aft_dthr\r\n        , ine.ine_qtde * mat_fat_conv_s_v AS ine_qtde_saida\r\n        , ine.ine_vlr_unit / mat_fat_conv_s_v AS ine_vlr_saida\r\n        , ine.ine_vlr_ipi\r\n        , ine.ine_vlr_desconto\r\n        , (\r\n            SELECT TOP 1 f.fne_cod\r\n            FROM nfe n WITH (NOLOCK)\r\n            INNER JOIN ine i WITH (NOLOCK)\r\n                ON (\r\n                        n.nfe_fne_cod = i.ine_fne_cod\r\n                        AND n.nfe_serie = i.ine_nfe_serie\r\n                        AND n.nfe_num = i.ine_nfe_num\r\n                        AND n.nfe_tipo = i.ine_nfe_tipo\r\n                          )\r\n            LEFT OUTER JOIN fne f WITH (NOLOCK)\r\n                ON ine.ine_fne_cod = fne.fne_cod\r\n            WHERE i.ine_mat_cod = ine.ine_mat_cod\r\n                AND f.fne_cod = ine.ine_fne_cod\r\n                AND (\r\n                    n.nfe_dt_entrada >= @DT_INICIO\r\n                    AND n.nfe_dt_entrada <= @DT_FIM\r\n                    )\r\n            ORDER BY n.nfe_dt_entrada DESC\r\n            ) AS ine_fne_cod\r\n        , (\r\n            SELECT TOP 1 f.fne_nome_fantasia\r\n            FROM nfe n WITH (NOLOCK)\r\n            INNER JOIN ine i WITH (NOLOCK)\r\n                ON (\r\n                        n.nfe_fne_cod = i.ine_fne_cod\r\n                        AND n.nfe_serie = i.ine_nfe_serie\r\n                        AND n.nfe_num = i.ine_nfe_num\r\n                        AND n.nfe_tipo = i.ine_nfe_tipo\r\n                        )\r\n            LEFT OUTER JOIN fne f WITH (NOLOCK)\r\n                ON ine.ine_fne_cod = fne.fne_cod\r\n            WHERE i.ine_mat_cod = ine.ine_mat_cod\r\n                AND f.fne_cod = ine.ine_fne_cod\r\n                AND (\r\n                   n.nfe_dt_entrada >= @DT_INICIO\r\n                 AND n.nfe_dt_entrada <= @DT_FIM\r\n                    )\r\n            ORDER BY n.nfe_dt_entrada DESC\r\n            ) AS ine_fne_nome_fantasia\r\n        , replace(replace(replace(emp_cgc, ''.'', ''''), ''/'', ''''), ''-'', '''') AS emp_cgc\r\n    FROM nfe WITH (NOLOCK)\r\n    INNER JOIN ine WITH (NOLOCK)\r\n        ON (\r\n                nfe.nfe_fne_cod = ine.ine_fne_cod\r\n                AND nfe.nfe_serie = ine.ine_nfe_serie\r\n                AND nfe.nfe_num = ine.ine_nfe_num\r\n                AND nfe.nfe_tipo = ine.ine_nfe_tipo\r\n                )\r\n    LEFT OUTER JOIN fne WITH (NOLOCK)\r\n        ON (convert(VARCHAR, ine.ine_fne_cod) = convert(VARCHAR, fne.fne_cod))\r\n    LEFT OUTER JOIN mat WITH (NOLOCK)\r\n        ON (mat.mat_cod = ine.ine_mat_cod)\r\n    LEFT OUTER JOIN lma WITH (NOLOCK)\r\n       ON (\r\n                lma.lma_cod = mat.mat_lma_cod\r\n                AND lma.lma_gmm_cod = mat.mat_gmm_cod\r\n                )\r\n    LEFT OUTER JOIN gmm WITH (NOLOCK)\r\n        ON (lma.lma_gmm_cod = gmm.gmm_cod)\r\n    LEFT OUTER JOIN sba WITH (NOLOCK)\r\n        ON (sba.sba_cod = nfe.nfe_sba_cod)\r\n    LEFT OUTER JOIN aft WITH (NOLOCK)\r\n        ON (\r\n               aft_serie = ine_aft_serie\r\n                AND aft_num = ine_aft_num\r\n                )\r\n    LEFT OUTER JOIN emp WITH (NOLOCK)\r\n        ON (emp.emp_fne_cod = fne.FNE_COD)\r\n    CROSS JOIN cfg\r\n    WHERE (\r\n            nfe.nfe_dt_entrada >= @DT_INICIO\r\n            AND nfe.nfe_dt_entrada <= @DT_FIM\r\n            )\r\n        AND (\r\n            fne.fne_cod IN (''%'')\r\n            OR (''%'' IN (''%''))\r\n            )\r\n    ) AS t1\r\nORDER BY sba_cod\r\n    , sba_nome\r\n    , nfe_tipo\r\n    , nfe_dt_entrada\r\n    , nfe_serie\r\n    , nfe_num\r\n    , ine_seq\r\n '\r\n\r\n)\r\n",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"tableOption": "autoCreate",
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "SMART_ITABUNA_PrdDataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "STG",
-												"tabela_destino": "SUP_NFS_SMART"
-											}
-										}
-									]
-								},
-								{
-									"name": "SMART - NF IOF",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "SMART - NF ITB",
-											"dependencyConditions": [
-												"Completed"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "SqlServerSource",
-											"sqlReaderQuery": {
-												"value": "@concat(\n'DECLARE @DT_INICIO AS DATE\n DECLARE @DT_FIM     AS DATE\n\nSET @DT_INICIO = ','''', item().DT_INICIO,'''',\n'SET @DT_FIM = '  , '''', item().DT_FIM,'''',\n' SELECT \n 92 as estabelecimento  ',\n\n '\n     ,nfe_dt_emissao\n    , nfe_dt_entrada\n    , nfe_tipo\n    , nfe_serie\n    , nfe_num\n    , fne_cod\n    , fne_nome_fantasia\n    , ine_mat_cod\n    , mat_desc_resumida\n    , gmm_nome\n    , ine_qtde_entrada\n    , mat_unm_cod_entrada\n    , ine_vlr_unit_entrada\n    , nfe_ipg_aberto\n    , ine_vlr_desconto\n    , ine_vlr_ipi\n    , nfe_aft\n    , nfe_vlr_total\n    , ds_nfe_tipo\n    , nfe_crit_venc\n    , nfe_cpg_parcelas\n    , nfe_ipg_dt_vcto\n    , nfe_parcela_1\nFROM (\n    SELECT cfg.cfg_emp\n        , sba.sba_cod\n        , sba.sba_nome\n        , nfe.nfe_serie\n        , nfe.nfe_num\n        , nfe.nfe_fne_cod\n        , nfe.nfe_tipo\n        , CASE nfe.nfe_tipo\n\n                WHEN ''PR''\n                THEN ''Entrada''\n            WHEN ''SR''\n                THEN ''Simples Remessa''\n            WHEN ''SF''\n                THEN ''Simples Faturamento''\n            WHEN ''DV''\n                THEN ''Devolução''\n            WHEN ''TR''\n                THEN ''Transferência''\n            ELSE ''N/A''\n            END AS ds_nfe_tipo\n        , fne.fne_cod\n        , fne.fne_nome_fantasia\n        , nfe.nfe_vlr_total\n \n \n        , (\n            SELECT TOP 1 i.ipg_dt_vcto\n            FROM cpg c\n            INNER JOIN ipg i\n                ON (\n                        c.cpg_serie = i.ipg_cpg_serie\n                        AND c.cpg_num = i.ipg_cpg_num\n                        )\n            WHERE c.cpg_nfe_serie = nfe_serie\n                AND c.cpg_nfe_num = nfe_num\n                AND c.cpg_nfe_tipo = nfe_tipo\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\n            ORDER BY i.ipg_dt_vcto\n            ) AS nfe_ipg_dt_vcto\n        , (\n            SELECT count(ipg_parc)\n            FROM cpg c\n            INNER JOIN ipg i\n                ON (\n                        c.cpg_serie = i.ipg_cpg_serie\n                        AND c.cpg_num = i.ipg_cpg_num\n                        )\n            WHERE c.cpg_nfe_serie = nfe_serie\n                AND c.cpg_nfe_num = nfe_num\n                AND c.cpg_nfe_tipo = nfe_tipo\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\n            ) AS nfe_cpg_parcelas\n        , nfe.nfe_crit_venc\n        , nfe.nfe_parcela_1\n        , nfe.nfe_dt_emissao\n        , nfe.nfe_dt_entrada\n        , ine.ine_seq\n        , ine.ine_mat_cod\n        , mat.mat_desc_resumida\n        , mat.mat_lma_cod\n        , lma.lma_nome\n        , mat.mat_gmm_cod\n        , gmm.gmm_nome\n        , mat_unm_cod_entrada\n        , ine.ine_qtde AS ine_qtde_entrada\n        , ine.ine_vlr_unit AS ine_vlr_unit_entrada\n        , (\n            SELECT isnull(sum(ipg_valor), 0)\n            FROM cpg c\n            INNER JOIN ipg i\n                ON (\n                        c.cpg_serie = i.ipg_cpg_serie\n                        AND c.cpg_num = i.ipg_cpg_num\n                        )\n            WHERE c.cpg_nfe_serie = nfe_serie\n                AND c.cpg_nfe_num = nfe_num\n                AND c.cpg_nfe_tipo = nfe_tipo\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\n                AND i.ipg_status IN (''A'', ''R'')\n                AND i.ipg_dt_vcto <= @DT_FIM\n            ) AS nfe_ipg_aberto\n        , mat_unm_cod_saida\n        , '' AS solic\n        , '' AS DATA_solic\n        , convert(VARCHAR, ine_aft_serie) + ''.'' + convert(VARCHAR, ine_aft_num) AS nfe_aft\n        , aft_dthr\n        , ine.ine_qtde * mat_fat_conv_s_v AS ine_qtde_saida\n        , ine.ine_vlr_unit / mat_fat_conv_s_v AS ine_vlr_saida\n        , ine.ine_vlr_ipi\n        , ine.ine_vlr_desconto\n        , (\n            SELECT TOP 1 f.fne_cod\n            FROM nfe n WITH (NOLOCK)\n            INNER JOIN ine i WITH (NOLOCK)\n                ON (\n                        n.nfe_fne_cod = i.ine_fne_cod\n                        AND n.nfe_serie = i.ine_nfe_serie\n                        AND n.nfe_num = i.ine_nfe_num\n                        AND n.nfe_tipo = i.ine_nfe_tipo\n                          )\n            LEFT OUTER JOIN fne f WITH (NOLOCK)\n                ON ine.ine_fne_cod = fne.fne_cod\n            WHERE i.ine_mat_cod = ine.ine_mat_cod\n                AND f.fne_cod = ine.ine_fne_cod\n                AND (\n                    n.nfe_dt_entrada >= @DT_INICIO\n                    AND n.nfe_dt_entrada <= @DT_FIM\n                    )\n            ORDER BY n.nfe_dt_entrada DESC\n            ) AS ine_fne_cod\n        , (\n            SELECT TOP 1 f.fne_nome_fantasia\n            FROM nfe n WITH (NOLOCK)\n            INNER JOIN ine i WITH (NOLOCK)\n                ON (\n                        n.nfe_fne_cod = i.ine_fne_cod\n                        AND n.nfe_serie = i.ine_nfe_serie\n                        AND n.nfe_num = i.ine_nfe_num\n                        AND n.nfe_tipo = i.ine_nfe_tipo\n                        )\n            LEFT OUTER JOIN fne f WITH (NOLOCK)\n                ON ine.ine_fne_cod = fne.fne_cod\n            WHERE i.ine_mat_cod = ine.ine_mat_cod\n                AND f.fne_cod = ine.ine_fne_cod\n                AND (\n                   n.nfe_dt_entrada >= @DT_INICIO\n                 AND n.nfe_dt_entrada <= @DT_FIM\n                    )\n            ORDER BY n.nfe_dt_entrada DESC\n            ) AS ine_fne_nome_fantasia\n        , replace(replace(replace(emp_cgc, ''.'', ''''), ''/'', ''''), ''-'', '''') AS emp_cgc\n    FROM nfe WITH (NOLOCK)\n    INNER JOIN ine WITH (NOLOCK)\n        ON (\n                nfe.nfe_fne_cod = ine.ine_fne_cod\n                AND nfe.nfe_serie = ine.ine_nfe_serie\n                AND nfe.nfe_num = ine.ine_nfe_num\n                AND nfe.nfe_tipo = ine.ine_nfe_tipo\n                )\n    LEFT OUTER JOIN fne WITH (NOLOCK)\n        ON (convert(VARCHAR, ine.ine_fne_cod) = convert(VARCHAR, fne.fne_cod))\n    LEFT OUTER JOIN mat WITH (NOLOCK)\n        ON (mat.mat_cod = ine.ine_mat_cod)\n    LEFT OUTER JOIN lma WITH (NOLOCK)\n       ON (\n                lma.lma_cod = mat.mat_lma_cod\n                AND lma.lma_gmm_cod = mat.mat_gmm_cod\n                )\n    LEFT OUTER JOIN gmm WITH (NOLOCK)\n        ON (lma.lma_gmm_cod = gmm.gmm_cod)\n    LEFT OUTER JOIN sba WITH (NOLOCK)\n        ON (sba.sba_cod = nfe.nfe_sba_cod)\n    LEFT OUTER JOIN aft WITH (NOLOCK)\n        ON (\n               aft_serie = ine_aft_serie\n                AND aft_num = ine_aft_num\n                )\n    LEFT OUTER JOIN emp WITH (NOLOCK)\n        ON (emp.emp_fne_cod = fne.FNE_COD)\n    CROSS JOIN cfg\n    WHERE (\n            nfe.nfe_dt_entrada >= @DT_INICIO\n            AND nfe.nfe_dt_entrada <= @DT_FIM\n            )\n        AND (\n            fne.fne_cod IN (''%'')\n            OR (''%'' IN (''%''))\n            )\n    ) AS t1\nORDER BY sba_cod\n    , sba_nome\n    , nfe_tipo\n    , nfe_dt_entrada\n    , nfe_serie\n    , nfe_num\n    , ine_seq\n '\n\n)\n",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"tableOption": "autoCreate",
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "SMART_IOF_PrdDataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "STG",
-												"tabela_destino": "SUP_NFS_SMART"
-											}
-										}
-									]
-								},
-								{
-									"name": "SMART - NF OFT",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "SMART - NF IOF",
-											"dependencyConditions": [
-												"Completed"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "SqlServerSource",
-											"sqlReaderQuery": {
-												"value": "@concat(\r\n'DECLARE @DT_INICIO AS DATE\r\n DECLARE @DT_FIM     AS DATE\r\n\r\nSET @DT_INICIO = ','''', item().DT_INICIO,'''',\r\n'SET @DT_FIM = '  , '''', item().DT_FIM,'''',\r\n' SELECT \r\n 93 as estabelecimento  ',\r\n\r\n '\r\n     ,nfe_dt_emissao\r\n    , nfe_dt_entrada\r\n    , nfe_tipo\r\n    , nfe_serie\r\n    , nfe_num\r\n    , fne_cod\r\n    , fne_nome_fantasia\r\n    , ine_mat_cod\r\n    , mat_desc_resumida\r\n    , gmm_nome\r\n    , ine_qtde_entrada\r\n    , mat_unm_cod_entrada\r\n    , ine_vlr_unit_entrada\r\n    , nfe_ipg_aberto\r\n    , ine_vlr_desconto\r\n    , ine_vlr_ipi\r\n    , nfe_aft\r\n    , nfe_vlr_total\r\n    , ds_nfe_tipo\r\n    , nfe_crit_venc\r\n    , nfe_cpg_parcelas\r\n    , nfe_ipg_dt_vcto\r\n    , nfe_parcela_1\r\nFROM (\r\n    SELECT cfg.cfg_emp\r\n        , sba.sba_cod\r\n        , sba.sba_nome\r\n        , nfe.nfe_serie\r\n        , nfe.nfe_num\r\n        , nfe.nfe_fne_cod\r\n        , nfe.nfe_tipo\r\n        , CASE nfe.nfe_tipo\r\n\r\n                WHEN ''PR''\r\n                THEN ''Entrada''\r\n            WHEN ''SR''\r\n                THEN ''Simples Remessa''\r\n            WHEN ''SF''\r\n                THEN ''Simples Faturamento''\r\n            WHEN ''DV''\r\n                THEN ''Devolução''\r\n            WHEN ''TR''\r\n                THEN ''Transferência''\r\n            ELSE ''N/A''\r\n            END AS ds_nfe_tipo\r\n        , fne.fne_cod\r\n        , fne.fne_nome_fantasia\r\n        , nfe.nfe_vlr_total\r\n \r\n \r\n        , (\r\n            SELECT TOP 1 i.ipg_dt_vcto\r\n            FROM cpg c\r\n            INNER JOIN ipg i\r\n                ON (\r\n                        c.cpg_serie = i.ipg_cpg_serie\r\n                        AND c.cpg_num = i.ipg_cpg_num\r\n                        )\r\n            WHERE c.cpg_nfe_serie = nfe_serie\r\n                AND c.cpg_nfe_num = nfe_num\r\n                AND c.cpg_nfe_tipo = nfe_tipo\r\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\r\n            ORDER BY i.ipg_dt_vcto\r\n            ) AS nfe_ipg_dt_vcto\r\n        , (\r\n            SELECT count(ipg_parc)\r\n            FROM cpg c\r\n            INNER JOIN ipg i\r\n                ON (\r\n                        c.cpg_serie = i.ipg_cpg_serie\r\n                        AND c.cpg_num = i.ipg_cpg_num\r\n                        )\r\n            WHERE c.cpg_nfe_serie = nfe_serie\r\n                AND c.cpg_nfe_num = nfe_num\r\n                AND c.cpg_nfe_tipo = nfe_tipo\r\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\r\n            ) AS nfe_cpg_parcelas\r\n        , nfe.nfe_crit_venc\r\n        , nfe.nfe_parcela_1\r\n        , nfe.nfe_dt_emissao\r\n        , nfe.nfe_dt_entrada\r\n        , ine.ine_seq\r\n        , ine.ine_mat_cod\r\n        , mat.mat_desc_resumida\r\n        , mat.mat_lma_cod\r\n        , lma.lma_nome\r\n        , mat.mat_gmm_cod\r\n        , gmm.gmm_nome\r\n        , mat_unm_cod_entrada\r\n        , ine.ine_qtde AS ine_qtde_entrada\r\n        , ine.ine_vlr_unit AS ine_vlr_unit_entrada\r\n        , (\r\n            SELECT isnull(sum(ipg_valor), 0)\r\n            FROM cpg c\r\n            INNER JOIN ipg i\r\n                ON (\r\n                        c.cpg_serie = i.ipg_cpg_serie\r\n                        AND c.cpg_num = i.ipg_cpg_num\r\n                        )\r\n            WHERE c.cpg_nfe_serie = nfe_serie\r\n                AND c.cpg_nfe_num = nfe_num\r\n                AND c.cpg_nfe_tipo = nfe_tipo\r\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\r\n                AND i.ipg_status IN (''A'', ''R'')\r\n                AND i.ipg_dt_vcto <= @DT_FIM\r\n            ) AS nfe_ipg_aberto\r\n        , mat_unm_cod_saida\r\n        , '' AS solic\r\n        , '' AS DATA_solic\r\n        , convert(VARCHAR, ine_aft_serie) + ''.'' + convert(VARCHAR, ine_aft_num) AS nfe_aft\r\n        , aft_dthr\r\n        , ine.ine_qtde * mat_fat_conv_s_v AS ine_qtde_saida\r\n        , ine.ine_vlr_unit / mat_fat_conv_s_v AS ine_vlr_saida\r\n        , ine.ine_vlr_ipi\r\n        , ine.ine_vlr_desconto\r\n        , (\r\n            SELECT TOP 1 f.fne_cod\r\n            FROM nfe n WITH (NOLOCK)\r\n            INNER JOIN ine i WITH (NOLOCK)\r\n                ON (\r\n                        n.nfe_fne_cod = i.ine_fne_cod\r\n                        AND n.nfe_serie = i.ine_nfe_serie\r\n                        AND n.nfe_num = i.ine_nfe_num\r\n                        AND n.nfe_tipo = i.ine_nfe_tipo\r\n                          )\r\n            LEFT OUTER JOIN fne f WITH (NOLOCK)\r\n                ON ine.ine_fne_cod = fne.fne_cod\r\n            WHERE i.ine_mat_cod = ine.ine_mat_cod\r\n                AND f.fne_cod = ine.ine_fne_cod\r\n                AND (\r\n                    n.nfe_dt_entrada >= @DT_INICIO\r\n                    AND n.nfe_dt_entrada <= @DT_FIM\r\n                    )\r\n            ORDER BY n.nfe_dt_entrada DESC\r\n            ) AS ine_fne_cod\r\n        , (\r\n            SELECT TOP 1 f.fne_nome_fantasia\r\n            FROM nfe n WITH (NOLOCK)\r\n            INNER JOIN ine i WITH (NOLOCK)\r\n                ON (\r\n                        n.nfe_fne_cod = i.ine_fne_cod\r\n                        AND n.nfe_serie = i.ine_nfe_serie\r\n                        AND n.nfe_num = i.ine_nfe_num\r\n                        AND n.nfe_tipo = i.ine_nfe_tipo\r\n                        )\r\n            LEFT OUTER JOIN fne f WITH (NOLOCK)\r\n                ON ine.ine_fne_cod = fne.fne_cod\r\n            WHERE i.ine_mat_cod = ine.ine_mat_cod\r\n                AND f.fne_cod = ine.ine_fne_cod\r\n                AND (\r\n                   n.nfe_dt_entrada >= @DT_INICIO\r\n                 AND n.nfe_dt_entrada <= @DT_FIM\r\n                    )\r\n            ORDER BY n.nfe_dt_entrada DESC\r\n            ) AS ine_fne_nome_fantasia\r\n        , replace(replace(replace(emp_cgc, ''.'', ''''), ''/'', ''''), ''-'', '''') AS emp_cgc\r\n    FROM nfe WITH (NOLOCK)\r\n    INNER JOIN ine WITH (NOLOCK)\r\n        ON (\r\n                nfe.nfe_fne_cod = ine.ine_fne_cod\r\n                AND nfe.nfe_serie = ine.ine_nfe_serie\r\n                AND nfe.nfe_num = ine.ine_nfe_num\r\n                AND nfe.nfe_tipo = ine.ine_nfe_tipo\r\n                )\r\n    LEFT OUTER JOIN fne WITH (NOLOCK)\r\n        ON (convert(VARCHAR, ine.ine_fne_cod) = convert(VARCHAR, fne.fne_cod))\r\n    LEFT OUTER JOIN mat WITH (NOLOCK)\r\n        ON (mat.mat_cod = ine.ine_mat_cod)\r\n    LEFT OUTER JOIN lma WITH (NOLOCK)\r\n       ON (\r\n                lma.lma_cod = mat.mat_lma_cod\r\n                AND lma.lma_gmm_cod = mat.mat_gmm_cod\r\n                )\r\n    LEFT OUTER JOIN gmm WITH (NOLOCK)\r\n        ON (lma.lma_gmm_cod = gmm.gmm_cod)\r\n    LEFT OUTER JOIN sba WITH (NOLOCK)\r\n        ON (sba.sba_cod = nfe.nfe_sba_cod)\r\n    LEFT OUTER JOIN aft WITH (NOLOCK)\r\n        ON (\r\n               aft_serie = ine_aft_serie\r\n                AND aft_num = ine_aft_num\r\n                )\r\n    LEFT OUTER JOIN emp WITH (NOLOCK)\r\n        ON (emp.emp_fne_cod = fne.FNE_COD)\r\n    CROSS JOIN cfg\r\n    WHERE (\r\n            nfe.nfe_dt_entrada >= @DT_INICIO\r\n            AND nfe.nfe_dt_entrada <= @DT_FIM\r\n            )\r\n        AND (\r\n            fne.fne_cod IN (''%'')\r\n            OR (''%'' IN (''%''))\r\n            )\r\n    ) AS t1\r\nORDER BY sba_cod\r\n    , sba_nome\r\n    , nfe_tipo\r\n    , nfe_dt_entrada\r\n    , nfe_serie\r\n    , nfe_num\r\n    , ine_seq\r\n '\r\n\r\n)\r\n",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"tableOption": "autoCreate",
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "STG",
-												"tabela_destino": "SUP_NFS_SMART"
-											}
-										}
-									]
-								},
-								{
-									"name": "SMART - NF HOSL",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "SMART - NF OFT",
-											"dependencyConditions": [
-												"Completed"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "SqlServerSource",
-											"sqlReaderQuery": {
-												"value": "@concat(\r\n'DECLARE @DT_INICIO AS DATE\r\n DECLARE @DT_FIM     AS DATE\r\n\r\nSET @DT_INICIO = ','''', item().DT_INICIO,'''',\r\n'SET @DT_FIM = '  , '''', item().DT_FIM,'''',\r\n' SELECT \r\n 94 as estabelecimento  ',\r\n\r\n '\r\n     ,nfe_dt_emissao\r\n    , nfe_dt_entrada\r\n    , nfe_tipo\r\n    , nfe_serie\r\n    , nfe_num\r\n    , fne_cod\r\n    , fne_nome_fantasia\r\n    , ine_mat_cod\r\n    , mat_desc_resumida\r\n    , gmm_nome\r\n    , ine_qtde_entrada\r\n    , mat_unm_cod_entrada\r\n    , ine_vlr_unit_entrada\r\n    , nfe_ipg_aberto\r\n    , ine_vlr_desconto\r\n    , ine_vlr_ipi\r\n    , nfe_aft\r\n    , nfe_vlr_total\r\n    , ds_nfe_tipo\r\n    , nfe_crit_venc\r\n    , nfe_cpg_parcelas\r\n    , nfe_ipg_dt_vcto\r\n    , nfe_parcela_1\r\nFROM (\r\n    SELECT cfg.cfg_emp\r\n        , sba.sba_cod\r\n        , sba.sba_nome\r\n        , nfe.nfe_serie\r\n        , nfe.nfe_num\r\n        , nfe.nfe_fne_cod\r\n        , nfe.nfe_tipo\r\n        , CASE nfe.nfe_tipo\r\n\r\n                WHEN ''PR''\r\n                THEN ''Entrada''\r\n            WHEN ''SR''\r\n                THEN ''Simples Remessa''\r\n            WHEN ''SF''\r\n                THEN ''Simples Faturamento''\r\n            WHEN ''DV''\r\n                THEN ''Devolução''\r\n            WHEN ''TR''\r\n                THEN ''Transferência''\r\n            ELSE ''N/A''\r\n            END AS ds_nfe_tipo\r\n        , fne.fne_cod\r\n        , fne.fne_nome_fantasia\r\n        , nfe.nfe_vlr_total\r\n \r\n \r\n        , (\r\n            SELECT TOP 1 i.ipg_dt_vcto\r\n            FROM cpg c\r\n            INNER JOIN ipg i\r\n                ON (\r\n                        c.cpg_serie = i.ipg_cpg_serie\r\n                        AND c.cpg_num = i.ipg_cpg_num\r\n                        )\r\n            WHERE c.cpg_nfe_serie = nfe_serie\r\n                AND c.cpg_nfe_num = nfe_num\r\n                AND c.cpg_nfe_tipo = nfe_tipo\r\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\r\n            ORDER BY i.ipg_dt_vcto\r\n            ) AS nfe_ipg_dt_vcto\r\n        , (\r\n            SELECT count(ipg_parc)\r\n            FROM cpg c\r\n            INNER JOIN ipg i\r\n                ON (\r\n                        c.cpg_serie = i.ipg_cpg_serie\r\n                        AND c.cpg_num = i.ipg_cpg_num\r\n                        )\r\n            WHERE c.cpg_nfe_serie = nfe_serie\r\n                AND c.cpg_nfe_num = nfe_num\r\n                AND c.cpg_nfe_tipo = nfe_tipo\r\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\r\n            ) AS nfe_cpg_parcelas\r\n        , nfe.nfe_crit_venc\r\n        , nfe.nfe_parcela_1\r\n        , nfe.nfe_dt_emissao\r\n        , nfe.nfe_dt_entrada\r\n        , ine.ine_seq\r\n        , ine.ine_mat_cod\r\n        , mat.mat_desc_resumida\r\n        , mat.mat_lma_cod\r\n        , lma.lma_nome\r\n        , mat.mat_gmm_cod\r\n        , gmm.gmm_nome\r\n        , mat_unm_cod_entrada\r\n        , ine.ine_qtde AS ine_qtde_entrada\r\n        , ine.ine_vlr_unit AS ine_vlr_unit_entrada\r\n        , (\r\n            SELECT isnull(sum(ipg_valor), 0)\r\n            FROM cpg c\r\n            INNER JOIN ipg i\r\n                ON (\r\n                        c.cpg_serie = i.ipg_cpg_serie\r\n                        AND c.cpg_num = i.ipg_cpg_num\r\n                        )\r\n            WHERE c.cpg_nfe_serie = nfe_serie\r\n                AND c.cpg_nfe_num = nfe_num\r\n                AND c.cpg_nfe_tipo = nfe_tipo\r\n                AND c.cpg_nfe_fne_cod = nfe_fne_cod\r\n                AND i.ipg_status IN (''A'', ''R'')\r\n                AND i.ipg_dt_vcto <= @DT_FIM\r\n            ) AS nfe_ipg_aberto\r\n        , mat_unm_cod_saida\r\n        , '' AS solic\r\n        , '' AS DATA_solic\r\n        , convert(VARCHAR, ine_aft_serie) + ''.'' + convert(VARCHAR, ine_aft_num) AS nfe_aft\r\n        , aft_dthr\r\n        , ine.ine_qtde * mat_fat_conv_s_v AS ine_qtde_saida\r\n        , ine.ine_vlr_unit / mat_fat_conv_s_v AS ine_vlr_saida\r\n        , ine.ine_vlr_ipi\r\n        , ine.ine_vlr_desconto\r\n        , (\r\n            SELECT TOP 1 f.fne_cod\r\n            FROM nfe n WITH (NOLOCK)\r\n            INNER JOIN ine i WITH (NOLOCK)\r\n                ON (\r\n                        n.nfe_fne_cod = i.ine_fne_cod\r\n                        AND n.nfe_serie = i.ine_nfe_serie\r\n                        AND n.nfe_num = i.ine_nfe_num\r\n                        AND n.nfe_tipo = i.ine_nfe_tipo\r\n                          )\r\n            LEFT OUTER JOIN fne f WITH (NOLOCK)\r\n                ON ine.ine_fne_cod = fne.fne_cod\r\n            WHERE i.ine_mat_cod = ine.ine_mat_cod\r\n                AND f.fne_cod = ine.ine_fne_cod\r\n                AND (\r\n                    n.nfe_dt_entrada >= @DT_INICIO\r\n                    AND n.nfe_dt_entrada <= @DT_FIM\r\n                    )\r\n            ORDER BY n.nfe_dt_entrada DESC\r\n            ) AS ine_fne_cod\r\n        , (\r\n            SELECT TOP 1 f.fne_nome_fantasia\r\n            FROM nfe n WITH (NOLOCK)\r\n            INNER JOIN ine i WITH (NOLOCK)\r\n                ON (\r\n                        n.nfe_fne_cod = i.ine_fne_cod\r\n                        AND n.nfe_serie = i.ine_nfe_serie\r\n                        AND n.nfe_num = i.ine_nfe_num\r\n                        AND n.nfe_tipo = i.ine_nfe_tipo\r\n                        )\r\n            LEFT OUTER JOIN fne f WITH (NOLOCK)\r\n                ON ine.ine_fne_cod = fne.fne_cod\r\n            WHERE i.ine_mat_cod = ine.ine_mat_cod\r\n                AND f.fne_cod = ine.ine_fne_cod\r\n                AND (\r\n                   n.nfe_dt_entrada >= @DT_INICIO\r\n                 AND n.nfe_dt_entrada <= @DT_FIM\r\n                    )\r\n            ORDER BY n.nfe_dt_entrada DESC\r\n            ) AS ine_fne_nome_fantasia\r\n        , replace(replace(replace(emp_cgc, ''.'', ''''), ''/'', ''''), ''-'', '''') AS emp_cgc\r\n    FROM nfe WITH (NOLOCK)\r\n    INNER JOIN ine WITH (NOLOCK)\r\n        ON (\r\n                nfe.nfe_fne_cod = ine.ine_fne_cod\r\n                AND nfe.nfe_serie = ine.ine_nfe_serie\r\n                AND nfe.nfe_num = ine.ine_nfe_num\r\n                AND nfe.nfe_tipo = ine.ine_nfe_tipo\r\n                )\r\n    LEFT OUTER JOIN fne WITH (NOLOCK)\r\n        ON (convert(VARCHAR, ine.ine_fne_cod) = convert(VARCHAR, fne.fne_cod))\r\n    LEFT OUTER JOIN mat WITH (NOLOCK)\r\n        ON (mat.mat_cod = ine.ine_mat_cod)\r\n    LEFT OUTER JOIN lma WITH (NOLOCK)\r\n       ON (\r\n                lma.lma_cod = mat.mat_lma_cod\r\n                AND lma.lma_gmm_cod = mat.mat_gmm_cod\r\n                )\r\n    LEFT OUTER JOIN gmm WITH (NOLOCK)\r\n        ON (lma.lma_gmm_cod = gmm.gmm_cod)\r\n    LEFT OUTER JOIN sba WITH (NOLOCK)\r\n        ON (sba.sba_cod = nfe.nfe_sba_cod)\r\n    LEFT OUTER JOIN aft WITH (NOLOCK)\r\n        ON (\r\n               aft_serie = ine_aft_serie\r\n                AND aft_num = ine_aft_num\r\n                )\r\n    LEFT OUTER JOIN emp WITH (NOLOCK)\r\n        ON (emp.emp_fne_cod = fne.FNE_COD)\r\n    CROSS JOIN cfg\r\n    WHERE (\r\n            nfe.nfe_dt_entrada >= @DT_INICIO\r\n            AND nfe.nfe_dt_entrada <= @DT_FIM\r\n            )\r\n        AND (\r\n            fne.fne_cod IN (''%'')\r\n            OR (''%'' IN (''%''))\r\n            )\r\n    ) AS t1\r\nORDER BY sba_cod\r\n    , sba_nome\r\n    , nfe_tipo\r\n    , nfe_dt_entrada\r\n    , nfe_serie\r\n    , nfe_num\r\n    , ine_seq\r\n '\r\n\r\n)\r\n",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"tableOption": "autoCreate",
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "SMART_HOSL_PrdDataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "STG",
-												"tabela_destino": "SUP_NFS_SMART"
-											}
-										}
-									]
-								},
-								{
-									"name": "TASY - NF Sadalla",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "OracleSource",
-											"oracleReaderQuery": {
-												"value": "@concat(\n\n'with cate as(\nselect  \n        A.CD_ESTABELECIMENTO,\n        obter_nome_estab(a.cd_estabelecimento) ds_estabelecimento,\n        A.NR_ORDEM_COMPRA,\n        a.dt_entrada_saida,\n        a.dt_emissao,\n        a.nr_nota_fiscal,\n        a.cd_cgc_emitente,\n        substr(obter_nome_pf_pj(null,a.cd_cgc_emitente),1,100) ds_fornecedor,\n        pj.CD_CEP,\n        pj.DS_ENDERECO,\n        pj.DS_BAIRRO,\n        pj.DS_MUNICIPIO,\n        pj.SG_ESTADO,\n        b.cd_material,\n        substr(obter_desc_material(b.cd_material),1,100) ds_material,\n        e.ds_grupo_material,\n        b.cd_local_estoque,\n        b.qt_item_nf,\n        b.cd_unidade_medida_compra,\n        b.vl_unitario_item_nf,\n        b.vl_total_item_nf, \n        b.vl_frete / b.qt_item_nf vl_frete,\n        d.vl_tributo / b.qt_item_nf tributo,\n        dividir(b.vl_liquido, b.qt_item_estoque) vl_custo_medio,\n        ((dividir(b.vl_liquido, b.qt_item_estoque)) *(b.qt_item_nf))total_item,\n        obter_desc_operacao_nota(a.CD_OPERACAO_NF) operacao\n       -- ,obter_desc_local_estoque(b.CD_LOCAL_ESTOQUE) ds_local_estoque\nfrom    nota_fiscal a,\n        nota_fiscal_item b,\n        estrutura_material_v e,\n        nota_fiscal_item_trib d,\n        pessoa_juridica pj\nwhere   b.nr_sequencia = d.nr_sequencia (+)\n        and b.nr_item_nf = d.nr_item_nf (+)\n        and a.nr_sequencia = b.nr_sequencia\n        and b.cd_material = e.cd_material\n        and trunc(a.dt_entrada_saida,''mm'') between to_date(',\n\t\t\n\t\t'''', item().DT_INICIO_ORACLE, '''',\n\t\t\n\t\t\n\t\t\n\t\t',''DD/MM/YYYY'') and to_date(',\n                \n                '''', item().DT_FIM_ORACLE, '''',\n                \n                ',''DD/MM/YYYY'')\n        and a.ie_situacao = 1\n        and a.ie_tipo_nota in (''EF'',''EN'')\n        and a.CD_OPERACAO_NF <> 5\n        and a.dt_atualizacao_estoque is not null\n        and pj.cd_cgc = a.CD_CGC_EMITENTE (+)\n        --and ((a.cd_estabelecimento = :estab) or (:estab = 0))\norder by dt_entrada_saida,\n        nr_nota_fiscal,\n        ds_fornecedor,  \n        ds_material\n)  \nSELECT\n     2 AS ESTABELECIMENTO\n,A.CD_ESTABELECIMENTO\n,A.DS_ESTABELECIMENTO    \n,OC.DT_ORDEM_COMPRA\n,A.NR_ORDEM_COMPRA\n,A.DT_ENTRADA_SAIDA\n,A.DT_EMISSAO\n,A.NR_NOTA_FISCAL\n,A.CD_CGC_EMITENTE\n,A.DS_FORNECEDOR\n,A.CD_CEP\n,A.DS_ENDERECO\n,A.DS_BAIRRO\n,A.DS_MUNICIPIO\n,A.SG_ESTADO\n,A.CD_MATERIAL\n,A.DS_MATERIAL\n,A.DS_GRUPO_MATERIAL\n,A.CD_LOCAL_ESTOQUE\n,A.QT_ITEM_NF\n,A.CD_UNIDADE_MEDIDA_COMPRA\n,A.VL_UNITARIO_ITEM_NF\n,A.VL_TOTAL_ITEM_NF\n,A.VL_FRETE\n,A.TRIBUTO\n,A.VL_CUSTO_MEDIO\n,A.TOTAL_ITEM\n,A.OPERACAO\n,L.DS_LOCAL_ESTOQUE\nFROM CATE A\nLEFT JOIN ORDEM_COMPRA OC ON OC.NR_ORDEM_COMPRA = A.NR_ORDEM_COMPRA\nLEFT JOIN LOCAL_ESTOQUE L ON L.CD_LOCAL_ESTOQUE = A.CD_LOCAL_ESTOQUE'\n\n)\n\n\n \n",
-												"type": "Expression"
-											},
-											"partitionOption": "None",
-											"convertDecimalToInteger": false,
-											"queryTimeout": "02:00:00"
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false
-									},
-									"inputs": [
-										{
-											"referenceName": "SadallaTasyPrdDataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "STG",
-												"tabela_destino": "SUP_NFS_TASY"
-											}
-										}
-									]
-								},
-								{
-									"name": "TASY - NF HTML",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "TASY - NF Sadalla",
-											"dependencyConditions": [
-												"Completed"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "OracleSource",
-											"oracleReaderQuery": {
-												"value": "@CONCAT(\n\n'with cate as(\nselect  \n        A.CD_ESTABELECIMENTO,\n        FAST_OPS.obter_nome_estab(a.cd_estabelecimento) ds_estabelecimento,\n        A.NR_ORDEM_COMPRA,\n        a.dt_entrada_saida,\n        a.dt_emissao,\n        a.nr_nota_fiscal,\n        a.cd_cgc_emitente,\n        substr(FAST_OPS.obter_nome_pf_pj(null,a.cd_cgc_emitente),1,100) ds_fornecedor,\n        pj.CD_CEP,\n        pj.DS_ENDERECO,\n        pj.DS_BAIRRO,\n        pj.DS_MUNICIPIO,\n        pj.SG_ESTADO,\n        b.cd_material,\n        substr(FAST_OPS.obter_desc_material(b.cd_material),1,100) ds_material,\n        e.ds_grupo_material,\n        b.cd_local_estoque,\n        b.qt_item_nf,\n        b.cd_unidade_medida_compra,\n        b.vl_unitario_item_nf,\n        b.vl_total_item_nf, \n        b.vl_frete / b.qt_item_nf vl_frete,\n        d.vl_tributo / b.qt_item_nf tributo,\n        FAST_OPS.dividir(b.vl_liquido, b.qt_item_estoque) vl_custo_medio,\n        ((FAST_OPS.dividir(b.vl_liquido, b.qt_item_estoque)) *(b.qt_item_nf))total_item,\n        FAST_OPS.obter_desc_operacao_nota(a.CD_OPERACAO_NF) operacao\n       -- ,obter_desc_local_estoque(b.CD_LOCAL_ESTOQUE) ds_local_estoque\nfrom    FAST_OPS.nota_fiscal a,\n        FAST_OPS.nota_fiscal_item b,\n        FAST_OPS.estrutura_material_v e,\n        FAST_OPS.nota_fiscal_item_trib d,\n        FAST_OPS.pessoa_juridica pj\nwhere   b.nr_sequencia = d.nr_sequencia (+)\n        and b.nr_item_nf = d.nr_item_nf (+)\n        and a.nr_sequencia = b.nr_sequencia\n        and b.cd_material = e.cd_material\n        and trunc(a.dt_entrada_saida,''mm'') between to_date(',\n\t\t\n\t\t'''', item().DT_INICIO_ORACLE, '''',\n\n\t\t',''DD/MM/YYYY'') and to_date(',\n\t\t\n\t\t'''', item().DT_FIM_ORACLE, '''',\n\t\t\n\t\t',''DD/MM/YYYY'')\n        and a.ie_situacao = 1\n        and a.ie_tipo_nota in (''EF'',''EN'')\n        and a.CD_OPERACAO_NF <> 5\n        and a.dt_atualizacao_estoque is not null\n        and pj.cd_cgc = a.CD_CGC_EMITENTE (+)\n        --and ((a.cd_estabelecimento = :estab) or (:estab = 0))\norder by dt_entrada_saida,\n        nr_nota_fiscal,\n        ds_fornecedor,  \n        ds_material\n)  \nSELECT\n1 AS ESTABELECIMENTO\n,A.CD_ESTABELECIMENTO\n,A.DS_ESTABELECIMENTO    \n,OC.DT_ORDEM_COMPRA\n,A.NR_ORDEM_COMPRA\n,A.DT_ENTRADA_SAIDA\n,A.DT_EMISSAO\n,A.NR_NOTA_FISCAL\n,A.CD_CGC_EMITENTE\n,A.DS_FORNECEDOR\n,A.CD_CEP\n,A.DS_ENDERECO\n,A.DS_BAIRRO\n,A.DS_MUNICIPIO\n,A.SG_ESTADO\n,A.CD_MATERIAL\n,A.DS_MATERIAL\n,A.DS_GRUPO_MATERIAL\n,A.CD_LOCAL_ESTOQUE\n,A.QT_ITEM_NF\n,A.CD_UNIDADE_MEDIDA_COMPRA\n,A.VL_UNITARIO_ITEM_NF\n,A.VL_TOTAL_ITEM_NF\n,A.VL_FRETE\n,A.TRIBUTO\n,A.VL_CUSTO_MEDIO\n,A.TOTAL_ITEM\n,A.OPERACAO\n,L.DS_LOCAL_ESTOQUE\nFROM CATE A\nLEFT JOIN FAST_OPS.ORDEM_COMPRA OC ON OC.NR_ORDEM_COMPRA = A.NR_ORDEM_COMPRA\nLEFT JOIN FAST_OPS.LOCAL_ESTOQUE L ON L.CD_LOCAL_ESTOQUE = A.CD_LOCAL_ESTOQUE'\n\n)",
-												"type": "Expression"
-											},
-											"partitionOption": "None",
-											"convertDecimalToInteger": false,
-											"queryTimeout": "02:00:00"
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false,
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false
-									},
-									"inputs": [
-										{
-											"referenceName": "CloudTasyPrdDataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "STG",
-												"tabela_destino": "SUP_NFS_TASY"
-											}
-										}
-									]
-								}
-							]
-						}
-					},
-					{
-						"name": "Lookup Periodo Inicial",
-						"type": "Lookup",
-						"dependsOn": [
-							{
-								"activity": "LIMPA STAGE SMART",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "LIMPA STAGE TASY",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.1:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "declare @qtde_dias integer\n\nset @qtde_dias = 8\n\n\nSELECT\n\tCASE \n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\n\tEND as Data_Inicial,\n\n\t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\n\n\n\tCASE\n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat('01' ,'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate()),120),6,2),'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate())),8,4))\n\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\n\tEND as Data_Inicial_Oracle,\n        substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\n",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "SQL_DIN",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"firstRowOnly": true
-						}
-					},
-					{
-						"name": "LIMPA STAGE SMART",
-						"type": "Script",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.1:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": "truncate table STG.SUP_NFS_SMART"
-								}
-							],
-							"scriptBlockExecutionTimeout": "02:00:00"
-						}
-					},
-					{
-						"name": "LIMPA STAGE TASY",
-						"type": "Script",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.1:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": "truncate table STG.SUP_NFS_TASY"
-								}
-							],
-							"scriptBlockExecutionTimeout": "02:00:00"
-						}
-					},
-					{
-						"name": "DELETE NFS",
-						"type": "Script",
-						"dependsOn": [
-							{
-								"activity": "ForEach1",
-								"dependencyConditions": [
-									"Completed"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": {
-										"value": "DELETE \nFROM DM.TBL_NFS_XPTO\nWHERE   TBL_NFS_XPTO.DT_ENTRADA_SAIDA IN \n(\nSELECT distinct convert(date,DT_ENTRADA_SAIDA,103) AS DT_ENTRADA from STG.SUP_NFS_TASY  with(nolock) \nUNION\nselect distinct convert(date,NFE_DT_ENTRADA,103) AS DT_ENTRADA  from STG.SUP_NFS_SMART  with(nolock)\n) \n",
-										"type": "Expression"
-									}
-								}
-							],
-							"scriptBlockExecutionTimeout": "02:00:00"
-						}
-					},
-					{
-						"name": "INSERT",
-						"type": "Script",
-						"dependsOn": [
-							{
-								"activity": "DELETE NFS",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": {
-										"value": "WITH TB AS(\nSELECT\nA.estabelecimento AS ESTABELECIMENTO\n,null AS DT_ORDEM_COMPRA\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|0' AS FK_NR_ORDEM_COMPRA\n,nfe_dt_entrada AS DT_ENTRADA_SAIDA\n,nfe_dt_emissao AS DT_EMISSAO\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|'+ CAST(nfe_tipo AS VARCHAR(10)) + CAST(NFE_SERIE AS VARCHAR(10)) + CAST(nfe_num AS VARCHAR(50)) AS FK_NR_NOTA_FISCAL\n,CASE nfe_tipo\n    WHEN 'PR' THEN 'Entrada'\n    WHEN 'SR' THEN 'Simples Remessa'\n    WHEN 'SF' THEN 'Simples Faturamento'\n    WHEN 'DV' THEN 'Devolução'\n    WHEN 'TR' THEN 'Transferência'\n    ELSE 'N/A'\nEND  TP_OPERACAO\n,CAST(EMP.estabelecimento AS VARCHAR(5)) + '|' + CAST(EMP.emp_cgc AS VARCHAR(255)) AS FK_CD_CGC_EMITENTE\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) +'|'+CAST(ine_mat_cod AS varchar(100)) AS FK_CD_MATERIAL\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|0' AS FK_CD_LOCAL_ESTOQUE\n,ine_qtde_entrada AS QT_ITEM_NF\n,mat_unm_cod_entrada AS CD_UNIDADE_MEDIDA_COMPRA\n,CAST(ine_vlr_unit_entrada AS money) AS VL_UNITARIO_ITEM_NF\n,CAST(ine_vlr_unit_entrada * ine_qtde_entrada AS MONEY) AS VL_TOTAL_ITEM_NF\n,0 AS VL_FRETE\n,0 AS TRIBUTO\n,0 AS VL_CUSTO_MEDIO\n,0 AS TOTAL_ITEM\nFROM STG.SUP_NFS_SMART A\nLEFT JOIN DW.TBL_EMP EMP WITH(NOLOCK) ON EMP.estabelecimento = A.estabelecimento AND EMP.emp_fne_cod = A.fne_cod\n\nUNION ALL\n\nSELECT\n A.ESTABELECIMENTO\n,A.DT_ORDEM_COMPRA\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.NR_ORDEM_COMPRA AS VARCHAR(50)) FK_NR_ORGEM_COMPRA\n,A.DT_ENTRADA_SAIDA\n,A.DT_EMISSAO\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.NR_NOTA_FISCAL AS VARCHAR(50)) FK_NR_NOTA_FISCAL\n,A.OPERACAO AS TP_OPERACAO\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(A.CD_CGC_EMITENTE AS VARCHAR(255)) AS FK_CD_CGC_EMITENTE\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.CD_MATERIAL AS VARCHAR(50)) FK_CD_MATERIAL\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n,A.QT_ITEM_NF\n,A.CD_UNIDADE_MEDIDA_COMPRA\n,A.VL_UNITARIO_ITEM_NF\n,A.VL_TOTAL_ITEM_NF\n,A.VL_FRETE\n,A.TRIBUTO\n,A.VL_CUSTO_MEDIO\n,A.TOTAL_ITEM\nFROM STG.sup_nfs_tasy A\n\n)\n\nINSERT INTO [dm].[TBL_NFS_XPTO]\n           ([ESTABELECIMENTO]\n           ,[DT_ORDEM_COMPRA]\n           ,[FK_NR_ORDEM_COMPRA]\n           ,[DT_ENTRADA_SAIDA]\n           ,[DT_EMISSAO]\n           ,[FK_NR_NOTA_FISCAL]\n           ,[TP_OPERACAO]\n           ,[FK_CD_CGC_EMITENTE]\n           ,[FK_CD_MATERIAL]\n           ,[FK_CD_LOCAL_ESTOQUE]\n           ,[QT_ITEM_NF]\n           ,[CD_UNIDADE_MEDIDA_COMPRA]\n           ,[VL_UNITARIO_ITEM_NF]\n           ,[VL_TOTAL_ITEM_NF]\n           ,[VL_FRETE]\n           ,[TRIBUTO]\n           ,[VL_CUSTO_MEDIO]\n           ,[TOTAL_ITEM]\n\t\t   )\n\n\nSELECT      [ESTABELECIMENTO]\n           ,[DT_ORDEM_COMPRA]\n           ,[FK_NR_ORDEM_COMPRA]\n           ,[DT_ENTRADA_SAIDA]\n           ,[DT_EMISSAO]\n           ,[FK_NR_NOTA_FISCAL]\n           ,[TP_OPERACAO]\n           ,[FK_CD_CGC_EMITENTE]\n           ,[FK_CD_MATERIAL]\n           ,[FK_CD_LOCAL_ESTOQUE]\n           ,[QT_ITEM_NF]\n           ,[CD_UNIDADE_MEDIDA_COMPRA]\n           ,[VL_UNITARIO_ITEM_NF]\n           ,[VL_TOTAL_ITEM_NF]\n           ,[VL_FRETE]\n           ,[TRIBUTO]\n           ,[VL_CUSTO_MEDIO]\n           ,[TOTAL_ITEM]\n\t\t   \n\t\t   FROM TB\n\n",
-										"type": "Expression"
-									}
-								}
-							],
-							"scriptBlockExecutionTimeout": "02:00:00"
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {},
-					"cancelAfter": {}
-				},
-				"variables": {
-					"DT_INICIO": {
-						"type": "String"
-					},
-					"DT_FIM": {
-						"type": "String"
-					}
-				},
-				"folder": {
-					"name": "Suprimentos/Nota Fiscal"
-				},
-				"annotations": []
 			},
 			"dependsOn": []
 		},
@@ -3548,6 +2811,49 @@
 							],
 							"hours": [
 								2
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Daily 05h')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "Chamados Requestia_Otim_Deadlock",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "NF",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2021-11-24T12:05:00",
+						"timeZone": "E. South America Standard Time",
+						"schedule": {
+							"minutes": [
+								0
+							],
+							"hours": [
+								5
 							]
 						}
 					}
