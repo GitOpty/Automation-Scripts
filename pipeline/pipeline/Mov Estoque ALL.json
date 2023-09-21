@@ -274,7 +274,10 @@
 				"userProperties": [],
 				"typeProperties": {
 					"variableName": "DT_INICIO",
-					"value": "2023-08-01"
+					"value": {
+						"value": "@activity('Lookup Periodo Inicial').output.firstRow.Data_Inicial",
+						"type": "Expression"
+					}
 				}
 			},
 			{
@@ -295,7 +298,10 @@
 				"userProperties": [],
 				"typeProperties": {
 					"variableName": "DT_FIM",
-					"value": "2023-08-01"
+					"value": {
+						"value": "@activity('Lookup Periodo Inicial').output.firstRow.data_final",
+						"type": "Expression"
+					}
 				}
 			},
 			{
@@ -1407,7 +1413,19 @@
 					"secureOutput": false,
 					"secureInput": false
 				},
-				"userProperties": []
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "declare @qtde_dias integer\r\n\r\nset @qtde_dias = 8\r\n\r\n\r\nSELECT\r\n\tCASE \r\n\t\tWHEN day(getdate()) <= @qtde_dias THEN\r\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\r\n\t\tWHEN day(getdate()) > @qtde_dias THEN\r\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\r\n\tEND as Data_Inicial,\r\n\r\n\t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\r\n\r\n\r\n\tCASE\r\n\t\tWHEN day(getdate()) <= @qtde_dias THEN\r\n\t\t\tconcat('01' ,'/',\r\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate()),120),6,2),'/',\r\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate())),8,4))\r\n\r\n\t\tWHEN day(getdate()) > @qtde_dias THEN\r\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\r\n\tEND as Data_Inicial_Oracle,\r\n        substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\r\n",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "SQL_DIN",
+						"type": "DatasetReference"
+					}
+				}
 			}
 		],
 		"variables": {
