@@ -49,7 +49,7 @@
 				"type": "SetVariable",
 				"dependsOn": [
 					{
-						"activity": "Lookup Periodo Inicial",
+						"activity": "LIMPA STAGE TASY",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -62,10 +62,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"variableName": "DT_INICIO",
-					"value": {
-						"value": "@activity('Lookup Periodo Inicial').output.firstRow.Data_Inicial",
-						"type": "Expression"
-					}
+					"value": "2021-01-01"
 				}
 			},
 			{
@@ -73,7 +70,7 @@
 				"type": "SetVariable",
 				"dependsOn": [
 					{
-						"activity": "Lookup Periodo Inicial",
+						"activity": "LIMPA STAGE TASY",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -86,10 +83,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"variableName": "DT_FIM",
-					"value": {
-						"value": "@activity('Lookup Periodo Inicial').output.firstRow.data_final",
-						"type": "Expression"
-					}
+					"value": "2023-09-30"
 				}
 			},
 			{
@@ -533,45 +527,6 @@
 				}
 			},
 			{
-				"name": "Lookup Periodo Inicial",
-				"type": "Lookup",
-				"dependsOn": [
-					{
-						"activity": "LIMPA STAGE SMART",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					},
-					{
-						"activity": "LIMPA STAGE TASY",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.1:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "AzureSqlSource",
-						"sqlReaderQuery": "declare @qtde_dias integer\n\nset @qtde_dias = 8\n\n\nSELECT\n\tCASE \n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\n\tEND as Data_Inicial,\n\n\t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\n\n\n\tCASE\n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat('01' ,'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate()),120),6,2),'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate())),8,4))\n\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\n\tEND as Data_Inicial_Oracle,\n        substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\n",
-						"queryTimeout": "02:00:00",
-						"partitionOption": "None"
-					},
-					"dataset": {
-						"referenceName": "SQL_DIN",
-						"type": "DatasetReference"
-					},
-					"firstRowOnly": true
-				}
-			},
-			{
 				"name": "LIMPA STAGE SMART",
 				"type": "Script",
 				"dependsOn": [],
@@ -600,7 +555,14 @@
 			{
 				"name": "LIMPA STAGE TASY",
 				"type": "Script",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "LIMPA STAGE SMART",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.1:00:00",
 					"retry": 0,
@@ -618,78 +580,6 @@
 						{
 							"type": "NonQuery",
 							"text": "truncate table STG.SUP_NFS_TASY"
-						}
-					],
-					"scriptBlockExecutionTimeout": "02:00:00"
-				}
-			},
-			{
-				"name": "DELETE NFS",
-				"type": "Script",
-				"dependsOn": [
-					{
-						"activity": "ForEach1",
-						"dependencyConditions": [
-							"Completed"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"typeProperties": {
-					"scripts": [
-						{
-							"type": "NonQuery",
-							"text": {
-								"value": "DELETE \nFROM DM.TBL_NFS\nWHERE DM.TBL_NFS.DT_ENTRADA_SAIDA IN \n(\nSELECT distinct convert(date,DT_ENTRADA_SAIDA,103) AS DT_ENTRADA from STG.SUP_NFS_TASY  with(nolock) \nUNION\nselect distinct convert(date,NFE_DT_ENTRADA,103) AS DT_ENTRADA  from STG.SUP_NFS_SMART  with(nolock)\n) \n",
-								"type": "Expression"
-							}
-						}
-					],
-					"scriptBlockExecutionTimeout": "02:00:00"
-				}
-			},
-			{
-				"name": "INSERT",
-				"type": "Script",
-				"dependsOn": [
-					{
-						"activity": "DELETE NFS",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"typeProperties": {
-					"scripts": [
-						{
-							"type": "NonQuery",
-							"text": {
-								"value": "WITH TB AS(\nSELECT\nA.estabelecimento AS ESTABELECIMENTO\n,null AS DT_ORDEM_COMPRA\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|0' AS FK_NR_ORDEM_COMPRA\n,nfe_dt_entrada AS DT_ENTRADA_SAIDA\n,nfe_dt_emissao AS DT_EMISSAO\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|'+ CAST(nfe_tipo AS VARCHAR(10)) + CAST(NFE_SERIE AS VARCHAR(10)) + CAST(nfe_num AS VARCHAR(50)) AS FK_NR_NOTA_FISCAL\n,CASE nfe_tipo\n    WHEN 'PR' THEN 'Entrada'\n    WHEN 'SR' THEN 'Simples Remessa'\n    WHEN 'SF' THEN 'Simples Faturamento'\n    WHEN 'DV' THEN 'Devolução'\n    WHEN 'TR' THEN 'Transferência'\n    ELSE 'N/A'\nEND  TP_OPERACAO\n,CAST(EMP.estabelecimento AS VARCHAR(5)) + '|' + CAST(EMP.emp_cgc AS VARCHAR(255)) AS FK_CD_CGC_EMITENTE\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) +'|'+CAST(ine_mat_cod AS varchar(100)) AS FK_CD_MATERIAL\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|0' AS FK_CD_LOCAL_ESTOQUE\n,ine_qtde_entrada AS QT_ITEM_NF\n,mat_unm_cod_entrada AS CD_UNIDADE_MEDIDA_COMPRA\n,CAST(ine_vlr_unit_entrada AS money) AS VL_UNITARIO_ITEM_NF\n,CAST(ine_vlr_unit_entrada * ine_qtde_entrada AS MONEY) AS VL_TOTAL_ITEM_NF\n,0 AS VL_FRETE\n,0 AS TRIBUTO\n,0 AS VL_CUSTO_MEDIO\n,0 AS TOTAL_ITEM\nFROM STG.SUP_NFS_SMART A\nLEFT JOIN DW.TBL_EMP EMP WITH(NOLOCK) ON EMP.estabelecimento = A.estabelecimento AND EMP.emp_fne_cod = A.fne_cod\n\nUNION ALL\n\nSELECT\n A.ESTABELECIMENTO\n,A.DT_ORDEM_COMPRA\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.NR_ORDEM_COMPRA AS VARCHAR(50)) FK_NR_ORGEM_COMPRA\n,A.DT_ENTRADA_SAIDA\n,A.DT_EMISSAO\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.NR_NOTA_FISCAL AS VARCHAR(50)) FK_NR_NOTA_FISCAL\n,A.OPERACAO AS TP_OPERACAO\n,CAST(A.ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(A.CD_CGC_EMITENTE AS VARCHAR(255)) AS FK_CD_CGC_EMITENTE\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.CD_MATERIAL AS VARCHAR(50)) FK_CD_MATERIAL\n,CAST(A.ESTABELECIMENTO AS varchar(5)) + '|' + CAST(A.CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n,A.QT_ITEM_NF\n,A.CD_UNIDADE_MEDIDA_COMPRA\n,A.VL_UNITARIO_ITEM_NF\n,A.VL_TOTAL_ITEM_NF\n,A.VL_FRETE\n,A.TRIBUTO\n,A.VL_CUSTO_MEDIO\n,A.TOTAL_ITEM\nFROM STG.sup_nfs_tasy A\n\n)\n\nINSERT INTO [DM].[TBL_NFS]\n           ([ESTABELECIMENTO]\n           ,[DT_ORDEM_COMPRA]\n           ,[FK_NR_ORDEM_COMPRA]\n           ,[DT_ENTRADA_SAIDA]\n           ,[DT_EMISSAO]\n           ,[FK_NR_NOTA_FISCAL]\n           ,[TP_OPERACAO]\n           ,[FK_CD_CGC_EMITENTE]\n           ,[FK_CD_MATERIAL]\n           ,[FK_CD_LOCAL_ESTOQUE]\n           ,[QT_ITEM_NF]\n           ,[CD_UNIDADE_MEDIDA_COMPRA]\n           ,[VL_UNITARIO_ITEM_NF]\n           ,[VL_TOTAL_ITEM_NF]\n           ,[VL_FRETE]\n           ,[TRIBUTO]\n           ,[VL_CUSTO_MEDIO]\n           ,[TOTAL_ITEM]\n\t\t   )\n\n\nSELECT      [ESTABELECIMENTO]\n           ,[DT_ORDEM_COMPRA]\n           ,[FK_NR_ORDEM_COMPRA]\n           ,[DT_ENTRADA_SAIDA]\n           ,[DT_EMISSAO]\n           ,[FK_NR_NOTA_FISCAL]\n           ,[TP_OPERACAO]\n           ,[FK_CD_CGC_EMITENTE]\n           ,[FK_CD_MATERIAL]\n           ,[FK_CD_LOCAL_ESTOQUE]\n           ,[QT_ITEM_NF]\n           ,[CD_UNIDADE_MEDIDA_COMPRA]\n           ,[VL_UNITARIO_ITEM_NF]\n           ,[VL_TOTAL_ITEM_NF]\n           ,[VL_FRETE]\n           ,[TRIBUTO]\n           ,[VL_CUSTO_MEDIO]\n           ,[TOTAL_ITEM]\n\t\t   \n\t\t   FROM TB\n\n",
-								"type": "Expression"
-							}
 						}
 					],
 					"scriptBlockExecutionTimeout": "02:00:00"
