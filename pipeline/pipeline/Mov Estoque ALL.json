@@ -259,7 +259,14 @@
 			{
 				"name": "DT_INICIO",
 				"type": "SetVariable",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Lookup Periodo Inicial",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"secureOutput": false,
 					"secureInput": false
@@ -275,7 +282,7 @@
 				"type": "SetVariable",
 				"dependsOn": [
 					{
-						"activity": "DT_INICIO",
+						"activity": "Lookup Periodo Inicial",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -297,6 +304,12 @@
 				"dependsOn": [
 					{
 						"activity": "DT_FIM",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "DT_INICIO",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1311,6 +1324,90 @@
 						"type": "DatasetReference"
 					}
 				]
+			},
+			{
+				"name": "LIMPA STAGE SMART",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.1:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": {
+								"value": "truncate table stg.movimento_estoque_smart",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "LIMPA STAGE TASY",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": {
+								"value": "truncate table stg.movimento_estoque_tasy",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Lookup Periodo Inicial",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "LIMPA STAGE SMART",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "LIMPA STAGE TASY",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": []
 			}
 		],
 		"variables": {
