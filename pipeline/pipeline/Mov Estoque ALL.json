@@ -1,0 +1,1329 @@
+{
+	"name": "Mov Estoque ALL",
+	"properties": {
+		"activities": [
+			{
+				"name": "Mov Estoque IOF",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Mov Estoque ITB",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "@concat('\n\nSELECT  \n\n    92 AS ID_SYS /*ITG*/\n    ,CAST(mma_data_mov AS DATE) AS DATA_MOVIMENTO\n    , MMA_SBA_COD               AS CD_LOCAL_ESTOQUE\n    , sba_nome                  AS DS_LOCAL_ESTOQUE\n    , STR_e.str_cod             as CD_ESTABELECIMENTO\n    , str_e.str_nome            AS DS_ESTABELECIMENTO\n    , mma_mat_cod               AS CD_MATERIAL\n    , mat_desc_resumida         AS DS_MATERIAL\n    , 0                         AS CD_CLASSE_MATERIAL\n    ,null                       AS DS_CLASSE_MATERIAL\n    , GMM_COD                   AS CD_GRUPO_MATERIAL\n    , gmm_nome                  AS DS_GRUPO_MATERIAL\n    ,MMA_TIPO_OPERACAO          as CD_TIPO_OPERACAO\n    , tmm_descr                 as DS_OPERACAO\n    , CASE\n        WHEN MMA_TIPO_OPERACAO =', '''E4''','  THEN    mma_qtd * -1\n         ELSE mma_qtd\n      END                       AS QT_MOVIMENTO\n    , mma_valor                 AS VL_MOVIMENTO\nFROM mma                with (nolock)\nLEFT JOIN tmm           with (nolock)           ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat           with (nolock)           ON mma_mat_cod = mat_cod\nLEFT JOIN gmm           with (nolock)           ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba           with (nolock)           ON sba_cod = mma_sba_cod\nLEFT JOIN str           with (nolock)           ON str_cod = sba_str_cod\nLEFT JOIN str str_e     with (nolock)           ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne           with (nolock)           ON mat_fne_ult_entrada = FNE_COD\nWHERE  SUBSTRING(CAST(CAST(mma_data_mov AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DATA_MOVIMENTO",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "DATA_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_TIPO_OPERACAO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_TIPO_OPERACAO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_OPERACAO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_OPERACAO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 16
+								},
+								"sink": {
+									"name": "QT_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 10,
+									"precision": 20
+								},
+								"sink": {
+									"name": "VL_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_IOF_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_MOV_ESTOQUE",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "DT_INICIO",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "DT_INICIO",
+					"value": "2023-08-01"
+				}
+			},
+			{
+				"name": "DT_FIM",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "DT_INICIO",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "DT_FIM",
+					"value": "2023-08-01"
+				}
+			},
+			{
+				"name": "Mov Estoque ITG",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "DT_FIM",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "@concat('\n\nSELECT  \n\n    90 AS ID_SYS /*ITG*/\n    ,CAST(mma_data_mov AS DATE) AS DATA_MOVIMENTO\n    , MMA_SBA_COD               AS CD_LOCAL_ESTOQUE\n    , sba_nome                  AS DS_LOCAL_ESTOQUE\n    , STR_e.str_cod             as CD_ESTABELECIMENTO\n    , str_e.str_nome            AS DS_ESTABELECIMENTO\n    , mma_mat_cod               AS CD_MATERIAL\n    , mat_desc_resumida         AS DS_MATERIAL\n    , 0                         AS CD_CLASSE_MATERIAL\n    ,null                       AS DS_CLASSE_MATERIAL\n    , GMM_COD                   AS CD_GRUPO_MATERIAL\n    , gmm_nome                  AS DS_GRUPO_MATERIAL\n    ,MMA_TIPO_OPERACAO          as CD_TIPO_OPERACAO\n    , tmm_descr                 as DS_OPERACAO\n    , CASE\n        WHEN MMA_TIPO_OPERACAO =', '''E4''','  THEN    mma_qtd * -1\n         ELSE mma_qtd\n      END                       AS QT_MOVIMENTO\n    , mma_valor                 AS VL_MOVIMENTO\nFROM mma                with (nolock)\nLEFT JOIN tmm           with (nolock)           ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat           with (nolock)           ON mma_mat_cod = mat_cod\nLEFT JOIN gmm           with (nolock)           ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba           with (nolock)           ON sba_cod = mma_sba_cod\nLEFT JOIN str           with (nolock)           ON str_cod = sba_str_cod\nLEFT JOIN str str_e     with (nolock)           ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne           with (nolock)           ON mat_fne_ult_entrada = FNE_COD\nWHERE  SUBSTRING(CAST(CAST(mma_data_mov AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"preCopyScript": {
+							"value": "@{concat(\n    'DELETE FROM STG.MOVIMENTO_ESTOQUE\n    WHERE  SUBSTRING(CAST(CAST(DATA_MOVIMENTO AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')}",
+							"type": "Expression"
+						},
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DATA_MOVIMENTO",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "DATA_MOVIMENTO",
+									"type": "DateTime",
+									"physicalType": "DateTime"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_MATERIAL",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "Int32"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_TIPO_OPERACAO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_TIPO_OPERACAO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_OPERACAO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_OPERACAO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 16
+								},
+								"sink": {
+									"name": "QT_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 10,
+									"precision": 20
+								},
+								"sink": {
+									"name": "VL_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "Decimal"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_ITAIGARA_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_MOV_ESTOQUE",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Mov Estoque ITB",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Mov Estoque ITG",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "@concat('\n\nSELECT  \n\n    91 AS ID_SYS /*ITG*/\n    ,CAST(mma_data_mov AS DATE) AS DATA_MOVIMENTO\n    , MMA_SBA_COD               AS CD_LOCAL_ESTOQUE\n    , sba_nome                  AS DS_LOCAL_ESTOQUE\n    , STR_e.str_cod             as CD_ESTABELECIMENTO\n    , str_e.str_nome            AS DS_ESTABELECIMENTO\n    , mma_mat_cod               AS CD_MATERIAL\n    , mat_desc_resumida         AS DS_MATERIAL\n    , 0                         AS CD_CLASSE_MATERIAL\n    ,null                       AS DS_CLASSE_MATERIAL\n    , GMM_COD                   AS CD_GRUPO_MATERIAL\n    , gmm_nome                  AS DS_GRUPO_MATERIAL\n    ,MMA_TIPO_OPERACAO          as CD_TIPO_OPERACAO\n    , tmm_descr                 as DS_OPERACAO\n    , CASE\n        WHEN MMA_TIPO_OPERACAO =', '''E4''','  THEN    mma_qtd * -1\n         ELSE mma_qtd\n      END                       AS QT_MOVIMENTO\n    , mma_valor                 AS VL_MOVIMENTO\nFROM mma                with (nolock)\nLEFT JOIN tmm           with (nolock)           ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat           with (nolock)           ON mma_mat_cod = mat_cod\nLEFT JOIN gmm           with (nolock)           ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba           with (nolock)           ON sba_cod = mma_sba_cod\nLEFT JOIN str           with (nolock)           ON str_cod = sba_str_cod\nLEFT JOIN str str_e     with (nolock)           ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne           with (nolock)           ON mat_fne_ult_entrada = FNE_COD\nWHERE  SUBSTRING(CAST(CAST(mma_data_mov AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DATA_MOVIMENTO",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "DATA_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_TIPO_OPERACAO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_TIPO_OPERACAO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_OPERACAO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_OPERACAO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 16
+								},
+								"sink": {
+									"name": "QT_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 10,
+									"precision": 20
+								},
+								"sink": {
+									"name": "VL_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_ITABUNA_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_MOV_ESTOQUE",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Mov Estoque OFTALMOCLIN",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Mov Estoque IOF",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "@concat('\n\nSELECT  \n\n    93 AS ID_SYS /*ITG*/\n    ,CAST(mma_data_mov AS DATE) AS DATA_MOVIMENTO\n    , MMA_SBA_COD               AS CD_LOCAL_ESTOQUE\n    , sba_nome                  AS DS_LOCAL_ESTOQUE\n    , STR_e.str_cod             as CD_ESTABELECIMENTO\n    , str_e.str_nome            AS DS_ESTABELECIMENTO\n    , mma_mat_cod               AS CD_MATERIAL\n    , mat_desc_resumida         AS DS_MATERIAL\n    , 0                         AS CD_CLASSE_MATERIAL\n    ,null                       AS DS_CLASSE_MATERIAL\n    , GMM_COD                   AS CD_GRUPO_MATERIAL\n    , gmm_nome                  AS DS_GRUPO_MATERIAL\n    ,MMA_TIPO_OPERACAO          as CD_TIPO_OPERACAO\n    , tmm_descr                 as DS_OPERACAO\n    , CASE\n        WHEN MMA_TIPO_OPERACAO =', '''E4''','  THEN    mma_qtd * -1\n         ELSE mma_qtd\n      END                       AS QT_MOVIMENTO\n    , mma_valor                 AS VL_MOVIMENTO\nFROM mma                with (nolock)\nLEFT JOIN tmm           with (nolock)           ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat           with (nolock)           ON mma_mat_cod = mat_cod\nLEFT JOIN gmm           with (nolock)           ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba           with (nolock)           ON sba_cod = mma_sba_cod\nLEFT JOIN str           with (nolock)           ON str_cod = sba_str_cod\nLEFT JOIN str str_e     with (nolock)           ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne           with (nolock)           ON mat_fne_ult_entrada = FNE_COD\nWHERE  SUBSTRING(CAST(CAST(mma_data_mov AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DATA_MOVIMENTO",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "DATA_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_TIPO_OPERACAO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_TIPO_OPERACAO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_OPERACAO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_OPERACAO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 16
+								},
+								"sink": {
+									"name": "QT_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 10,
+									"precision": 20
+								},
+								"sink": {
+									"name": "VL_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_MOV_ESTOQUE",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Mov Estoque HOSL",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Mov Estoque OFTALMOCLIN",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "SqlServerSource",
+						"sqlReaderQuery": {
+							"value": "@concat('\n\nSELECT  \n\n    94 AS ID_SYS /*ITG*/\n    ,CAST(mma_data_mov AS DATE) AS DATA_MOVIMENTO\n    , MMA_SBA_COD               AS CD_LOCAL_ESTOQUE\n    , sba_nome                  AS DS_LOCAL_ESTOQUE\n    , STR_e.str_cod             as CD_ESTABELECIMENTO\n    , str_e.str_nome            AS DS_ESTABELECIMENTO\n    , mma_mat_cod               AS CD_MATERIAL\n    , mat_desc_resumida         AS DS_MATERIAL\n    , 0                         AS CD_CLASSE_MATERIAL\n    ,null                       AS DS_CLASSE_MATERIAL\n    , GMM_COD                   AS CD_GRUPO_MATERIAL\n    , gmm_nome                  AS DS_GRUPO_MATERIAL\n    ,MMA_TIPO_OPERACAO          as CD_TIPO_OPERACAO\n    , tmm_descr                 as DS_OPERACAO\n    , CASE\n        WHEN MMA_TIPO_OPERACAO =', '''E4''','  THEN    mma_qtd * -1\n         ELSE mma_qtd\n      END                       AS QT_MOVIMENTO\n    , mma_valor                 AS VL_MOVIMENTO\nFROM mma                with (nolock)\nLEFT JOIN tmm           with (nolock)           ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat           with (nolock)           ON mma_mat_cod = mat_cod\nLEFT JOIN gmm           with (nolock)           ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba           with (nolock)           ON sba_cod = mma_sba_cod\nLEFT JOIN str           with (nolock)           ON str_cod = sba_str_cod\nLEFT JOIN str str_e     with (nolock)           ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne           with (nolock)           ON mat_fne_ult_entrada = FNE_COD\nWHERE  SUBSTRING(CAST(CAST(mma_data_mov AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"sink": {
+						"type": "AzureSqlSink",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "ID_SYS",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "ID_SYS",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DATA_MOVIMENTO",
+									"type": "DateTime",
+									"physicalType": "date"
+								},
+								"sink": {
+									"name": "DATA_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_LOCAL_ESTOQUE",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_ESTABELECIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "DS_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "CD_CLASSE_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "Int32",
+									"physicalType": "int"
+								},
+								"sink": {
+									"name": "DS_CLASSE_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_GRUPO_MATERIAL",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "CD_TIPO_OPERACAO",
+									"type": "String",
+									"physicalType": "char"
+								},
+								"sink": {
+									"name": "CD_TIPO_OPERACAO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "DS_OPERACAO",
+									"type": "String",
+									"physicalType": "varchar"
+								},
+								"sink": {
+									"name": "DS_OPERACAO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "QT_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 0,
+									"precision": 16
+								},
+								"sink": {
+									"name": "QT_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							},
+							{
+								"source": {
+									"name": "VL_MOVIMENTO",
+									"type": "Decimal",
+									"physicalType": "decimal",
+									"scale": 10,
+									"precision": 20
+								},
+								"sink": {
+									"name": "VL_MOVIMENTO",
+									"type": "String",
+									"physicalType": "String"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "SMART_HOSL_PrdDataSet",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "AZ_MOV_ESTOQUE",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"variables": {
+			"DT_INICIO": {
+				"type": "String"
+			},
+			"DT_FIM": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Suprimentos/Estoque"
+		},
+		"annotations": []
+	}
+}
