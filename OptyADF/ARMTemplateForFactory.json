@@ -30814,6 +30814,39 @@
 							"referenceName": "AzureSQL_DB_Procedimentos",
 							"type": "LinkedServiceReference"
 						}
+					},
+					{
+						"name": "Delete Cancelamento DM Producao",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "SP_PROCESSA_PROD_DIARIA_SMART",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "WITH BUSCA AS(\nSELECT \nCAST(A.ESTABELECIMENTO AS VARCHAR(5))+'|'+ CAST(a.osm_serie as varchar(10))+ cast(a.osm_num as varchar(50))+'|'+ CAST(itm.smm_num AS VARCHAR(50))+'|'+ CAST(A.OSM_PAC AS VARCHAR(50)) as FK_NR_SEQUENCIA\nFROM DW.TBL_SMM ITM WITH(NOLOCK)\nINNER JOIN DW.TBL_OSM A WITH(NOLOCK) ON ITM.estabelecimento = A.estabelecimento AND ITM.smm_osm_serie = A.osm_serie AND ITM.smm_osm = A.osm_num\nWHERE  \n    -- (itm.smm_pacote IS NOT NULL OR ( itm.smm_pacote <> 'C' ))                \n--    (itm.smm_canc_mot_cod is not null or itm.smm_canc_mot_cod is null)             \n   itm.smm_sfat = 'C'                \n  and itm.smm_exec = 'C'               \n--   and itm.smm_str not like '%'\n)\n\nDELETE A FROM DM.tbl_fprodiaria A\nINNER JOIN BUSCA B ON A.FK_NR_SEQUENCIA = B.FK_NR_SEQUENCIA"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
 					}
 				],
 				"policy": {
@@ -111337,6 +111370,13 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "Mov Estoque",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -111359,7 +111399,8 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/Chamados Requestia_Otim_Deadlock')]",
-				"[concat(variables('factoryId'), '/pipelines/NF')]"
+				"[concat(variables('factoryId'), '/pipelines/NF')]",
+				"[concat(variables('factoryId'), '/pipelines/Mov Estoque')]"
 			]
 		},
 		{
@@ -111380,13 +111421,6 @@
 					{
 						"pipelineReference": {
 							"referenceName": "NF_ADHOC",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					},
-					{
-						"pipelineReference": {
-							"referenceName": "Mov Estoque",
 							"type": "PipelineReference"
 						},
 						"parameters": {}
@@ -111412,8 +111446,7 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/UPO_FPA')]",
-				"[concat(variables('factoryId'), '/pipelines/NF_ADHOC')]",
-				"[concat(variables('factoryId'), '/pipelines/Mov Estoque')]"
+				"[concat(variables('factoryId'), '/pipelines/NF_ADHOC')]"
 			]
 		},
 		{
