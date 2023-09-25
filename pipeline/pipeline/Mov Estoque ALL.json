@@ -1433,7 +1433,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "declare @qtde_dias integer\r\n\r\nset @qtde_dias = 8\r\n\r\n\r\nSELECT\r\n\tCASE \r\n\t\tWHEN day(getdate()) <= @qtde_dias THEN\r\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\r\n\t\tWHEN day(getdate()) > @qtde_dias THEN\r\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\r\n\tEND as Data_Inicial,\r\n\r\n\t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\r\n\r\n\r\n\tCASE\r\n\t\tWHEN day(getdate()) <= @qtde_dias THEN\r\n\t\t\tconcat('01' ,'/',\r\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate()),120),6,2),'/',\r\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate())),8,4))\r\n\r\n\t\tWHEN day(getdate()) > @qtde_dias THEN\r\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\r\n\tEND as Data_Inicial_Oracle,\r\n        substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\r\n",
+						"sqlReaderQuery": "declare @qtde_dias integer\n\nset @qtde_dias = 25\n\n\nSELECT\n\tCASE \n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\n\tEND as Data_Inicial,\n\n\t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\n\n\n\tCASE\n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat('01' ,'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate()),120),6,2),'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate())),8,4))\n\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\n\tEND as Data_Inicial_Oracle,\n        substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\n",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -1599,6 +1599,43 @@
 							"type": "NonQuery",
 							"text": {
 								"value": "DELETE\nFROM DM.TBL_MOVIMENTO_ESTOQUE\nWHERE DM.TBL_MOVIMENTO_ESTOQUE.DATA_MOVIMENTO IN \n(\nSELECT distinct DATA_PROCESSO AS DATA_MOVIMENTO from stg.movimento_estoque_tasy  with(nolock) \nUNION\nSELECT distinct DATA_MOVIMENTO AS DATA_MOVIMENTO from stg.movimento_estoque_smart with(nolock)\n) ",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "INSERT",
+				"description": "Insere o movimento com base na faixa de data definida no início do processo",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "DELETE MOVIMENTO",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.1:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": {
+								"value": "WITH TMP AS(\n    -- -- TASY\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_PROCESSO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(10)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_ESTABELECIMENTO AS VARCHAR(20)) AS FK_CD_ESTABELECIMENTO \n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_MATERIAL AS VARCHAR(30)) FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CLASSE_MATERIAL AS VARCHAR(30)) FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_GRUPO_MATERIAL AS VARCHAR(30)) FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_OPERACAO_ESTOQUE AS VARCHAR(30)) FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_PESSOA_FISICA AS VARCHAR(30)) FK_CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(NR_ATENDIMENTO AS VARCHAR(50)) FK_NR_ATENDIMENTO\n    ,CAST(DT_ENTRADA AS DATE) AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CONVENIO AS VARCHAR(30)) FK_CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(NR_MOVIMENTO_ESTOQUE AS VARCHAR(50)) FK_NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM STG.MOVIMENTO_ESTOQUE_TASY A\n\n    UNION ALL\n\n    -- -- SMART\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_MOVIMENTO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_ESTABELECIMENTO AS VARCHAR(50)) AS FK_CD_ESTABELECIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_MATERIAL AS VARCHAR(50)) AS FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_CLASSE_MATERIAL AS VARCHAR(50)) AS FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) AS FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_TIPO_OPERACAO AS VARCHAR(50)) AS FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_ATENDIMENTO\n    ,NULL AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM stg.movimento_estoque_smart\n)\n\n\nINSERT INTO DM.TBL_MOVIMENTO_ESTOQUE\nSELECT * FROM TMP\n",
 								"type": "Expression"
 							}
 						}
