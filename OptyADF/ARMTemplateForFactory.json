@@ -59316,6 +59316,1675 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Mov Estoque')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Mov Estoque IOF",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Mov Estoque ITB",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "@concat('\n\nSELECT  \n\n    92 AS ID_SYS /*ITG*/\n    ,CAST(mma_data_mov AS DATE) AS DATA_MOVIMENTO\n    , MMA_SBA_COD               AS CD_LOCAL_ESTOQUE\n    , sba_nome                  AS DS_LOCAL_ESTOQUE\n    , STR_e.str_cod             as CD_ESTABELECIMENTO\n    , str_e.str_nome            AS DS_ESTABELECIMENTO\n    , mma_mat_cod               AS CD_MATERIAL\n    , mat_desc_resumida         AS DS_MATERIAL\n    , 0                         AS CD_CLASSE_MATERIAL\n    ,null                       AS DS_CLASSE_MATERIAL\n    , GMM_COD                   AS CD_GRUPO_MATERIAL\n    , gmm_nome                  AS DS_GRUPO_MATERIAL\n    ,MMA_TIPO_OPERACAO          as CD_TIPO_OPERACAO\n    , tmm_descr                 as DS_OPERACAO\n    , CASE\n        WHEN MMA_TIPO_OPERACAO =', '''E4''','  THEN    mma_qtd * -1\n         ELSE mma_qtd\n      END                       AS QT_MOVIMENTO\n    , mma_valor                 AS VL_MOVIMENTO\nFROM mma                with (nolock)\nLEFT JOIN tmm           with (nolock)           ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat           with (nolock)           ON mma_mat_cod = mat_cod\nLEFT JOIN gmm           with (nolock)           ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba           with (nolock)           ON sba_cod = mma_sba_cod\nLEFT JOIN str           with (nolock)           ON str_cod = sba_str_cod\nLEFT JOIN str str_e     with (nolock)           ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne           with (nolock)           ON mat_fne_ult_entrada = FNE_COD\nWHERE  SUBSTRING(CAST(CAST(mma_data_mov AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "ID_SYS",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "ID_SYS",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_TIPO_OPERACAO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_TIPO_OPERACAO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 16
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 10,
+											"precision": 20
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_IOF_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "STG",
+									"tabela_destino": "movimento_estoque_smart"
+								}
+							}
+						]
+					},
+					{
+						"name": "DT_INICIO",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup Periodo Inicial",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "DT_INICIO",
+							"value": {
+								"value": "@activity('Lookup Periodo Inicial').output.firstRow.Data_Inicial",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "DT_FIM",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup Periodo Inicial",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "DT_FIM",
+							"value": {
+								"value": "@activity('Lookup Periodo Inicial').output.firstRow.data_final",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "Mov Estoque ITG",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "DT_FIM",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "DT_INICIO",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "@concat('\n\nSELECT  \n\n    90 AS ID_SYS /*ITG*/\n    ,CAST(mma_data_mov AS DATE) AS DATA_MOVIMENTO\n    , MMA_SBA_COD               AS CD_LOCAL_ESTOQUE\n    , sba_nome                  AS DS_LOCAL_ESTOQUE\n    , STR_e.str_cod             as CD_ESTABELECIMENTO\n    , str_e.str_nome            AS DS_ESTABELECIMENTO\n    , mma_mat_cod               AS CD_MATERIAL\n    , mat_desc_resumida         AS DS_MATERIAL\n    , 0                         AS CD_CLASSE_MATERIAL\n    ,null                       AS DS_CLASSE_MATERIAL\n    , GMM_COD                   AS CD_GRUPO_MATERIAL\n    , gmm_nome                  AS DS_GRUPO_MATERIAL\n    ,MMA_TIPO_OPERACAO          as CD_TIPO_OPERACAO\n    , tmm_descr                 as DS_OPERACAO\n    , CASE\n        WHEN MMA_TIPO_OPERACAO =', '''E4''','  THEN    mma_qtd * -1\n         ELSE mma_qtd\n      END                       AS QT_MOVIMENTO\n    , mma_valor                 AS VL_MOVIMENTO\nFROM mma                with (nolock)\nLEFT JOIN tmm           with (nolock)           ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat           with (nolock)           ON mma_mat_cod = mat_cod\nLEFT JOIN gmm           with (nolock)           ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba           with (nolock)           ON sba_cod = mma_sba_cod\nLEFT JOIN str           with (nolock)           ON str_cod = sba_str_cod\nLEFT JOIN str str_e     with (nolock)           ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne           with (nolock)           ON mat_fne_ult_entrada = FNE_COD\nWHERE  SUBSTRING(CAST(CAST(mma_data_mov AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "ID_SYS",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "ID_SYS",
+											"type": "Int32",
+											"physicalType": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "Int32"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_TIPO_OPERACAO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_TIPO_OPERACAO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 16
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 10,
+											"precision": 20
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "Decimal"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITAIGARA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "STG",
+									"tabela_destino": "movimento_estoque_smart"
+								}
+							}
+						]
+					},
+					{
+						"name": "Mov Estoque ITB",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Mov Estoque ITG",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "@concat('\n\nSELECT  \n\n    91 AS ID_SYS /*ITG*/\n    ,CAST(mma_data_mov AS DATE) AS DATA_MOVIMENTO\n    , MMA_SBA_COD               AS CD_LOCAL_ESTOQUE\n    , sba_nome                  AS DS_LOCAL_ESTOQUE\n    , STR_e.str_cod             as CD_ESTABELECIMENTO\n    , str_e.str_nome            AS DS_ESTABELECIMENTO\n    , mma_mat_cod               AS CD_MATERIAL\n    , mat_desc_resumida         AS DS_MATERIAL\n    , 0                         AS CD_CLASSE_MATERIAL\n    ,null                       AS DS_CLASSE_MATERIAL\n    , GMM_COD                   AS CD_GRUPO_MATERIAL\n    , gmm_nome                  AS DS_GRUPO_MATERIAL\n    ,MMA_TIPO_OPERACAO          as CD_TIPO_OPERACAO\n    , tmm_descr                 as DS_OPERACAO\n    , CASE\n        WHEN MMA_TIPO_OPERACAO =', '''E4''','  THEN    mma_qtd * -1\n         ELSE mma_qtd\n      END                       AS QT_MOVIMENTO\n    , mma_valor                 AS VL_MOVIMENTO\nFROM mma                with (nolock)\nLEFT JOIN tmm           with (nolock)           ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat           with (nolock)           ON mma_mat_cod = mat_cod\nLEFT JOIN gmm           with (nolock)           ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba           with (nolock)           ON sba_cod = mma_sba_cod\nLEFT JOIN str           with (nolock)           ON str_cod = sba_str_cod\nLEFT JOIN str str_e     with (nolock)           ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne           with (nolock)           ON mat_fne_ult_entrada = FNE_COD\nWHERE  SUBSTRING(CAST(CAST(mma_data_mov AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "ID_SYS",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "ID_SYS",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_TIPO_OPERACAO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_TIPO_OPERACAO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 16
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 10,
+											"precision": 20
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "STG",
+									"tabela_destino": "movimento_estoque_smart"
+								}
+							}
+						]
+					},
+					{
+						"name": "Mov Estoque OFTALMOCLIN",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Mov Estoque IOF",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "@concat('\n\nSELECT  \n\n    93 AS ID_SYS /*ITG*/\n    ,CAST(mma_data_mov AS DATE) AS DATA_MOVIMENTO\n    , MMA_SBA_COD               AS CD_LOCAL_ESTOQUE\n    , sba_nome                  AS DS_LOCAL_ESTOQUE\n    , STR_e.str_cod             as CD_ESTABELECIMENTO\n    , str_e.str_nome            AS DS_ESTABELECIMENTO\n    , mma_mat_cod               AS CD_MATERIAL\n    , mat_desc_resumida         AS DS_MATERIAL\n    , 0                         AS CD_CLASSE_MATERIAL\n    ,null                       AS DS_CLASSE_MATERIAL\n    , GMM_COD                   AS CD_GRUPO_MATERIAL\n    , gmm_nome                  AS DS_GRUPO_MATERIAL\n    ,MMA_TIPO_OPERACAO          as CD_TIPO_OPERACAO\n    , tmm_descr                 as DS_OPERACAO\n    , CASE\n        WHEN MMA_TIPO_OPERACAO =', '''E4''','  THEN    mma_qtd * -1\n         ELSE mma_qtd\n      END                       AS QT_MOVIMENTO\n    , mma_valor                 AS VL_MOVIMENTO\nFROM mma                with (nolock)\nLEFT JOIN tmm           with (nolock)           ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat           with (nolock)           ON mma_mat_cod = mat_cod\nLEFT JOIN gmm           with (nolock)           ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba           with (nolock)           ON sba_cod = mma_sba_cod\nLEFT JOIN str           with (nolock)           ON str_cod = sba_str_cod\nLEFT JOIN str str_e     with (nolock)           ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne           with (nolock)           ON mat_fne_ult_entrada = FNE_COD\nWHERE  SUBSTRING(CAST(CAST(mma_data_mov AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "ID_SYS",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "ID_SYS",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_TIPO_OPERACAO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_TIPO_OPERACAO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 16
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 10,
+											"precision": 20
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "STG",
+									"tabela_destino": "movimento_estoque_smart"
+								}
+							}
+						]
+					},
+					{
+						"name": "Mov Estoque HOSL",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Mov Estoque OFTALMOCLIN",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": {
+									"value": "@concat('\n\nSELECT  \n\n    94 AS ID_SYS /*ITG*/\n    ,CAST(mma_data_mov AS DATE) AS DATA_MOVIMENTO\n    , MMA_SBA_COD               AS CD_LOCAL_ESTOQUE\n    , sba_nome                  AS DS_LOCAL_ESTOQUE\n    , STR_e.str_cod             as CD_ESTABELECIMENTO\n    , str_e.str_nome            AS DS_ESTABELECIMENTO\n    , mma_mat_cod               AS CD_MATERIAL\n    , mat_desc_resumida         AS DS_MATERIAL\n    , 0                         AS CD_CLASSE_MATERIAL\n    ,null                       AS DS_CLASSE_MATERIAL\n    , GMM_COD                   AS CD_GRUPO_MATERIAL\n    , gmm_nome                  AS DS_GRUPO_MATERIAL\n    ,MMA_TIPO_OPERACAO          as CD_TIPO_OPERACAO\n    , tmm_descr                 as DS_OPERACAO\n    , CASE\n        WHEN MMA_TIPO_OPERACAO =', '''E4''','  THEN    mma_qtd * -1\n         ELSE mma_qtd\n      END                       AS QT_MOVIMENTO\n    , mma_valor                 AS VL_MOVIMENTO\nFROM mma                with (nolock)\nLEFT JOIN tmm           with (nolock)           ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat           with (nolock)           ON mma_mat_cod = mat_cod\nLEFT JOIN gmm           with (nolock)           ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba           with (nolock)           ON sba_cod = mma_sba_cod\nLEFT JOIN str           with (nolock)           ON str_cod = sba_str_cod\nLEFT JOIN str str_e     with (nolock)           ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne           with (nolock)           ON mat_fne_ult_entrada = FNE_COD\nWHERE  SUBSTRING(CAST(CAST(mma_data_mov AS DATE) AS VARCHAR(15)),1,7) +','''-01''', ' between ', '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "ID_SYS",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "ID_SYS",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_TIPO_OPERACAO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_TIPO_OPERACAO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 16
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 10,
+											"precision": 20
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_HOSL_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "STG",
+									"tabela_destino": "movimento_estoque_smart"
+								}
+							}
+						]
+					},
+					{
+						"name": "LIMPA STAGE SMART",
+						"type": "Script",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.1:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "truncate table stg.movimento_estoque_smart",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "LIMPA STAGE TASY",
+						"type": "Script",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "truncate table stg.movimento_estoque_tasy",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Lookup Periodo Inicial",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "LIMPA STAGE SMART",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "LIMPA STAGE TASY",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "declare @qtde_dias integer\n\nset @qtde_dias = 8\n\n\nSELECT\n\tCASE \n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\n\tEND as Data_Inicial,\n\n\t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\n\n\n\tCASE\n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat('01' ,'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate()),120),6,2),'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate())),8,4))\n\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\n\tEND as Data_Inicial_Oracle,\n        substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "SQL_DIN",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "Movimento Estoque Tasy HTML",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Movimento Estoque Tasy Sadalla",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": {
+									"value": "@concat(\n\n'WITH AUX AS(\n\nselect\t\n    M.NR_ATENDIMENTO,\n    m.nr_movimento_estoque,\n\tm.cd_estabelecimento,\n\tm.cd_local_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\tfast_ops.obter_convenio_atendimento(m.nr_atendimento) cd_convenio,\n\tsubstr(fast_ops.obter_nome_convenio(fast_ops.obter_convenio_atendimento(m.nr_atendimento)),1,80) ds_convenio,\n\t''M'' ie_periodo,\n\tdecode(\tm.cd_acao,\n\t\t2,\tm.qt_estoque * -1,\n\t\t\tm.qt_estoque) qt_estoque,\n\tdecode(\tm.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1, \tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t                 ''A'', (v.vl_movimento),\n\t\t\t                 ''D'', (v.vl_movimento * -1),\n\t\t\t                 ''N'', (0)))) vl_estoque,\n\tdecode(m.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t''N'', (0)))) vl_movimento,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))),\n\t\t''D'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))) *-1,\n\t0) vl_consumo,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque),\n\t\t\t\tsum((qt_estoque * -1))),\n\t \t''D'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque * -1),\n\t\t\t\tsum(qt_estoque)),\n\t\t0) qt_consumo,\n\tm.cd_material\nfrom fast_ops.tipo_valor t,\n\tfast_ops.operacao_estoque o,\n\tfast_ops.estrutura_material_v e,\n\tfast_ops.movimento_estoque m,\n\tfast_ops.movimento_estoque_valor v\nwhere\tm.nr_movimento_estoque\t= v.nr_movimento_estoque (+)\nand\tv.cd_tipo_valor\t\t= t.cd_tipo_valor(+)\nand\tm.cd_operacao_estoque\t= o.cd_operacao_estoque (+)\nand\tm.cd_material_estoque\t= e.cd_material\nand\tm.dt_processo is not null\ngroup by\n\tm.cd_estabelecimento,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_local_estoque,\n\tm.nr_movimento_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tdecode(m.cd_acao, 2, m.qt_estoque * -1, m.qt_estoque),\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\t''M'',\n\to.ie_consumo,\n\tm.nr_atendimento,\n\tm.cd_material\n)\n\n\nSELECT \n    1   AS ID_SYS\n    ,TO_CHAR(A.DT_PROCESSO,''YYYY-MM-DD'') AS DATA_PROCESSO   \n    ,A.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,ESTB.nm_fantasia_estab                      AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_MATERIAL                               AS DS_MATERIAL\n    ,A.CD_CLASSE_MATERIAL\n    ,A.DS_CLASSE_MATERIAL                        AS DS_CLASSE_MATERIAL\n    ,A.CD_GRUPO_MATERIAL                        \n    ,A.DS_GRUPO_MATERIAL                         AS DS_GRUPO_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_CONSUMO                                AS QT_MOVIMENTO\n    ,A.VL_MOVIMENTO \n    ,PF.CD_PESSOA_FISICA\n    ,PF.NM_PESSOA_FISICA\n    ,AP.NR_ATENDIMENTO      \n    ,AP.DT_ENTRADA\n    ,A.CD_CONVENIO\n    ,A.DS_CONVENIO\n    ,A.NR_MOVIMENTO_ESTOQUE\nFROM AUX A\nINNER JOIN fast_ops.ESTABELECIMENTO ESTB ON ESTB.CD_ESTABELECIMENTO = A.CD_ESTABELECIMENTO\nLEFT JOIN fast_ops.ATENDIMENTO_PACIENTE AP ON AP.NR_ATENDIMENTO = A.NR_ATENDIMENTO\nLEFT JOIN fast_ops.PESSOA_FISICA PF ON PF.CD_PESSOA_FISICA = AP.CD_PESSOA_FISICA\nLEFT JOIN fast_ops.LOCAL_ESTOQUE LE on (LE.cd_estabelecimento = A.cd_estabelecimento AND LE.cd_local_estoque = A.cd_local_estoque)\nWHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,''MM''),''YYYY-MM-DD'') BETWEEN ',\n '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')",
+									"type": "Expression"
+								},
+								"partitionOption": "None",
+								"convertDecimalToInteger": false,
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "STG",
+									"tabela_destino": "movimento_estoque_tasy"
+								}
+							}
+						]
+					},
+					{
+						"name": "Movimento Estoque Tasy Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Mov Estoque HOSL",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": {
+									"value": "@concat(\n'WITH AUX AS(\n\nselect\t\n    M.NR_ATENDIMENTO,\n    m.nr_movimento_estoque,\n\tm.cd_estabelecimento,\n\tm.cd_local_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\tobter_convenio_atendimento(m.nr_atendimento) cd_convenio,\n\tsubstr(obter_nome_convenio(obter_convenio_atendimento(m.nr_atendimento)),1,80) ds_convenio,\n\t''M'' ie_periodo,\n\tdecode(\tm.cd_acao,\n\t\t2,\tm.qt_estoque * -1,\n\t\t\tm.qt_estoque) qt_estoque,\n\tdecode(\tm.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1, \tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t                 ''A'', (v.vl_movimento),\n\t\t\t                 ''D'', (v.vl_movimento * -1),\n\t\t\t                 ''N'', (0)))) vl_estoque,\n\tdecode(m.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t''N'', (0)))) vl_movimento,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))),\n\t\t''D'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))) *-1,\n\t0) vl_consumo,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque),\n\t\t\t\tsum((qt_estoque * -1))),\n\t \t''D'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque * -1),\n\t\t\t\tsum(qt_estoque)),\n\t\t0) qt_consumo,\n\tm.cd_material\nfrom\ttipo_valor t,\n\toperacao_estoque o,\n\testrutura_material_v e,\n\tmovimento_estoque m,\n\tmovimento_estoque_valor v\nwhere\tm.nr_movimento_estoque\t= v.nr_movimento_estoque (+)\nand\tv.cd_tipo_valor\t\t= t.cd_tipo_valor(+)\nand\tm.cd_operacao_estoque\t= o.cd_operacao_estoque (+)\nand\tm.cd_material_estoque\t= e.cd_material\nand\tm.dt_processo is not null\ngroup by\n\tm.cd_estabelecimento,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_local_estoque,\n\tm.nr_movimento_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tdecode(m.cd_acao, 2, m.qt_estoque * -1, m.qt_estoque),\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\t''M'',\n\to.ie_consumo,\n\tm.nr_atendimento,\n\tm.cd_material\n)\n\n\nSELECT \n    2   AS ID_SYS\n    ,TO_CHAR(A.DT_PROCESSO,''YYYY-MM-DD'') AS DATA_PROCESSO   \n    ,A.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,ESTB.nm_fantasia_estab                      AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_MATERIAL                               AS DS_MATERIAL\n    ,A.CD_CLASSE_MATERIAL\n    ,A.DS_CLASSE_MATERIAL                        AS DS_CLASSE_MATERIAL\n    ,A.CD_GRUPO_MATERIAL                        \n    ,A.DS_GRUPO_MATERIAL                         AS DS_GRUPO_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_CONSUMO                                AS QT_MOVIMENTO\n    ,A.VL_MOVIMENTO \n    ,PF.CD_PESSOA_FISICA\n    ,PF.NM_PESSOA_FISICA\n    ,AP.NR_ATENDIMENTO      \n    ,AP.DT_ENTRADA\n    ,A.CD_CONVENIO\n    ,A.DS_CONVENIO\n    ,A.NR_MOVIMENTO_ESTOQUE\nFROM AUX A\nINNER JOIN ESTABELECIMENTO ESTB ON ESTB.CD_ESTABELECIMENTO = A.CD_ESTABELECIMENTO\nLEFT JOIN ATENDIMENTO_PACIENTE AP ON AP.NR_ATENDIMENTO = A.NR_ATENDIMENTO\nLEFT JOIN PESSOA_FISICA PF ON PF.CD_PESSOA_FISICA = AP.CD_PESSOA_FISICA\nLEFT JOIN LOCAL_ESTOQUE LE on (LE.cd_estabelecimento = A.cd_estabelecimento AND LE.cd_local_estoque = A.cd_local_estoque)\nWHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,''MM''),''YYYY-MM-DD'') BETWEEN',\n '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n\n\n\n",
+									"type": "Expression"
+								},
+								"partitionOption": "None",
+								"convertDecimalToInteger": false,
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "STG",
+									"tabela_destino": "movimento_estoque_tasy"
+								}
+							}
+						]
+					},
+					{
+						"name": "DELETE MOVIMENTO",
+						"description": "Apaga o movimento com base na faixa de data definida no início do processo",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Movimento Estoque Tasy HTML",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.1:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "DELETE\nFROM DM.TBL_MOVIMENTO_ESTOQUE\nWHERE DM.TBL_MOVIMENTO_ESTOQUE.DATA_MOVIMENTO IN \n(\nSELECT distinct DATA_PROCESSO AS DATA_MOVIMENTO from stg.movimento_estoque_tasy  with(nolock) \nUNION\nSELECT distinct DATA_MOVIMENTO AS DATA_MOVIMENTO from stg.movimento_estoque_smart with(nolock)\n) ",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "INSERT",
+						"description": "Insere o movimento com base na faixa de data definida no início do processo",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "DELETE MOVIMENTO",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.1:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "WITH TMP AS(\n    -- -- TASY\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_PROCESSO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(10)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_ESTABELECIMENTO AS VARCHAR(20)) AS FK_CD_ESTABELECIMENTO \n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_MATERIAL AS VARCHAR(30)) FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CLASSE_MATERIAL AS VARCHAR(30)) FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_GRUPO_MATERIAL AS VARCHAR(30)) FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_OPERACAO_ESTOQUE AS VARCHAR(30)) FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_PESSOA_FISICA AS VARCHAR(30)) FK_CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(NR_ATENDIMENTO AS VARCHAR(50)) FK_NR_ATENDIMENTO\n    ,CAST(DT_ENTRADA AS DATE) AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CONVENIO AS VARCHAR(30)) FK_CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(NR_MOVIMENTO_ESTOQUE AS VARCHAR(50)) FK_NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM STG.MOVIMENTO_ESTOQUE_TASY A\n\n    UNION ALL\n\n    -- -- SMART\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_MOVIMENTO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_ESTABELECIMENTO AS VARCHAR(50)) AS FK_CD_ESTABELECIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_MATERIAL AS VARCHAR(50)) AS FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_CLASSE_MATERIAL AS VARCHAR(50)) AS FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) AS FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_TIPO_OPERACAO AS VARCHAR(50)) AS FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_ATENDIMENTO\n    ,NULL AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM stg.movimento_estoque_smart\n)\n\n\nINSERT INTO DM.TBL_MOVIMENTO_ESTOQUE\nSELECT * FROM TMP\n",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"variables": {
+					"DT_INICIO": {
+						"type": "String"
+					},
+					"DT_FIM": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "Suprimentos/Estoque"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/SMART_IOF_PrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/AZSQL_DINAMICO')]",
+				"[concat(variables('factoryId'), '/datasets/SMART_ITAIGARA_PrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/SMART_ITABUNA_PrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/SMART_Oftalmoclin_Prd_DataSet')]",
+				"[concat(variables('factoryId'), '/datasets/SMART_HOSL_PrdDataSet')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/datasets/SQL_DIN')]",
+				"[concat(variables('factoryId'), '/datasets/CloudTasyPrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Movimento_Estoque')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -109714,6 +111383,13 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "Mov Estoque",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -109736,7 +111412,8 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/UPO_FPA')]",
-				"[concat(variables('factoryId'), '/pipelines/NF_ADHOC')]"
+				"[concat(variables('factoryId'), '/pipelines/NF_ADHOC')]",
+				"[concat(variables('factoryId'), '/pipelines/Mov Estoque')]"
 			]
 		},
 		{
