@@ -1605,6 +1605,43 @@
 						}
 					}
 				]
+			},
+			{
+				"name": "DELETE MOVIMENTO",
+				"description": "Apaga o movimento com base na faixa de data definida no início do processo",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Posicao Estoque Sadalla",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.1:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": {
+								"value": "DELETE  DM.TBL_POSICAO_ESTOQUE \nFROM DM.TBL_POSICAO_ESTOQUE\nINNER JOIN \n(\nSELECT distinct ESTABELECIMENTO, DT_MESANO_REFERENCIA  from stg.posicao_estoque_tasy  with(nolock) \nUNION\nSELECT DISTINCT id_sys as 'ESTABELECIMENTO', concat(MES_REF,'-01') as DT_MESANO_REFERENCIA  from stg.posicao_estoque_smart with(nolock)\n) AS STG ON \n\tCONVERT(varchar(10),DM.TBL_POSICAO_ESTOQUE.ESTABELECIMENTO) = CONVERT(varchar(10),STG.ESTABELECIMENTO) AND \n\tCONVERT(varchar(20),DM.TBL_POSICAO_ESTOQUE.DT_MESANO_REFERENCIA) = CONVERT(varchar(20),STG.ESTABELECIMENTO)",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
 			}
 		],
 		"variables": {
