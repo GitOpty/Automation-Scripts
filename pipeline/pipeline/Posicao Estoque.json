@@ -1642,6 +1642,43 @@
 					],
 					"scriptBlockExecutionTimeout": "02:00:00"
 				}
+			},
+			{
+				"name": "INSERT",
+				"description": "Insere o movimento com base na faixa de data definida no início do processo",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "DELETE MOVIMENTO",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.1:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": {
+								"value": "WITH REF AS(\n\nSELECT \nCAST(ESTABELECIMENTO AS VARCHAR(5)) ESTABELECIMENTO\n,CAST(DT_MESANO_REFERENCIA AS DATE) DT_MESANO_REFERENCIA\n,CAST(DT_ULT_COMPRA AS DATE)DT_ULT_COMPRA\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + cast(CD_ESTABELECIMENTO as varchar(50)) AS FK_CD_ESTABELECIMENTO\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_MATERIAL AS VARCHAR(50)) FK_CD_MATERIAL\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) FK_CD_GRUPO_MATERIAL\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_CLASSE_MATERIAL AS VARCHAR(50))FK_CD_CLASSE_MATERIAL\n,CAST(QT_ESTOQUE AS INT) QT_ESTOQUE\n,CAST(VL_ESTOQUE AS MONEY) VL_ESTOQUE\n,CAST(VL_CUSTO_MEDIO AS MONEY) VL_CUSTO_MEDIO \n,CAST(VL_PRECO_ULT_COMPRA AS MONEY) VL_PRECO_ULT_COMPRA\nFROM STG.POSICAO_ESTOQUE_TASY WITH(NOLOCK)\n\nUNION ALL\n\nSELECT \nCAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n,CAST(MES_REF + '-01' AS DATE) AS DT_MESANO_REFERENCIA\n,NULL AS DT_ULT_COMPRA\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_ESTABELECIMENTO AS VARCHAR(50)) AS FK_CD_ESTABELECIMENTO\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_MATERIAL AS VARCHAR(50)) AS FK_CD_MATERIAL\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) AS FK_CD_GRUPO_MATERIAL\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_CLASSE_MATERIAL AS VARCHAR(50)) AS FK_CD_CLASSE_MATERIAL\n,CAST(QT_ESTOQUE AS INT) AS QT_ESTOQUE\n,CAST(VL_TOTAL AS MONEY) AS VL_ESTOQUE\n,CAST(VL_MED_UNIT AS MONEY) AS VL_CUSTO_MEDIO\n,NULL AS VL_PRECO_ULT_COMPRA\nFROM STG.POSICAO_ESTOQUE_SMART )\n\nINSERT INTO  DM.TBL_POSICAO_ESTOQUE\nSELECT *  FROM REF",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
 			}
 		],
 		"variables": {
