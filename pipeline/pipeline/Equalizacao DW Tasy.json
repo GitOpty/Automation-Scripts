@@ -120,102 +120,6 @@
 				}
 			},
 			{
-				"name": "CARGA COMPLETA",
-				"type": "ForEach",
-				"dependsOn": [
-					{
-						"activity": "LIMPA TABELAS DESTINO",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"userProperties": [],
-				"typeProperties": {
-					"items": {
-						"value": "@activity('BUSCA_TABELA').output.value",
-						"type": "Expression"
-					},
-					"activities": [
-						{
-							"name": "Copiar Dados DW",
-							"type": "Copy",
-							"dependsOn": [],
-							"policy": {
-								"timeout": "0.12:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"source": {
-									"type": "OracleSource",
-									"oracleReaderQuery": {
-										"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-										"type": "Expression"
-									},
-									"partitionOption": "None",
-									"convertDecimalToInteger": false,
-									"queryTimeout": "02:00:00"
-								},
-								"sink": {
-									"type": "AzureSqlSink",
-									"writeBehavior": "insert",
-									"sqlWriterUseTableLock": false
-								},
-								"enableStaging": false,
-								"translator": {
-									"type": "TabularTranslator",
-									"typeConversion": true,
-									"typeConversionSettings": {
-										"allowDataTruncation": true,
-										"treatBooleanAsNumber": false
-									}
-								}
-							},
-							"inputs": [
-								{
-									"referenceName": "ORACLE_DINAMICO",
-									"type": "DatasetReference",
-									"parameters": {
-										"NOME_KEYVAULT_SECRET": {
-											"value": "@item().NOME_KEYVAULT_SECRET",
-											"type": "Expression"
-										},
-										"schema_name": {
-											"value": "@item().NOME_SCHEMA_ORIGEM",
-											"type": "Expression"
-										},
-										"table_name": {
-											"value": "@item().NOME_TABELA_ORIGEM",
-											"type": "Expression"
-										}
-									}
-								}
-							],
-							"outputs": [
-								{
-									"referenceName": "DESTINO_TABELAS_ADF",
-									"type": "DatasetReference",
-									"parameters": {
-										"Schema_Destino": {
-											"value": "@item().NOME_SCHEMA_DESTINO",
-											"type": "Expression"
-										},
-										"Tabela_Destino": {
-											"value": "@item().NOME_TABELA_DESTINO",
-											"type": "Expression"
-										}
-									}
-								}
-							]
-						}
-					]
-				}
-			},
-			{
 				"name": "LIMPA TABELAS DESTINO",
 				"type": "ForEach",
 				"dependsOn": [
@@ -282,7 +186,7 @@
 				"type": "Lookup",
 				"dependsOn": [
 					{
-						"activity": "CARGA COMPLETA",
+						"activity": "Switch1",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -406,6 +310,258 @@
 				"linkedServiceName": {
 					"referenceName": "AzureSQL_DB_Procedimentos",
 					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "Switch1",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "LIMPA TABELAS DESTINO",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@activity('BUSCA_TABELA').output.value['NOME_KEYVAULT_SECRET']",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "SadallaTasy",
+							"activities": [
+								{
+									"name": "CARGA COMPLETA_SADALLA",
+									"type": "ForEach",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"items": {
+											"value": "@activity('BUSCA_TABELA').output.value",
+											"type": "Expression"
+										},
+										"activities": [
+											{
+												"name": "Copiar Dados DW_SADALLA",
+												"type": "Copy",
+												"dependsOn": [
+													{
+														"activity": "Filter1",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "OracleSource",
+														"oracleReaderQuery": {
+															"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+															"type": "Expression"
+														},
+														"partitionOption": "None",
+														"convertDecimalToInteger": false,
+														"queryTimeout": "02:00:00"
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"writeBehavior": "insert",
+														"sqlWriterUseTableLock": false
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "ORACLE_DINAMICO",
+														"type": "DatasetReference",
+														"parameters": {
+															"NOME_KEYVAULT_SECRET": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"schema_name": {
+																"value": "@item().NOME_SCHEMA_ORIGEM",
+																"type": "Expression"
+															},
+															"table_name": {
+																"value": "@item().NOME_TABELA_ORIGEM",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DESTINO_TABELAS_ADF",
+														"type": "DatasetReference",
+														"parameters": {
+															"Schema_Destino": {
+																"value": "@item().NOME_SCHEMA_DESTINO",
+																"type": "Expression"
+															},
+															"Tabela_Destino": {
+																"value": "@item().NOME_TABELA_DESTINO",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "Filter1",
+												"type": "Filter",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"items": {
+														"value": "@item().NOME_KEYVAULT_SECRET",
+														"type": "Expression"
+													},
+													"condition": {
+														"value": "SadallaTasy",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					],
+					"defaultActivities": [
+						{
+							"name": "CARGA COMPLETA",
+							"type": "ForEach",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"items": {
+									"value": "@activity('BUSCA_TABELA').output.value",
+									"type": "Expression"
+								},
+								"activities": [
+									{
+										"name": "Copiar Dados DW",
+										"type": "Copy",
+										"dependsOn": [
+											{
+												"activity": "Filter2",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "OracleSource",
+												"oracleReaderQuery": {
+													"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+													"type": "Expression"
+												},
+												"partitionOption": "None",
+												"convertDecimalToInteger": false,
+												"queryTimeout": "02:00:00"
+											},
+											"sink": {
+												"type": "AzureSqlSink",
+												"writeBehavior": "insert",
+												"sqlWriterUseTableLock": false
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "ORACLE_DINAMICO",
+												"type": "DatasetReference",
+												"parameters": {
+													"NOME_KEYVAULT_SECRET": {
+														"value": "@item().NOME_KEYVAULT_SECRET",
+														"type": "Expression"
+													},
+													"schema_name": {
+														"value": "@item().NOME_SCHEMA_ORIGEM",
+														"type": "Expression"
+													},
+													"table_name": {
+														"value": "@item().NOME_TABELA_ORIGEM",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "DESTINO_TABELAS_ADF",
+												"type": "DatasetReference",
+												"parameters": {
+													"Schema_Destino": {
+														"value": "@item().NOME_SCHEMA_DESTINO",
+														"type": "Expression"
+													},
+													"Tabela_Destino": {
+														"value": "@item().NOME_TABELA_DESTINO",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"name": "Filter2",
+										"type": "Filter",
+										"dependsOn": [],
+										"userProperties": [],
+										"typeProperties": {
+											"items": {
+												"value": "@item().NOME_KEYVAULT_SECRET",
+												"type": "Expression"
+											},
+											"condition": {
+												"value": "@not(contains(item().NOME_KEYVAULT_SECRET,'SadallaTasy'))",
+												"type": "Expression"
+											}
+										}
+									}
+								]
+							}
+						}
+					]
 				}
 			}
 		],
