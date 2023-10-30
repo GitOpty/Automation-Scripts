@@ -127,6 +127,10 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'blob_din'"
 		},
+		"ls_hmaisbrasildatadriven_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'ls_hmaisbrasildatadriven'"
+		},
 		"sv_hmaisbrasildatadriven_accountKey": {
 			"type": "secureString",
 			"metadata": "Secure string for 'accountKey' of 'sv_hmaisbrasildatadriven'"
@@ -15358,6 +15362,54 @@
 							"referenceName": "AzureSQL_DB_Procedimentos",
 							"type": "LinkedServiceReference"
 						}
+					},
+					{
+						"name": "Cobranca Arquivos Externos",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Exec Datamart Smart Receb",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "Cobranca_Arquivos_Externos",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "SP_AUX_CONVENIO_BI_COBRANCA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Cobranca Arquivos Externos",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_AUX_CONVENIO_BI_COBRANCA]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
 					}
 				],
 				"policy": {
@@ -15377,6 +15429,7 @@
 				"[concat(variables('factoryId'), '/datasets/LISTA_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
 				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiariaSMARTV2')]",
+				"[concat(variables('factoryId'), '/pipelines/Cobranca_Arquivos_Externos')]",
 				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/datasets/SQL_DINAMICO')]"
 			]
@@ -29977,589 +30030,13 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/Cobranca')]",
+			"name": "[concat(parameters('factoryName'), '/Cobranca_Arquivos_Externos')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"activities": [
 					{
 						"name": "Ceop",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_ceop\n\n",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "DS_EXCEL_DIN",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "cobranca",
-									"File_Name": "CEOP.xlsx",
-									"SheetName": "BASE"
-								}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZSQL_DINAMICO",
-								"type": "DatasetReference",
-								"parameters": {
-									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_ceop"
-								}
-							}
-						]
-					},
-					{
-						"name": "Dr Osmar",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_dr_osmar\n\n",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "DS_EXCEL_DIN",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "cobranca",
-									"File_Name": "DR OSMAR.xlsx",
-									"SheetName": "Base"
-								}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZSQL_DINAMICO",
-								"type": "DatasetReference",
-								"parameters": {
-									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_dr_osmar"
-								}
-							}
-						]
-					},
-					{
-						"name": "Oftalmax",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_oftalmax\n\n",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "DS_EXCEL_DIN",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "cobranca",
-									"File_Name": "OFTALMAX.xlsx",
-									"SheetName": "Base"
-								}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZSQL_DINAMICO",
-								"type": "DatasetReference",
-								"parameters": {
-									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_oftalmax"
-								}
-							}
-						]
-					},
-					{
-						"name": "Ortocity",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_ortocity\n",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "DS_EXCEL_DIN",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "cobranca",
-									"File_Name": "ORTOCITY.xlsx",
-									"SheetName": "Base"
-								}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZSQL_DINAMICO",
-								"type": "DatasetReference",
-								"parameters": {
-									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_ortocity"
-								}
-							}
-						]
-					},
-					{
-						"name": "OtorrinoCenter",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_otorrinocenter\n",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "DS_EXCEL_DIN",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "cobranca",
-									"File_Name": "OTORRINOCENTER.xlsx",
-									"SheetName": "Base"
-								}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZSQL_DINAMICO",
-								"type": "DatasetReference",
-								"parameters": {
-									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_otorrinocenter"
-								}
-							}
-						]
-					},
-					{
-						"name": "UroBrasil",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_urobrasil\n",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "DS_EXCEL_DIN",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "cobranca",
-									"File_Name": "UROBRASIL.xlsx",
-									"SheetName": "Base"
-								}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZSQL_DINAMICO",
-								"type": "DatasetReference",
-								"parameters": {
-									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_urobrasil"
-								}
-							}
-						]
-					},
-					{
-						"name": "Visao Center",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_visaocenter\n",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "DS_EXCEL_DIN",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "cobranca",
-									"File_Name": "VISAO CENTER.xlsx",
-									"SheetName": "Base"
-								}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZSQL_DINAMICO",
-								"type": "DatasetReference",
-								"parameters": {
-									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_visaocenter"
-								}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"folder": {
-					"name": "Cobranca"
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/DS_EXCEL_DIN')]",
-				"[concat(variables('factoryId'), '/datasets/AZSQL_DINAMICO')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Cobranca_OLD')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Ceop",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_ceop\n\n",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "DS_EXCEL_DIN",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "cobranca",
-									"File_Name": "CEOP_Aging_08.2023_.xlsx",
-									"SheetName": "BDCONVENIOS"
-								}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZSQL_DINAMICO",
-								"type": "DatasetReference",
-								"parameters": {
-									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_ceop"
-								}
-							}
-						]
-					},
-					{
-						"name": "Dr Osmar",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Ceop",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ExcelSource",
-								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
-									"recursive": true,
-									"enablePartitionDiscovery": false
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_dr_osmar\n\n",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "DS_EXCEL_DIN",
-								"type": "DatasetReference",
-								"parameters": {
-									"FileSystem": "cobranca",
-									"File_Name": "DR. OSMAR_Aging_08.2023.xlsx",
-									"SheetName": "Base"
-								}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZSQL_DINAMICO",
-								"type": "DatasetReference",
-								"parameters": {
-									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_dr_osmar"
-								}
-							}
-						]
-					},
-					{
-						"name": "Oftalmax",
 						"type": "Copy",
 						"dependsOn": [
 							{
@@ -30581,15 +30058,22 @@
 							"source": {
 								"type": "ExcelSource",
 								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
+									"type": "AzureBlobStorageReadSettings",
 									"recursive": true,
 									"enablePartitionDiscovery": false
 								}
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_oftalmax\n\n",
-								"writeBehavior": "insert",
+								"preCopyScript": "\n\n",
+								"writeBehavior": "upsert",
+								"upsertSettings": {
+									"useTempDB": true,
+									"keys": [
+										"CONVENIO",
+										"REFERENCIA"
+									]
+								},
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -30597,6 +30081,188 @@
 							"enableStaging": false,
 							"translator": {
 								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CONVÊNIO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "CONVENIO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "REFERÊNCIA",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "REFERENCIA",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									}
+								],
 								"typeConversion": true,
 								"typeConversionSettings": {
 									"allowDataTruncation": true,
@@ -30610,8 +30276,9 @@
 								"type": "DatasetReference",
 								"parameters": {
 									"FileSystem": "cobranca",
-									"File_Name": "OFTALMAX_Aging_08.2023_.xlsx",
-									"SheetName": "BD Convênios"
+									"File_Name": "CEOP.xlsx",
+									"SheetName": "BASE",
+									"file_Directory": "NOVO_LAYOUT"
 								}
 							}
 						],
@@ -30621,13 +30288,13 @@
 								"type": "DatasetReference",
 								"parameters": {
 									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_oftalmax"
+									"tabela_destino": "tbl_cobranca_ceop"
 								}
 							}
 						]
 					},
 					{
-						"name": "Ortocity",
+						"name": "Dr Osmar",
 						"type": "Copy",
 						"dependsOn": [
 							{
@@ -30649,15 +30316,22 @@
 							"source": {
 								"type": "ExcelSource",
 								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
+									"type": "AzureBlobStorageReadSettings",
 									"recursive": true,
 									"enablePartitionDiscovery": false
 								}
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_ortocity\n",
-								"writeBehavior": "insert",
+								"preCopyScript": "\n\n",
+								"writeBehavior": "upsert",
+								"upsertSettings": {
+									"useTempDB": true,
+									"keys": [
+										"CONVENIO",
+										"REFERENCIA"
+									]
+								},
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -30665,6 +30339,188 @@
 							"enableStaging": false,
 							"translator": {
 								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CONVÊNIO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "CONVENIO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "REFERÊNCIA",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "REFERENCIA",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									}
+								],
 								"typeConversion": true,
 								"typeConversionSettings": {
 									"allowDataTruncation": true,
@@ -30678,8 +30534,9 @@
 								"type": "DatasetReference",
 								"parameters": {
 									"FileSystem": "cobranca",
-									"File_Name": "ORTOCITY_Aging_08_2023.xlsx",
-									"SheetName": "A Vencer"
+									"File_Name": "DR OSMAR.xlsx",
+									"SheetName": "Base",
+									"file_Directory": "NOVO_LAYOUT"
 								}
 							}
 						],
@@ -30689,13 +30546,13 @@
 								"type": "DatasetReference",
 								"parameters": {
 									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_ortocity"
+									"tabela_destino": "tbl_cobranca_dr_osmar"
 								}
 							}
 						]
 					},
 					{
-						"name": "OtorrinoCenter",
+						"name": "Oftalmax",
 						"type": "Copy",
 						"dependsOn": [
 							{
@@ -30717,15 +30574,21 @@
 							"source": {
 								"type": "ExcelSource",
 								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
+									"type": "AzureBlobStorageReadSettings",
 									"recursive": true,
 									"enablePartitionDiscovery": false
 								}
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_otorrinocenter\n",
-								"writeBehavior": "insert",
+								"writeBehavior": "upsert",
+								"upsertSettings": {
+									"useTempDB": true,
+									"keys": [
+										"CONVENIO",
+										"REFERENCIA"
+									]
+								},
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -30733,6 +30596,188 @@
 							"enableStaging": false,
 							"translator": {
 								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CONVÊNIO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "CONVENIO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "REFERÊNCIA",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "REFERENCIA",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									}
+								],
 								"typeConversion": true,
 								"typeConversionSettings": {
 									"allowDataTruncation": true,
@@ -30746,8 +30791,9 @@
 								"type": "DatasetReference",
 								"parameters": {
 									"FileSystem": "cobranca",
-									"File_Name": "OTORRINOCENTER_Aging_08.2023.xlsx",
-									"SheetName": "BD Convênios"
+									"File_Name": "OFTALMAX.xlsx",
+									"SheetName": "Base",
+									"file_Directory": "NOVO_LAYOUT"
 								}
 							}
 						],
@@ -30757,13 +30803,13 @@
 								"type": "DatasetReference",
 								"parameters": {
 									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_otorrinocenter"
+									"tabela_destino": "tbl_cobranca_oftalmax"
 								}
 							}
 						]
 					},
 					{
-						"name": "UroBrasil",
+						"name": "Ortocity",
 						"type": "Copy",
 						"dependsOn": [
 							{
@@ -30785,15 +30831,22 @@
 							"source": {
 								"type": "ExcelSource",
 								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
+									"type": "AzureBlobStorageReadSettings",
 									"recursive": true,
 									"enablePartitionDiscovery": false
 								}
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_urobrasil\n",
-								"writeBehavior": "insert",
+								"preCopyScript": "\n",
+								"writeBehavior": "upsert",
+								"upsertSettings": {
+									"useTempDB": true,
+									"keys": [
+										"CONVENIO",
+										"REFERENCIA"
+									]
+								},
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -30801,6 +30854,188 @@
 							"enableStaging": false,
 							"translator": {
 								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CONVÊNIO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "CONVENIO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "REFERÊNCIA",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "REFERENCIA",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									}
+								],
 								"typeConversion": true,
 								"typeConversionSettings": {
 									"allowDataTruncation": true,
@@ -30814,8 +31049,9 @@
 								"type": "DatasetReference",
 								"parameters": {
 									"FileSystem": "cobranca",
-									"File_Name": "UROBRASIL_Aging_08.2023.xlsx",
-									"SheetName": "Base"
+									"File_Name": "ORTOCITY.xlsx",
+									"SheetName": "Base",
+									"file_Directory": "NOVO_LAYOUT"
 								}
 							}
 						],
@@ -30825,13 +31061,13 @@
 								"type": "DatasetReference",
 								"parameters": {
 									"schema_destino": "stg",
-									"tabela_destino": "tbl_cobranca_urobrasil"
+									"tabela_destino": "tbl_cobranca_ortocity"
 								}
 							}
 						]
 					},
 					{
-						"name": "Visao Center",
+						"name": "OtorrinoCenter",
 						"type": "Copy",
 						"dependsOn": [
 							{
@@ -30853,15 +31089,22 @@
 							"source": {
 								"type": "ExcelSource",
 								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
+									"type": "AzureBlobStorageReadSettings",
 									"recursive": true,
 									"enablePartitionDiscovery": false
 								}
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "truncate table stg.tbl_cobranca_visaocenter\n",
-								"writeBehavior": "insert",
+								"preCopyScript": "\n",
+								"writeBehavior": "upsert",
+								"upsertSettings": {
+									"useTempDB": true,
+									"keys": [
+										"CONVENIO",
+										"REFERENCIA"
+									]
+								},
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -30869,6 +31112,188 @@
 							"enableStaging": false,
 							"translator": {
 								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CONVÊNIO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "CONVENIO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "REFERÊNCIA",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "REFERENCIA",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									}
+								],
 								"typeConversion": true,
 								"typeConversionSettings": {
 									"allowDataTruncation": true,
@@ -30882,8 +31307,524 @@
 								"type": "DatasetReference",
 								"parameters": {
 									"FileSystem": "cobranca",
-									"File_Name": "VISÃO_CENTER_Aging_08.2023_.xlsx",
-									"SheetName": "GNF"
+									"File_Name": "OTORRINOCENTER.xlsx",
+									"SheetName": "Base",
+									"file_Directory": "NOVO_LAYOUT"
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "stg",
+									"tabela_destino": "tbl_cobranca_otorrinocenter"
+								}
+							}
+						]
+					},
+					{
+						"name": "UroBrasil",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Visao Center",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ExcelSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "\n",
+								"writeBehavior": "upsert",
+								"upsertSettings": {
+									"useTempDB": true,
+									"keys": [
+										"CONVENIO",
+										"REFERENCIA"
+									]
+								},
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CONVÊNIO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "CONVENIO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "REFERÊNCIA",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "REFERENCIA",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_EXCEL_DIN",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "cobranca",
+									"File_Name": "UROBRASIL.xlsx",
+									"SheetName": "Base",
+									"file_Directory": "NOVO_LAYOUT"
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "stg",
+									"tabela_destino": "tbl_cobranca_urobrasil"
+								}
+							}
+						]
+					},
+					{
+						"name": "Visao Center",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "DexPara Convenios",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ExcelSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "upsert",
+								"upsertSettings": {
+									"useTempDB": true,
+									"keys": [
+										"CONVENIO",
+										"REFERENCIA"
+									]
+								},
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DATA DOCUMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CONVÊNIO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "CONVENIO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ID",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "VALOR",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "JUROS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DESCONTOS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "PAGTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "SALDO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "REFERÊNCIA",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "REFERENCIA",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DIAS VENCIMENTO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "AGING",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "STATUS",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "ANO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_EXCEL_DIN",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "cobranca",
+									"File_Name": "VISAO CENTER.xlsx",
+									"SheetName": "BASE",
+									"file_Directory": "NOVO_LAYOUT"
 								}
 							}
 						],
@@ -30897,13 +31838,131 @@
 								}
 							}
 						]
+					},
+					{
+						"name": "DexPara Convenios",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "ExcelSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "\n\n",
+								"writeBehavior": "upsert",
+								"upsertSettings": {
+									"useTempDB": true,
+									"keys": [
+										"FK_CONVENIO"
+									]
+								},
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "FK_CONVENIO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "FK_CONVENIO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CONVENIO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "CD_CONVENIO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CONVENIO",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "DS_CONVENIO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									},
+									{
+										"source": {
+											"name": "Nome_Padrão",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "NOME_PADRAO",
+											"type": "String",
+											"physicalType": "nvarchar"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_EXCEL_DIN",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "cobranca",
+									"File_Name": "dexPara-cobrança-inc.xlsx",
+									"SheetName": "dConvênios",
+									"file_Directory": "NOVO_LAYOUT"
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "stg",
+									"tabela_destino": "tbl_dexPara_Convenios"
+								}
+							}
+						]
 					}
 				],
 				"policy": {
 					"elapsedTimeMetric": {}
 				},
 				"folder": {
-					"name": "Cobranca"
+					"name": "Data Warehouse/Cobranca"
 				},
 				"annotations": []
 			},
@@ -36702,7 +37761,7 @@
 						"typeProperties": {
 							"source": {
 								"type": "AzureSqlSource",
-								"sqlReaderQuery": "SELECT  \n    B.NOME_KEYVAULT_SECRET\n    ,B.NOME_SCHEMA_ORIGEM\n    ,B.NOME_TABELA_ORIGEM\n    ,A.NOME_SCHEMA AS NOME_SCHEMA_DESTINO\n    ,A.NOME_TABELA AS NOME_TABELA_DESTINO\nFROM adf.ctr_reprocessa_dw A WITH(NOLOCK)\nINNER JOIN adf.ctr_origem_destino B WITH(NOLOCK) ON A.NOME_PLATAFORMA = B.NOME_PLATAFORMA AND UPPER(A.NOME_TABELA) = 'TBL_'+UPPER(REPLACE(REPLACE(UPPER(B.NOME_TABELA_ORIGEM),'VW_',''),'_V2',''))\nWHERE A.IE_ATIVA = 'S'\n AND B.REPROCESSAR = 'S'\n",
+								"sqlReaderQuery": "SELECT  \n    B.NOME_KEYVAULT_SECRET\n    ,B.NOME_SCHEMA_ORIGEM\n    ,B.NOME_TABELA_ORIGEM\n    ,A.NOME_SCHEMA AS NOME_SCHEMA_DESTINO\n    ,A.NOME_TABELA AS NOME_TABELA_DESTINO\n    ,CASE\n        WHEN B.NOME_KEYVAULT_SECRET <> 'SadallaTasy' THEN 'COMPLETA'\n        ELSE A.TIPO_CARGA\n    END TIPO_CARGA    \n    ,A.NOME_COLUNA\nFROM adf.ctr_reprocessa_dw A WITH(NOLOCK)\nINNER JOIN adf.ctr_origem_destino B WITH(NOLOCK) ON A.NOME_PLATAFORMA = B.NOME_PLATAFORMA AND UPPER(A.NOME_TABELA) = 'TBL_'+UPPER(REPLACE(REPLACE(UPPER(B.NOME_TABELA_ORIGEM),'VW_',''),'_V2',''))\nWHERE A.IE_ATIVA = 'S'\n AND B.REPROCESSAR = 'S'",
 								"queryTimeout": "02:00:00",
 								"partitionOption": "None"
 							},
@@ -36712,102 +37771,6 @@
 								"parameters": {}
 							},
 							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "CARGA COMPLETA",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "LIMPA TABELAS DESTINO",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('BUSCA_TABELA').output.value",
-								"type": "Expression"
-							},
-							"activities": [
-								{
-									"name": "Copiar Dados DW",
-									"type": "Copy",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "0.12:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "OracleSource",
-											"oracleReaderQuery": {
-												"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-												"type": "Expression"
-											},
-											"partitionOption": "None",
-											"convertDecimalToInteger": false,
-											"queryTimeout": "02:00:00"
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"writeBehavior": "insert",
-											"sqlWriterUseTableLock": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "ORACLE_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"NOME_KEYVAULT_SECRET": {
-													"value": "@item().NOME_KEYVAULT_SECRET",
-													"type": "Expression"
-												},
-												"schema_name": {
-													"value": "@item().NOME_SCHEMA_ORIGEM",
-													"type": "Expression"
-												},
-												"table_name": {
-													"value": "@item().NOME_TABELA_ORIGEM",
-													"type": "Expression"
-												}
-											}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "DESTINO_TABELAS_ADF",
-											"type": "DatasetReference",
-											"parameters": {
-												"Schema_Destino": {
-													"value": "@item().NOME_SCHEMA_DESTINO",
-													"type": "Expression"
-												},
-												"Tabela_Destino": {
-													"value": "@item().NOME_TABELA_DESTINO",
-													"type": "Expression"
-												}
-											}
-										}
-									]
-								}
-							]
 						}
 					},
 					{
@@ -36877,7 +37840,7 @@
 						"type": "Lookup",
 						"dependsOn": [
 							{
-								"activity": "CARGA COMPLETA",
+								"activity": "TIPO CARGA",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -37003,10 +37966,149 @@
 							"referenceName": "AzureSQL_DB_Procedimentos",
 							"type": "LinkedServiceReference"
 						}
+					},
+					{
+						"name": "TIPO CARGA",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LIMPA TABELAS DESTINO",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('BUSCA_TABELA').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "If Condition1",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@equals(item().TIPO_CARGA,'PARCIAL')",
+											"type": "Expression"
+										},
+										"ifTrueActivities": [
+											{
+												"name": "Copiar Dados DW",
+												"type": "Copy",
+												"dependsOn": [
+													{
+														"activity": "LIMIT_INICIO",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "OracleSource",
+														"oracleReaderQuery": {
+															"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' WHERE ')",
+															"type": "Expression"
+														},
+														"partitionOption": "None",
+														"convertDecimalToInteger": false,
+														"queryTimeout": "02:00:00"
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"writeBehavior": "insert",
+														"sqlWriterUseTableLock": false
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "ORACLE_DINAMICO",
+														"type": "DatasetReference",
+														"parameters": {
+															"NOME_KEYVAULT_SECRET": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"schema_name": {
+																"value": "@item().NOME_SCHEMA_ORIGEM",
+																"type": "Expression"
+															},
+															"table_name": {
+																"value": "@item().NOME_TABELA_ORIGEM",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DESTINO_TABELAS_ADF",
+														"type": "DatasetReference",
+														"parameters": {
+															"Schema_Destino": {
+																"value": "@item().NOME_SCHEMA_DESTINO",
+																"type": "Expression"
+															},
+															"Tabela_Destino": {
+																"value": "@item().NOME_TABELA_DESTINO",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "LIMIT_INICIO",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"policy": {
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "DT_INICIO",
+													"value": {
+														"value": "@concat(string(sub(int(formatDateTime(utcnow(),'yyyy')),2)),'01-01')",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								}
+							]
+						}
 					}
 				],
 				"policy": {
 					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"DT_INICIO": {
+						"type": "String"
+					}
 				},
 				"folder": {
 					"name": "Data Warehouse/Ajuste DW Tasy"
@@ -37016,8 +38118,8 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/LISTA_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
-				"[concat(variables('factoryId'), '/datasets/ORACLE_DINAMICO')]",
-				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]"
+				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
+				"[concat(variables('factoryId'), '/datasets/ORACLE_DINAMICO')]"
 			]
 		},
 		{
@@ -102776,7 +103878,7 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "sv_hmaisbrasildatadriven",
+					"referenceName": "ls_hmaisbrasildatadriven",
 					"type": "LinkedServiceReference"
 				},
 				"parameters": {
@@ -102788,6 +103890,9 @@
 					},
 					"SheetName": {
 						"type": "string"
+					},
+					"file_Directory": {
+						"type": "string"
 					}
 				},
 				"annotations": [],
@@ -102798,211 +103903,26 @@
 						"type": "Expression"
 					},
 					"location": {
-						"type": "AzureBlobFSLocation",
+						"type": "AzureBlobStorageLocation",
 						"fileName": {
 							"value": "@dataset().File_Name",
 							"type": "Expression"
 						},
-						"fileSystem": {
+						"folderPath": {
+							"value": "@dataset().file_Directory",
+							"type": "Expression"
+						},
+						"container": {
 							"value": "@dataset().FileSystem",
 							"type": "Expression"
 						}
 					},
 					"firstRowAsHeader": true
 				},
-				"schema": [
-					{
-						"name": "Atendimento",
-						"type": "String"
-					},
-					{
-						"name": "Cnv.Id",
-						"type": "String"
-					},
-					{
-						"name": "Convênio",
-						"type": "String"
-					},
-					{
-						"name": "Guia",
-						"type": "String"
-					},
-					{
-						"name": "Guia Operadora",
-						"type": "String"
-					},
-					{
-						"name": "Data Guia",
-						"type": "String"
-					},
-					{
-						"name": "Prontuário",
-						"type": "String"
-					},
-					{
-						"name": "Paciente",
-						"type": "String"
-					},
-					{
-						"name": "Matricula",
-						"type": "String"
-					},
-					{
-						"name": "Validade Matricula",
-						"type": "String"
-					},
-					{
-						"name": "Médico Atendimento",
-						"type": "String"
-					},
-					{
-						"name": "Tp. Atend",
-						"type": "String"
-					},
-					{
-						"name": "Status Atend",
-						"type": "String"
-					},
-					{
-						"name": "Data Atendimento",
-						"type": "String"
-					},
-					{
-						"name": "Hora Atendimento",
-						"type": "String"
-					},
-					{
-						"name": "Data Saída",
-						"type": "String"
-					},
-					{
-						"name": "Hora Saída",
-						"type": "String"
-					},
-					{
-						"name": "Conta",
-						"type": "String"
-					},
-					{
-						"name": "Data Conta",
-						"type": "String"
-					},
-					{
-						"name": "ID Item",
-						"type": "String"
-					},
-					{
-						"name": "Codigo Item",
-						"type": "String"
-					},
-					{
-						"name": "Item",
-						"type": "String"
-					},
-					{
-						"name": "Tipo Item",
-						"type": "String"
-					},
-					{
-						"name": "ID Grupo",
-						"type": "String"
-					},
-					{
-						"name": "Grupo do Item",
-						"type": "String"
-					},
-					{
-						"name": "Status Conta",
-						"type": "String"
-					},
-					{
-						"name": "Data Lançamento",
-						"type": "String"
-					},
-					{
-						"name": "Hora Lançamento",
-						"type": "String"
-					},
-					{
-						"name": "Quant.",
-						"type": "String"
-					},
-					{
-						"name": "Valor Unit.",
-						"type": "String"
-					},
-					{
-						"name": "Valor Total",
-						"type": "String"
-					},
-					{
-						"name": "ID Plano",
-						"type": "String"
-					},
-					{
-						"name": "Plano",
-						"type": "String"
-					},
-					{
-						"name": "Id Empresa",
-						"type": "String"
-					},
-					{
-						"name": "Empresa",
-						"type": "String"
-					},
-					{
-						"name": "Cod.Prestador",
-						"type": "String"
-					},
-					{
-						"name": "Prestador",
-						"type": "String"
-					},
-					{
-						"name": "Cod.Executante",
-						"type": "String"
-					},
-					{
-						"name": "Executante",
-						"type": "String"
-					},
-					{
-						"name": "Data Solic.Exame",
-						"type": "String"
-					},
-					{
-						"name": "Data Laudo Exame",
-						"type": "String"
-					},
-					{
-						"name": "Data Entrega Exame",
-						"type": "String"
-					},
-					{
-						"name": "ID Tecnico",
-						"type": "String"
-					},
-					{
-						"name": "Técnico",
-						"type": "String"
-					},
-					{
-						"name": "Valor Glosado",
-						"type": "String"
-					},
-					{
-						"name": "Valor Recebido",
-						"type": "String"
-					},
-					{
-						"name": "Motivo de Glosa",
-						"type": "String"
-					}
-				]
+				"schema": []
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/sv_hmaisbrasildatadriven')]"
+				"[concat(variables('factoryId'), '/linkedServices/ls_hmaisbrasildatadriven')]"
 			]
 		},
 		{
@@ -114828,6 +115748,19 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/ls_hmaisbrasildatadriven')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('ls_hmaisbrasildatadriven_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/sv_hmaisbrasildatadriven')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
@@ -115230,6 +116163,13 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "INSTITUTO_DR_OSMAR",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -115253,7 +116193,8 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/Agendas Projesi Testes')]",
 				"[concat(variables('factoryId'), '/pipelines/Carga Datamart TASY')]",
-				"[concat(variables('factoryId'), '/pipelines/Cirurgias e Exames Sadalla e HOB')]"
+				"[concat(variables('factoryId'), '/pipelines/Cirurgias e Exames Sadalla e HOB')]",
+				"[concat(variables('factoryId'), '/pipelines/INSTITUTO_DR_OSMAR')]"
 			]
 		},
 		{
