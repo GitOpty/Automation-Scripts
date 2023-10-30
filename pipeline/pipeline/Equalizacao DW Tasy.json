@@ -108,7 +108,7 @@
 				"typeProperties": {
 					"source": {
 						"type": "AzureSqlSource",
-						"sqlReaderQuery": "SELECT  \n    B.NOME_KEYVAULT_SECRET\n    ,B.NOME_SCHEMA_ORIGEM\n    ,B.NOME_TABELA_ORIGEM\n    ,A.NOME_SCHEMA AS NOME_SCHEMA_DESTINO\n    ,A.NOME_TABELA AS NOME_TABELA_DESTINO\nFROM adf.ctr_reprocessa_dw A WITH(NOLOCK)\nINNER JOIN adf.ctr_origem_destino B WITH(NOLOCK) ON A.NOME_PLATAFORMA = B.NOME_PLATAFORMA AND UPPER(A.NOME_TABELA) = 'TBL_'+UPPER(REPLACE(REPLACE(UPPER(B.NOME_TABELA_ORIGEM),'VW_',''),'_V2',''))\nWHERE A.IE_ATIVA = 'S'\n AND B.REPROCESSAR = 'S'\n",
+						"sqlReaderQuery": "SELECT  \n    B.NOME_KEYVAULT_SECRET\n    ,B.NOME_SCHEMA_ORIGEM\n    ,B.NOME_TABELA_ORIGEM\n    ,A.NOME_SCHEMA AS NOME_SCHEMA_DESTINO\n    ,A.NOME_TABELA AS NOME_TABELA_DESTINO\n    ,CASE\n        WHEN B.NOME_KEYVAULT_SECRET <> 'SadallaTasy' THEN 'COMPLETA'\n        ELSE A.TIPO_CARGA\n    END TIPO_CARGA    \n    ,A.NOME_COLUNA\nFROM adf.ctr_reprocessa_dw A WITH(NOLOCK)\nINNER JOIN adf.ctr_origem_destino B WITH(NOLOCK) ON A.NOME_PLATAFORMA = B.NOME_PLATAFORMA AND UPPER(A.NOME_TABELA) = 'TBL_'+UPPER(REPLACE(REPLACE(UPPER(B.NOME_TABELA_ORIGEM),'VW_',''),'_V2',''))\nWHERE A.IE_ATIVA = 'S'\n AND B.REPROCESSAR = 'S'",
 						"queryTimeout": "02:00:00",
 						"partitionOption": "None"
 					},
@@ -186,7 +186,7 @@
 				"type": "Lookup",
 				"dependsOn": [
 					{
-						"activity": "Switch1",
+						"activity": "TIPO CARGA",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -313,8 +313,8 @@
 				}
 			},
 			{
-				"name": "Switch1",
-				"type": "Switch",
+				"name": "TIPO CARGA",
+				"type": "ForEach",
 				"dependsOn": [
 					{
 						"activity": "LIMPA TABELAS DESTINO",
@@ -325,147 +325,28 @@
 				],
 				"userProperties": [],
 				"typeProperties": {
-					"on": {
-						"value": "@activity('BUSCA_TABELA').output.value['NOME_KEYVAULT_SECRET']",
+					"items": {
+						"value": "@activity('BUSCA_TABELA').output.value",
 						"type": "Expression"
 					},
-					"cases": [
+					"activities": [
 						{
-							"value": "SadallaTasy",
-							"activities": [
-								{
-									"name": "CARGA COMPLETA_SADALLA",
-									"type": "ForEach",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"items": {
-											"value": "@activity('BUSCA_TABELA').output.value",
-											"type": "Expression"
-										},
-										"activities": [
-											{
-												"name": "Copiar Dados DW_SADALLA",
-												"type": "Copy",
-												"dependsOn": [
-													{
-														"activity": "Filter1",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.12:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"source": {
-														"type": "OracleSource",
-														"oracleReaderQuery": {
-															"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-															"type": "Expression"
-														},
-														"partitionOption": "None",
-														"convertDecimalToInteger": false,
-														"queryTimeout": "02:00:00"
-													},
-													"sink": {
-														"type": "AzureSqlSink",
-														"writeBehavior": "insert",
-														"sqlWriterUseTableLock": false
-													},
-													"enableStaging": false,
-													"translator": {
-														"type": "TabularTranslator",
-														"typeConversion": true,
-														"typeConversionSettings": {
-															"allowDataTruncation": true,
-															"treatBooleanAsNumber": false
-														}
-													}
-												},
-												"inputs": [
-													{
-														"referenceName": "ORACLE_DINAMICO",
-														"type": "DatasetReference",
-														"parameters": {
-															"NOME_KEYVAULT_SECRET": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"schema_name": {
-																"value": "@item().NOME_SCHEMA_ORIGEM",
-																"type": "Expression"
-															},
-															"table_name": {
-																"value": "@item().NOME_TABELA_ORIGEM",
-																"type": "Expression"
-															}
-														}
-													}
-												],
-												"outputs": [
-													{
-														"referenceName": "DESTINO_TABELAS_ADF",
-														"type": "DatasetReference",
-														"parameters": {
-															"Schema_Destino": {
-																"value": "@item().NOME_SCHEMA_DESTINO",
-																"type": "Expression"
-															},
-															"Tabela_Destino": {
-																"value": "@item().NOME_TABELA_DESTINO",
-																"type": "Expression"
-															}
-														}
-													}
-												]
-											},
-											{
-												"name": "Filter1",
-												"type": "Filter",
-												"dependsOn": [],
-												"userProperties": [],
-												"typeProperties": {
-													"items": {
-														"value": "@item().NOME_KEYVAULT_SECRET",
-														"type": "Expression"
-													},
-													"condition": {
-														"value": "SadallaTasy",
-														"type": "Expression"
-													}
-												}
-											}
-										]
-									}
-								}
-							]
-						}
-					],
-					"defaultActivities": [
-						{
-							"name": "CARGA COMPLETA",
-							"type": "ForEach",
+							"name": "If Condition1",
+							"type": "IfCondition",
 							"dependsOn": [],
 							"userProperties": [],
 							"typeProperties": {
-								"items": {
-									"value": "@activity('BUSCA_TABELA').output.value",
+								"expression": {
+									"value": "@equals(item().TIPO_CARGA,'PARCIAL')",
 									"type": "Expression"
 								},
-								"activities": [
+								"ifTrueActivities": [
 									{
 										"name": "Copiar Dados DW",
 										"type": "Copy",
 										"dependsOn": [
 											{
-												"activity": "Filter2",
+												"activity": "LIMIT_INICIO",
 												"dependencyConditions": [
 													"Succeeded"
 												]
@@ -483,7 +364,7 @@
 											"source": {
 												"type": "OracleSource",
 												"oracleReaderQuery": {
-													"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+													"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' WHERE ')",
 													"type": "Expression"
 												},
 												"partitionOption": "None",
@@ -543,17 +424,18 @@
 										]
 									},
 									{
-										"name": "Filter2",
-										"type": "Filter",
+										"name": "LIMIT_INICIO",
+										"type": "SetVariable",
 										"dependsOn": [],
+										"policy": {
+											"secureOutput": false,
+											"secureInput": false
+										},
 										"userProperties": [],
 										"typeProperties": {
-											"items": {
-												"value": "@item().NOME_KEYVAULT_SECRET",
-												"type": "Expression"
-											},
-											"condition": {
-												"value": "@not(contains(item().NOME_KEYVAULT_SECRET,'SadallaTasy'))",
+											"variableName": "DT_INICIO",
+											"value": {
+												"value": "@concat(string(sub(int(formatDateTime(utcnow(),'yyyy')),2)),'01-01')",
 												"type": "Expression"
 											}
 										}
@@ -565,6 +447,11 @@
 				}
 			}
 		],
+		"variables": {
+			"DT_INICIO": {
+				"type": "String"
+			}
+		},
 		"folder": {
 			"name": "Data Warehouse/Ajuste DW Tasy"
 		},
