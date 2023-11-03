@@ -26271,7 +26271,7 @@
 								"exists"
 							],
 							"storeSettings": {
-								"type": "AzureBlobFSReadSettings",
+								"type": "AzureBlobStorageReadSettings",
 								"recursive": true
 							},
 							"formatSettings": {
@@ -27122,7 +27122,7 @@
 								"exists"
 							],
 							"storeSettings": {
-								"type": "AzureBlobFSReadSettings",
+								"type": "AzureBlobStorageReadSettings",
 								"recursive": true
 							},
 							"formatSettings": {
@@ -27364,7 +27364,7 @@
 								"exists"
 							],
 							"storeSettings": {
-								"type": "AzureBlobFSReadSettings",
+								"type": "AzureBlobStorageReadSettings",
 								"recursive": true
 							},
 							"formatSettings": {
@@ -27633,7 +27633,7 @@
 								"exists"
 							],
 							"storeSettings": {
-								"type": "AzureBlobFSReadSettings",
+								"type": "AzureBlobStorageReadSettings",
 								"recursive": true
 							},
 							"formatSettings": {
@@ -27876,7 +27876,7 @@
 								"exists"
 							],
 							"storeSettings": {
-								"type": "AzureBlobFSReadSettings",
+								"type": "AzureBlobStorageReadSettings",
 								"recursive": true
 							},
 							"formatSettings": {
@@ -27908,7 +27908,7 @@
 							"source": {
 								"type": "DelimitedTextSource",
 								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
+									"type": "AzureBlobStorageReadSettings",
 									"recursive": true
 								},
 								"formatSettings": {
@@ -27979,7 +27979,7 @@
 								"exists"
 							],
 							"storeSettings": {
-								"type": "AzureBlobFSReadSettings",
+								"type": "AzureBlobStorageReadSettings",
 								"recursive": true
 							},
 							"formatSettings": {
@@ -28011,7 +28011,7 @@
 							"source": {
 								"type": "DelimitedTextSource",
 								"storeSettings": {
-									"type": "AzureBlobFSReadSettings",
+									"type": "AzureBlobStorageReadSettings",
 									"recursive": true
 								},
 								"formatSettings": {
@@ -37995,6 +37995,83 @@
 											"value": "@equals(item().TIPO_CARGA,'PARCIAL')",
 											"type": "Expression"
 										},
+										"ifFalseActivities": [
+											{
+												"name": "Dados Completo",
+												"type": "Copy",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "OracleSource",
+														"oracleReaderQuery": {
+															"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+															"type": "Expression"
+														},
+														"partitionOption": "None",
+														"convertDecimalToInteger": false,
+														"queryTimeout": "02:00:00"
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"writeBehavior": "insert",
+														"sqlWriterUseTableLock": false
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "ORACLE_DINAMICO",
+														"type": "DatasetReference",
+														"parameters": {
+															"NOME_KEYVAULT_SECRET": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"schema_name": {
+																"value": "@item().NOME_SCHEMA_ORIGEM",
+																"type": "Expression"
+															},
+															"table_name": {
+																"value": "@item().NOME_TABELA_ORIGEM",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DESTINO_TABELAS_ADF",
+														"type": "DatasetReference",
+														"parameters": {
+															"Schema_Destino": {
+																"value": "@item().NOME_SCHEMA_DESTINO",
+																"type": "Expression"
+															},
+															"Tabela_Destino": {
+																"value": "@item().NOME_TABELA_DESTINO",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											}
+										],
 										"ifTrueActivities": [
 											{
 												"name": "Copiar Dados DW",
@@ -38019,7 +38096,7 @@
 													"source": {
 														"type": "OracleSource",
 														"oracleReaderQuery": {
-															"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' WHERE ')",
+															"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' WHERE ',item().NOME_COLUNA,'>=','''',variables('DT_INICIO'),'''')",
 															"type": "Expression"
 														},
 														"partitionOption": "None",
@@ -104296,19 +104373,19 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "sv_hmaisbrasildatadriven",
+					"referenceName": "ls_hmaisbrasildatadriven",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],
 				"type": "DelimitedText",
 				"typeProperties": {
 					"location": {
-						"type": "AzureBlobFSLocation",
+						"type": "AzureBlobStorageLocation",
 						"fileName": {
 							"value": "action.csv",
 							"type": "Expression"
 						},
-						"fileSystem": "requestia"
+						"container": "requestia"
 					},
 					"columnDelimiter": ";",
 					"escapeChar": "\\",
@@ -104322,7 +104399,7 @@
 				]
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/sv_hmaisbrasildatadriven')]"
+				"[concat(variables('factoryId'), '/linkedServices/ls_hmaisbrasildatadriven')]"
 			]
 		},
 		{
@@ -104463,19 +104540,19 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "sv_hmaisbrasildatadriven",
+					"referenceName": "ls_hmaisbrasildatadriven",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],
 				"type": "DelimitedText",
 				"typeProperties": {
 					"location": {
-						"type": "AzureBlobFSLocation",
+						"type": "AzureBlobStorageLocation",
 						"fileName": {
 							"value": "qanswer.csv",
 							"type": "Expression"
 						},
-						"fileSystem": "requestia"
+						"container": "requestia"
 					},
 					"columnDelimiter": ";",
 					"escapeChar": "\\",
@@ -104489,7 +104566,7 @@
 				]
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/sv_hmaisbrasildatadriven')]"
+				"[concat(variables('factoryId'), '/linkedServices/ls_hmaisbrasildatadriven')]"
 			]
 		},
 		{
@@ -104573,19 +104650,19 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "sv_hmaisbrasildatadriven",
+					"referenceName": "ls_hmaisbrasildatadriven",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],
 				"type": "DelimitedText",
 				"typeProperties": {
 					"location": {
-						"type": "AzureBlobFSLocation",
+						"type": "AzureBlobStorageLocation",
 						"fileName": {
 							"value": "qsession.csv",
 							"type": "Expression"
 						},
-						"fileSystem": "requestia"
+						"container": "requestia"
 					},
 					"columnDelimiter": ";",
 					"escapeChar": "\\",
@@ -104599,7 +104676,7 @@
 				]
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/sv_hmaisbrasildatadriven')]"
+				"[concat(variables('factoryId'), '/linkedServices/ls_hmaisbrasildatadriven')]"
 			]
 		},
 		{
@@ -104711,19 +104788,19 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "sv_hmaisbrasildatadriven",
+					"referenceName": "ls_hmaisbrasildatadriven",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],
 				"type": "DelimitedText",
 				"typeProperties": {
 					"location": {
-						"type": "AzureBlobFSLocation",
+						"type": "AzureBlobStorageLocation",
 						"fileName": {
 							"value": "qtableanswer.csv",
 							"type": "Expression"
 						},
-						"fileSystem": "requestia"
+						"container": "requestia"
 					},
 					"columnDelimiter": ";",
 					"escapeChar": "\\",
@@ -104737,7 +104814,7 @@
 				]
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/sv_hmaisbrasildatadriven')]"
+				"[concat(variables('factoryId'), '/linkedServices/ls_hmaisbrasildatadriven')]"
 			]
 		},
 		{
@@ -105198,19 +105275,19 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "sv_hmaisbrasildatadriven",
+					"referenceName": "ls_hmaisbrasildatadriven",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],
 				"type": "DelimitedText",
 				"typeProperties": {
 					"location": {
-						"type": "AzureBlobFSLocation",
+						"type": "AzureBlobStorageLocation",
 						"fileName": {
 							"value": "ho_aux_request.csv",
 							"type": "Expression"
 						},
-						"fileSystem": "requestia"
+						"container": "requestia"
 					},
 					"columnDelimiter": ";",
 					"escapeChar": "\\",
@@ -105224,7 +105301,7 @@
 				]
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/sv_hmaisbrasildatadriven')]"
+				"[concat(variables('factoryId'), '/linkedServices/ls_hmaisbrasildatadriven')]"
 			]
 		},
 		{
@@ -105684,16 +105761,19 @@
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"linkedServiceName": {
-					"referenceName": "sv_hmaisbrasildatadriven",
+					"referenceName": "ls_hmaisbrasildatadriven",
 					"type": "LinkedServiceReference"
 				},
 				"annotations": [],
 				"type": "DelimitedText",
 				"typeProperties": {
 					"location": {
-						"type": "AzureBlobFSLocation",
-						"fileName": "ho_aux_survey.csv",
-						"fileSystem": "requestia"
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "ho_aux_survey.csv",
+							"type": "Expression"
+						},
+						"container": "requestia"
 					},
 					"columnDelimiter": ";",
 					"escapeChar": "\\",
@@ -105707,7 +105787,7 @@
 				]
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/sv_hmaisbrasildatadriven')]"
+				"[concat(variables('factoryId'), '/linkedServices/ls_hmaisbrasildatadriven')]"
 			]
 		},
 		{
@@ -116044,13 +116124,6 @@
 				"pipelines": [
 					{
 						"pipelineReference": {
-							"referenceName": "Chamados Requestia_Otim_Deadlock",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					},
-					{
-						"pipelineReference": {
 							"referenceName": "NF",
 							"type": "PipelineReference"
 						},
@@ -116090,7 +116163,6 @@
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Chamados Requestia_Otim_Deadlock')]",
 				"[concat(variables('factoryId'), '/pipelines/NF')]",
 				"[concat(variables('factoryId'), '/pipelines/Mov Estoque')]",
 				"[concat(variables('factoryId'), '/pipelines/Posicao Estoque')]"
