@@ -18530,6 +18530,27 @@
 							"waitOnCompletion": true,
 							"parameters": {}
 						}
+					},
+					{
+						"name": "Saldo Recebimento Bancario",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "ForEach1",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "SALDO_RECEBIMENTO_BANCARIO",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
 					}
 				],
 				"policy": {
@@ -18549,6 +18570,7 @@
 				"[concat(variables('factoryId'), '/datasets/LISTA_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
 				"[concat(variables('factoryId'), '/pipelines/DM_ProdDiaria_TASY_HTML')]",
+				"[concat(variables('factoryId'), '/pipelines/SALDO_RECEBIMENTO_BANCARIO')]",
 				"[concat(variables('factoryId'), '/pipelines/Send email')]",
 				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]",
 				"[concat(variables('factoryId'), '/datasets/ORACLE_DINAMICO')]"
@@ -86846,6 +86868,128 @@
 				"[concat(variables('factoryId'), '/datasets/AZSQL_TB_Pacientes_Unidade')]",
 				"[concat(variables('factoryId'), '/datasets/AZSQL_TB_Agendamentos_Futuros_Unidade')]",
 				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SALDO_RECEBIMENTO_BANCARIO')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "SADALLA - SALDO_RECEBIMENTO_BANCARIO",
+						"type": "Copy",
+						"state": "Inactive",
+						"onInactiveMarkAs": "Succeeded",
+						"dependsOn": [
+							{
+								"activity": "TASY HTML - SALDO_RECEBIMENTO_BANCARIO_copy1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "select * from Tasy.VW_SALDO_RECEBIMENTO_BANCARIO",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "delete STG.TBL_SALDO_RECEBIMENTO_BANCARIO  WHERE ESTABELECIMENTO = '2'",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "stg",
+									"tabela_destino": "TBL_SALDO_RECEBIMENTO_BANCARIO"
+								}
+							}
+						]
+					},
+					{
+						"name": "TASY HTML - SALDO_RECEBIMENTO_BANCARIO_copy1",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "SELECT /*+ first_rows(100) */ \n'1' as ESTABELECIMENTO,\n DT_RECEBIMENTO ,\n  VL_RECEBIMENTO ,\n  VL_DESPESA_BANCARIA ,\n  VL_DEPOSITO ,\n  IE_STATUS ,\n  NR_SEQ_CONTA_BANCO ,\n  NR_SEQ_TRANS_FIN ,\n  NR_LOTE_CONTABIL ,\n  DT_FLUXO_CAIXA ,\n  DT_LIBERACAO ,\n  NR_SEQ_COBRANCA ,\n  IE_INTEGRAR_CB_FLUXO ,\n  DS_OBSERVACAO ,\n  NR_SEQUENCIA ,\n  IE_TIPO_GLOSA ,\n  NM_USUARIO ,\n  NR_ADIANTAMENTO ,\n  TX_CAMBIAL ,\n  VL_MOEDA_ORIGINAL ,\n  CD_ESTABELECIMENTO ,\n  CD_CONVENIO ,\n  DT_ATUALIZACAO ,\n  IE_DEDUZIR_ADIC ,\n  CD_MOEDA,\n  to_number(vl_recebimento - FAST_OPS.obter_baixa_conrece(nr_sequencia)) VL_SALDO,\n  substr(FAST_OPS.obter_dados_convenio_receb(nr_sequencia,'AD'),1,255) DS_ADIANTAMENTO,\n  substr(FAST_OPS.obter_ds_moeda_estrangeira(cd_moeda),1,255) DS_MOEDA_ESTRANGEIRA\nFROM FAST_OPS.CONVENIO_RECEB a\nWHERE 1 = 1 \n",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "delete STG.TBL_SALDO_RECEBIMENTO_BANCARIO  WHERE ESTABELECIMENTO = '1'",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "stg",
+									"tabela_destino": "TBL_SALDO_RECEBIMENTO_BANCARIO"
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/AZSQL_DINAMICO')]",
+				"[concat(variables('factoryId'), '/datasets/CloudTasyPrdDataSet')]"
 			]
 		},
 		{
