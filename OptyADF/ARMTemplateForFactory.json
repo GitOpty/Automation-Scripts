@@ -30087,15 +30087,8 @@
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "\n\n",
-								"writeBehavior": "upsert",
-								"upsertSettings": {
-									"useTempDB": true,
-									"keys": [
-										"CONVENIO",
-										"REFERENCIA"
-									]
-								},
+								"preCopyScript": "truncate table stg.tbl_cobranca_ceop\n\n",
+								"writeBehavior": "insert",
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -30345,15 +30338,8 @@
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "\n\n",
-								"writeBehavior": "upsert",
-								"upsertSettings": {
-									"useTempDB": true,
-									"keys": [
-										"CONVENIO",
-										"REFERENCIA"
-									]
-								},
+								"preCopyScript": "truncate table stg.tbl_cobranca_dr_osmar\n\n",
+								"writeBehavior": "insert",
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -30603,14 +30589,8 @@
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"writeBehavior": "upsert",
-								"upsertSettings": {
-									"useTempDB": true,
-									"keys": [
-										"CONVENIO",
-										"REFERENCIA"
-									]
-								},
+								"preCopyScript": "truncate table stg.tbl_cobranca_oftalmax",
+								"writeBehavior": "insert",
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -30860,15 +30840,8 @@
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "\n",
-								"writeBehavior": "upsert",
-								"upsertSettings": {
-									"useTempDB": true,
-									"keys": [
-										"CONVENIO",
-										"REFERENCIA"
-									]
-								},
+								"preCopyScript": "truncate table stg.tbl_cobranca_ortocity",
+								"writeBehavior": "insert",
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -31118,15 +31091,8 @@
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "\n",
-								"writeBehavior": "upsert",
-								"upsertSettings": {
-									"useTempDB": true,
-									"keys": [
-										"CONVENIO",
-										"REFERENCIA"
-									]
-								},
+								"preCopyScript": "truncate table stg.tbl_cobranca_otorrinocenter\n",
+								"writeBehavior": "insert",
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -31376,15 +31342,8 @@
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "\n",
-								"writeBehavior": "upsert",
-								"upsertSettings": {
-									"useTempDB": true,
-									"keys": [
-										"CONVENIO",
-										"REFERENCIA"
-									]
-								},
+								"preCopyScript": "truncate table stg.tbl_cobranca_urobrasil",
+								"writeBehavior": "insert",
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -31634,14 +31593,8 @@
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"writeBehavior": "upsert",
-								"upsertSettings": {
-									"useTempDB": true,
-									"keys": [
-										"CONVENIO",
-										"REFERENCIA"
-									]
-								},
+								"preCopyScript": "truncate table stg.tbl_cobranca_visaocenter",
+								"writeBehavior": "insert",
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -31884,14 +31837,8 @@
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "\n\n",
-								"writeBehavior": "upsert",
-								"upsertSettings": {
-									"useTempDB": true,
-									"keys": [
-										"FK_CONVENIO"
-									]
-								},
+								"preCopyScript": "truncate table stg.tbl_dexPara_Convenios\n\n",
+								"writeBehavior": "insert",
 								"sqlWriterUseTableLock": false,
 								"tableOption": "autoCreate",
 								"disableMetricsCollection": false
@@ -85992,6 +85939,74 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Projesi_NPS')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Projesi NPS",
+						"type": "DatabricksNotebook",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"notebookPath": "/Projesi/PROJESI_NPS"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureDatabricks",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Carga NPS DW",
+						"description": "Comando para chamar a procedure que lê a stg e alimenta a camda dw",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Projesi NPS",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_PROJESI_NPS]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Projesi"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureDatabricks')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Repasse_Medico')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -86906,7 +86921,7 @@
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "delete STG.TBL_SALDO_RECEBIMENTO_BANCARIO  WHERE ESTABELECIMENTO = '2'",
+								"preCopyScript": "delete DW.TBL_SALDO_RECEBIMENTO_BANCARIO  WHERE ESTABELECIMENTO = '2'",
 								"writeBehavior": "insert",
 								"sqlWriterUseTableLock": false,
 								"disableMetricsCollection": false
@@ -86925,7 +86940,7 @@
 								"referenceName": "AZSQL_DINAMICO",
 								"type": "DatasetReference",
 								"parameters": {
-									"schema_destino": "stg",
+									"schema_destino": "DW",
 									"tabela_destino": "TBL_SALDO_RECEBIMENTO_BANCARIO"
 								}
 							}
@@ -86952,7 +86967,7 @@
 							},
 							"sink": {
 								"type": "AzureSqlSink",
-								"preCopyScript": "delete STG.TBL_SALDO_RECEBIMENTO_BANCARIO  WHERE ESTABELECIMENTO = '1'",
+								"preCopyScript": "delete DW.TBL_SALDO_RECEBIMENTO_BANCARIO  WHERE ESTABELECIMENTO = '1'",
 								"writeBehavior": "insert",
 								"sqlWriterUseTableLock": false,
 								"disableMetricsCollection": false
@@ -86971,7 +86986,7 @@
 								"referenceName": "AZSQL_DINAMICO",
 								"type": "DatasetReference",
 								"parameters": {
-									"schema_destino": "stg",
+									"schema_destino": "DW",
 									"tabela_destino": "TBL_SALDO_RECEBIMENTO_BANCARIO"
 								}
 							}
@@ -116099,6 +116114,13 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "Projesi_NPS",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -116122,7 +116144,8 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/Databricks Five9 API')]",
 				"[concat(variables('factoryId'), '/pipelines/Maqplan_Vendas')]",
-				"[concat(variables('factoryId'), '/pipelines/ORTOCITY_CARGA_DINAMICA_ADF')]"
+				"[concat(variables('factoryId'), '/pipelines/ORTOCITY_CARGA_DINAMICA_ADF')]",
+				"[concat(variables('factoryId'), '/pipelines/Projesi_NPS')]"
 			]
 		},
 		{
