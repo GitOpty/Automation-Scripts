@@ -760,7 +760,7 @@
 				"type": "Copy",
 				"dependsOn": [
 					{
-						"activity": "OtorrinoCenter",
+						"activity": "UroBrasil",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1011,7 +1011,7 @@
 				"type": "Copy",
 				"dependsOn": [
 					{
-						"activity": "UroBrasil",
+						"activity": "Limpa Linhas Nulas - Visao Center",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1084,7 +1084,7 @@
 							},
 							{
 								"source": {
-									"name": "CONVÊNIO",
+									"name": "CONVENIO",
 									"type": "String",
 									"physicalType": "String"
 								},
@@ -1168,7 +1168,7 @@
 							},
 							{
 								"source": {
-									"name": "REFERÊNCIA",
+									"name": "REFERENCIA",
 									"type": "String",
 									"physicalType": "String"
 								},
@@ -1262,7 +1262,7 @@
 				"type": "Copy",
 				"dependsOn": [
 					{
-						"activity": "Visao Center",
+						"activity": "DexPara Convenios",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -1511,14 +1511,7 @@
 			{
 				"name": "Visao Center",
 				"type": "Copy",
-				"dependsOn": [
-					{
-						"activity": "DexPara Convenios",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
+				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -1586,7 +1579,7 @@
 							},
 							{
 								"source": {
-									"name": "CONVÊNIO",
+									"name": "CONVENIO",
 									"type": "String",
 									"physicalType": "String"
 								},
@@ -1670,7 +1663,7 @@
 							},
 							{
 								"source": {
-									"name": "REFERÊNCIA",
+									"name": "REFERENCIA",
 									"type": "String",
 									"physicalType": "String"
 								},
@@ -1762,7 +1755,14 @@
 			{
 				"name": "DexPara Convenios",
 				"type": "Copy",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "Limpa Linhas Nulas",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -1870,6 +1870,72 @@
 						}
 					}
 				]
+			},
+			{
+				"name": "Limpa Linhas Nulas",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "OtorrinoCenter",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "delete stg.tbl_cobranca_otorrinocenter\nwhere status is null AND SALDO is null"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Limpa Linhas Nulas - Visao Center",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Visao Center",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "delete stg.tbl_cobranca_visaocenter\nwhere status is null AND SALDO is null"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
 			}
 		],
 		"folder": {
