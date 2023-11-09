@@ -7,6 +7,10 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "OptyADF"
 		},
+		"SadallaSeniorProd_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'SadallaSeniorProd'"
+		},
 		"SadallaSeniorTeste_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'SadallaSeniorTeste'"
@@ -36,6 +40,23 @@
 		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
 	},
 	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/SadallaSeniorProd')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "Oracle",
+				"typeProperties": {
+					"connectionString": "[parameters('SadallaSeniorProd_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
 		{
 			"name": "[concat(parameters('factoryName'), '/SadallaSeniorTeste')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
@@ -7972,84 +7993,6 @@
 				},
 				"folder": {
 					"name": "Data Warehouse/Projesi"
-				},
-				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Repasse_Medico')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "AuxAtendimento",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "ParquetSource",
-								"storeSettings": {
-									"type": "AzureBlobStorageReadSettings",
-									"recursive": true,
-									"wildcardFileName": {
-										"value": "aux_atendimento.parquet",
-										"type": "Expression"
-									},
-									"enablePartitionDiscovery": false
-								},
-								"formatSettings": {
-									"type": "ParquetReadSettings"
-								}
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"preCopyScript": "TRUNCATE TABLE STG.auxatend_repasse",
-								"writeBehavior": "insert",
-								"sqlWriterUseTableLock": false,
-								"tableOption": "autoCreate",
-								"disableMetricsCollection": false
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"typeConversion": true,
-								"typeConversionSettings": {
-									"allowDataTruncation": true,
-									"treatBooleanAsNumber": false
-								}
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "Parquet_AuxAtend",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AuxAtend_Repasse",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"folder": {
-					"name": "Data Warehouse/Repasse Médico"
 				},
 				"annotations": []
 			},
