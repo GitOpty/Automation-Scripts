@@ -2778,6 +2778,80 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Agenda Plug in Play')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Agenda Naja",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT \n       EMP_COD AS 'CD_ESTABELECIMENTO',\n       EMP_NomFan AS 'NM_ESTABELECIMENTO',\n       SUBSTRING(CAST(CAST(AEX.AEX_Data AS DATE)AS VARCHAR(20)),1,10)+ ' ' + SUBSTRING(AEX.AEX_Hora,1,2) + ':' + SUBSTRING(AEX.AEX_Hora,3,2)  AS 'DT_AGENDAMENTO',\n       SUBSTRING(CAST(CAST(AGD.AGD_DATA AS DATE)AS VARCHAR(20)),1,10)+ ' ' + SUBSTRING(AGI.AGI_HoraSeq,1,2) + ':' + SUBSTRING(AGI.AGI_HoraSeq,3,2) AS 'DT_HORA_AGENDA',\n     PAC_COD AS CD_PACIENTE,\n       PAC_Nome AS 'NOME_PACIENTE',\n    --    AEX_NomePac AS 'NOME_PACIENTE_AGENDA',\n\n--   (SELECT Top 1 isnull(FNE_DDD, '')+' '+FNE_NumFon\n--    FROM FoneCont\n--    WHERE FNE_PAC_Cod = PAC_Cod\n--      AND FNE_Tipo = 3) AS 'CONTATO 1',\n\n--   (SELECT Top 1 isnull(FNE_DDD, '')+' '+FNE_NumFon\n--    FROM FoneCont\n--    WHERE FNE_PAC_Cod = PAC_Cod\n--      AND FNE_Tipo = 1) AS 'CONTATO 2',\n    --    (isnull(AEX_DDDFone1, '')+''+AEX_NumFone1) AS 'CONTATO 3',\n    --    (isnull(AEX_DDDFone2, '')+''+AEX_NumFone2) AS 'CONTATO 4',\n    --    Paciente.PAC_CPF AS 'CPF',\n       AGD_RAG_Cod AS 'CD_AGENDA',\n       RAG_Nome AS 'DS_AGENDA',\n       exe.MED_Nome AS 'DS_MEDICO_AGENDAMENTO',\n       exe.MED_Crm AS 'CRM_MEDICO',\n       MED.MED_Nome AS 'DS_MEDICO_AGENDA',\n       PAX_PRO_Cod AS 'CD_PROCEDIMENTO',\n       PRO_Nome AS 'DS_PROCEDIMENTO',\n       CON_COD AS 'CD_CONVENIO',\n       CON_NomeFant AS 'DS_CONVENIO',\n       AEX_Status AS 'COD_STATUS',\n       CASE\n           WHEN (AEX_Status) = 1 THEN 'Cancelado'\n           WHEN (AEX_Status) = 2 THEN 'Agendado'\n           WHEN (AEX_Status) = 3 THEN 'Confirmado'\n           WHEN (AEX_Status) = 4 THEN 'Atendido na recepção'\n           WHEN (AEX_Status) = 5 THEN 'Pré-Agendado'\n           WHEN (AEX_Status) = 6 THEN 'Pré-Atendido'\n           WHEN (AEX_Status) = 7 THEN 'Aguardando na recepção'\n           WHEN (AEX_Status) = 8 THEN 'Em Atendimento'\n           WHEN (AEX_Status) = 9 THEN 'Atendido pelo médico'\n           WHEN (AEX_Status) = 11 THEN 'Aguardando agendamento'\n           WHEN (AEX_Status) > 100 THEN\n                  (SELECT TOP 1 AST_Nome\n                   FROM AgendaStatus\n                   WHERE AST_Isn = AEX_Status)\n            WHEN PAC_NOME IS NULL THEN 'Livre'       \n       END AS 'STATUS',\n       Cad.USU_Nome AS 'USUARIO_CADASTRO',\n       Conf.USU_Nome AS 'USUARIO_CONFIRMACAO'\n    --    FGA_Dsc AS 'FATOGERADOR'\n\nFROM AGENDA AGD WITH(NOLOCK)\nINNER JOIN AgendaItem AGI WITH(NOLOCK) ON AGI.AGI_AGD_Isn = AGD.AGD_Isn \nLEFT JOIN ProdAgendaExame WITH (NOLOCK) ON AGI_Isn = PAX_AGI_Isn\nLEFT JOIN AgendaExame AEX WITH (NOLOCK) ON AEX_Isn = PAX_AEX_Isn\nLEFT JOIN Empresa WITH (NOLOCK) ON EMP_Cod = agd.AGD_EMP_Cod\nLEFT JOIN Convenio WITH (NOLOCK) ON CON_Cod = AEX_CON_Cod\nLEFT JOIN Paciente WITH (NOLOCK) ON PAC_Cod = AEX_PAC_Cod\nLEFT JOIN Medico Exe WITH (NOLOCK) ON exe.MED_Cod = PAX_MED_MedRea\nleft join medico med with(nolock) on med.MED_Cod = agd.AGD_MED_Cod\nLEFT JOIN RecursoAg WITH (NOLOCK) ON RAG_Cod = PAX_RAG_Cod\nLEFT JOIN Produto WITH (NOLOCK) ON PRO_Cod = PAX_PRO_Cod\nLEFT JOIN Usuario Cad WITH (NOLOCK) ON Cad.USU_Cod = AEX_USU_Cadastro\nLEFT JOIN Usuario Conf WITH (NOLOCK) ON Conf.USU_Cod = AEX_USU_Confirmacao\n-- LEFT JOIN FatoGeradorAgenda WITH (NOLOCK) ON FGA_Cod = AEX_FGA_Cod\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "NAJA_DW",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "dw",
+									"tabela_destino": "naja_bi_agenda"
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Agenda Nacional"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/NAJA_DW')]",
+				"[concat(variables('factoryId'), '/datasets/AZSQL_DINAMICO')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Agendamentos Livres')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -18605,7 +18679,7 @@
 									},
 									"manual": {
 										"type": "String",
-										"value": "N"
+										"value": "S"
 									},
 									"plataforma": {
 										"type": "String",
@@ -18613,7 +18687,7 @@
 									},
 									"COD_TABELA": {
 										"type": "String",
-										"value": null
+										"value": "160"
 									}
 								},
 								"queryTimeout": "02:00:00",
@@ -19472,7 +19546,7 @@
 											"type": "DatasetReference",
 											"parameters": {
 												"Schema_Destino": {
-													"value": "DW",
+													"value": "@item().NOME_SCHEMA_DESTINO",
 													"type": "Expression"
 												},
 												"Tabela_Destino": {
@@ -30063,7 +30137,7 @@
 						"type": "Copy",
 						"dependsOn": [
 							{
-								"activity": "Dr Osmar",
+								"activity": "Limpa Linhas Nulas - Oftalmax",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -30136,7 +30210,7 @@
 									},
 									{
 										"source": {
-											"name": "CONVÊNIO",
+											"name": "CONVENIO",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -30220,7 +30294,7 @@
 									},
 									{
 										"source": {
-											"name": "REFERÊNCIA",
+											"name": "REFERENCIA",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -30314,7 +30388,7 @@
 						"type": "Copy",
 						"dependsOn": [
 							{
-								"activity": "Oftalmax",
+								"activity": "Limpa Linhas Nulas - OrtoCity",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -30387,7 +30461,7 @@
 									},
 									{
 										"source": {
-											"name": "CONVÊNIO",
+											"name": "CONVENIO",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -30471,7 +30545,7 @@
 									},
 									{
 										"source": {
-											"name": "REFERÊNCIA",
+											"name": "REFERENCIA",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -30565,7 +30639,7 @@
 						"type": "Copy",
 						"dependsOn": [
 							{
-								"activity": "Ortocity",
+								"activity": "DexPara Convenios",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -30638,7 +30712,7 @@
 									},
 									{
 										"source": {
-											"name": "CONVÊNIO",
+											"name": "CONVENIO",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -30722,7 +30796,7 @@
 									},
 									{
 										"source": {
-											"name": "REFERÊNCIA",
+											"name": "REFERENCIA",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -30816,7 +30890,7 @@
 						"type": "Copy",
 						"dependsOn": [
 							{
-								"activity": "OtorrinoCenter",
+								"activity": "Limpa Linhas Nulas - CEOP",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -30889,7 +30963,7 @@
 									},
 									{
 										"source": {
-											"name": "CONVÊNIO",
+											"name": "CONVENIO",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -30973,7 +31047,7 @@
 									},
 									{
 										"source": {
-											"name": "REFERÊNCIA",
+											"name": "REFERENCIA",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -31067,7 +31141,7 @@
 						"type": "Copy",
 						"dependsOn": [
 							{
-								"activity": "UroBrasil",
+								"activity": "Limpa Linhas Nulas - Visao Center",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -31140,7 +31214,7 @@
 									},
 									{
 										"source": {
-											"name": "CONVÊNIO",
+											"name": "CONVENIO",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -31224,7 +31298,7 @@
 									},
 									{
 										"source": {
-											"name": "REFERÊNCIA",
+											"name": "REFERENCIA",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -31318,7 +31392,7 @@
 						"type": "Copy",
 						"dependsOn": [
 							{
-								"activity": "Visao Center",
+								"activity": "Limpa Linhas Nulas - Dr Osmar",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -31391,7 +31465,7 @@
 									},
 									{
 										"source": {
-											"name": "CONVÊNIO",
+											"name": "CONVENIO",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -31475,7 +31549,7 @@
 									},
 									{
 										"source": {
-											"name": "REFERÊNCIA",
+											"name": "REFERENCIA",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -31569,7 +31643,7 @@
 						"type": "Copy",
 						"dependsOn": [
 							{
-								"activity": "DexPara Convenios",
+								"activity": "Limpa Linhas Nulas - UroBrasil",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -31642,7 +31716,7 @@
 									},
 									{
 										"source": {
-											"name": "CONVÊNIO",
+											"name": "CONVENIO",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -31726,7 +31800,7 @@
 									},
 									{
 										"source": {
-											"name": "REFERÊNCIA",
+											"name": "REFERENCIA",
 											"type": "String",
 											"physicalType": "String"
 										},
@@ -31926,6 +32000,237 @@
 								}
 							}
 						]
+					},
+					{
+						"name": "Limpa Linhas Nulas - OtorrinoCenter",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "OtorrinoCenter",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "delete stg.tbl_cobranca_otorrinocenter\nwhere status is null AND SALDO is null"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Limpa Linhas Nulas - Visao Center",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Visao Center",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "delete stg.tbl_cobranca_visaocenter\nwhere status is null AND SALDO is null"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Limpa Linhas Nulas - UroBrasil",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "UroBrasil",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "delete stg.tbl_cobranca_urobrasil\nwhere status is null AND SALDO is null"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Limpa Linhas Nulas - Dr Osmar",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Dr Osmar",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "delete stg.tbl_cobranca_dr_osmar\nwhere status is null AND SALDO is null"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Limpa Linhas Nulas - OrtoCity",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Ortocity",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "delete stg.tbl_cobranca_ortocity\nwhere status is null AND SALDO is null"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Limpa Linhas Nulas - Oftalmax",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Oftalmax",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "delete stg.tbl_cobranca_oftalmax\nwhere status is null AND SALDO is null"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Limpa Linhas Nulas - CEOP",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Ceop",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "delete stg.tbl_cobranca_ceop\nwhere status is null AND SALDO is null"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
 					}
 				],
 				"policy": {
@@ -31938,7 +32243,8 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/DS_EXCEL_DIN')]",
-				"[concat(variables('factoryId'), '/datasets/AZSQL_DINAMICO')]"
+				"[concat(variables('factoryId'), '/datasets/AZSQL_DINAMICO')]",
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]"
 			]
 		},
 		{
@@ -86927,7 +87233,273 @@
 								"sqlWriterUseTableLock": false,
 								"disableMetricsCollection": false
 							},
-							"enableStaging": false
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "ESTABELECIMENTO"
+										},
+										"sink": {
+											"name": "ESTABELECIMENTO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_RECEBIMENTO"
+										},
+										"sink": {
+											"name": "DT_RECEBIMENTO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_RECEBIMENTO"
+										},
+										"sink": {
+											"name": "VL_RECEBIMENTO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_DESPESA_BANCARIA"
+										},
+										"sink": {
+											"name": "VL_DESPESA_BANCARIA",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_DEPOSITO"
+										},
+										"sink": {
+											"name": "VL_DEPOSITO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_ESTORNO"
+										},
+										"sink": {
+											"name": "VL_ESTORNO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_STATUS"
+										},
+										"sink": {
+											"name": "IE_STATUS",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_SEQ_CONTA_BANCO"
+										},
+										"sink": {
+											"name": "NR_SEQ_CONTA_BANCO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_SEQ_TRANS_FIN"
+										},
+										"sink": {
+											"name": "NR_SEQ_TRANS_FIN",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_LOTE_CONTABIL"
+										},
+										"sink": {
+											"name": "NR_LOTE_CONTABIL",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_FLUXO_CAIXA"
+										},
+										"sink": {
+											"name": "DT_FLUXO_CAIXA",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_LIBERACAO"
+										},
+										"sink": {
+											"name": "DT_LIBERACAO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_SEQ_COBRANCA"
+										},
+										"sink": {
+											"name": "NR_SEQ_COBRANCA",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_INTEGRAR_CB_FLUXO"
+										},
+										"sink": {
+											"name": "IE_INTEGRAR_CB_FLUXO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OBSERVACAO"
+										},
+										"sink": {
+											"name": "DS_OBSERVACAO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_SEQUENCIA"
+										},
+										"sink": {
+											"name": "NR_SEQUENCIA",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_TIPO_GLOSA"
+										},
+										"sink": {
+											"name": "IE_TIPO_GLOSA",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "NM_USUARIO"
+										},
+										"sink": {
+											"name": "NM_USUARIO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "NR_ADIANTAMENTO"
+										},
+										"sink": {
+											"name": "NR_ADIANTAMENTO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "TX_CAMBIAL"
+										},
+										"sink": {
+											"name": "TX_CAMBIAL",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOEDA_ORIGINAL"
+										},
+										"sink": {
+											"name": "VL_MOEDA_ORIGINAL",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CONVENIO"
+										},
+										"sink": {
+											"name": "CD_CONVENIO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "DT_ATUALIZACAO"
+										},
+										"sink": {
+											"name": "DT_ATUALIZACAO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "IE_DEDUZIR_ADIC"
+										},
+										"sink": {
+											"name": "IE_DEDUZIR_ADIC",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MOEDA"
+										},
+										"sink": {
+											"name": "CD_MOEDA",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_SALDO"
+										},
+										"sink": {
+											"name": "VL_SALDO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ADIANTAMENTO"
+										},
+										"sink": {
+											"name": "DS_ADIANTAMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MOEDA_ESTRANGEIRA"
+										},
+										"sink": {
+											"name": "DS_MOEDA_ESTRANGEIRA",
+											"type": "String"
+										}
+									}
+								]
+							}
 						},
 						"inputs": [
 							{
@@ -86962,9 +87534,10 @@
 						"typeProperties": {
 							"source": {
 								"type": "OracleSource",
-								"oracleReaderQuery": "SELECT /*+ first_rows(100) */ \n'1' as ESTABELECIMENTO,\n DT_RECEBIMENTO ,\n  VL_RECEBIMENTO ,\n  VL_DESPESA_BANCARIA ,\n  VL_DEPOSITO ,\n  IE_STATUS ,\n  NR_SEQ_CONTA_BANCO ,\n  NR_SEQ_TRANS_FIN ,\n  NR_LOTE_CONTABIL ,\n  DT_FLUXO_CAIXA ,\n  DT_LIBERACAO ,\n  NR_SEQ_COBRANCA ,\n  IE_INTEGRAR_CB_FLUXO ,\n  DS_OBSERVACAO ,\n  NR_SEQUENCIA ,\n  IE_TIPO_GLOSA ,\n  NM_USUARIO ,\n  NR_ADIANTAMENTO ,\n  TX_CAMBIAL ,\n  VL_MOEDA_ORIGINAL ,\n  CD_ESTABELECIMENTO ,\n  CD_CONVENIO ,\n  DT_ATUALIZACAO ,\n  IE_DEDUZIR_ADIC ,\n  CD_MOEDA,\n  to_number(vl_recebimento - FAST_OPS.obter_baixa_conrece(nr_sequencia)) VL_SALDO,\n  substr(FAST_OPS.obter_dados_convenio_receb(nr_sequencia,'AD'),1,255) DS_ADIANTAMENTO,\n  substr(FAST_OPS.obter_ds_moeda_estrangeira(cd_moeda),1,255) DS_MOEDA_ESTRANGEIRA\nFROM FAST_OPS.CONVENIO_RECEB a\nWHERE 1 = 1 \n",
+								"oracleReaderQuery": "SELECT /*+ first_rows(100) */ \n'1' as ESTABELECIMENTO,\n  DT_RECEBIMENTO ,\n  A.VL_RECEBIMENTO ,\n  A.VL_DESPESA_BANCARIA ,\n  A.VL_DEPOSITO ,\n  B.VL_ESTORNO,\n  A.IE_STATUS ,\n  A.NR_SEQ_CONTA_BANCO ,\n  A.NR_SEQ_TRANS_FIN ,\n  A.NR_LOTE_CONTABIL ,\n  A.DT_FLUXO_CAIXA ,\n  A.DT_LIBERACAO ,\n  A.NR_SEQ_COBRANCA ,\n  A.IE_INTEGRAR_CB_FLUXO ,\n  A.DS_OBSERVACAO ,\n  A.NR_SEQUENCIA ,\n  A.IE_TIPO_GLOSA ,\n  A.NM_USUARIO ,\n  A.NR_ADIANTAMENTO ,\n  A.TX_CAMBIAL ,\n  A.VL_MOEDA_ORIGINAL ,\n  A.CD_ESTABELECIMENTO ,\n  A.CD_CONVENIO ,\n  A.DT_ATUALIZACAO ,\n  A.IE_DEDUZIR_ADIC ,\n  A.CD_MOEDA,\n  to_number(A.vl_recebimento - FAST_OPS.obter_baixa_conrece(A.nr_sequencia)) VL_SALDO,\n  substr(FAST_OPS.obter_dados_convenio_receb(A.nr_sequencia,'AD'),1,255) DS_ADIANTAMENTO,\n  substr(FAST_OPS.obter_ds_moeda_estrangeira(A.cd_moeda),1,255) DS_MOEDA_ESTRANGEIRA\nFROM FAST_OPS.CONVENIO_RECEB a\nLEFT JOIN FAST_OPS.convenio_receb_estorno b on a.nr_sequencia = b.nr_seq_receb\nWHERE 1 = 1",
 								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
+								"convertDecimalToInteger": false,
+								"queryTimeout": "01:00:00"
 							},
 							"sink": {
 								"type": "AzureSqlSink",
@@ -111414,64 +111987,120 @@
 				"type": "OracleTable",
 				"structure": [
 					{
-						"name": "DATA_MOVIMENTO",
+						"name": "ESTABELECIMENTO",
 						"type": "String"
 					},
 					{
-						"name": "CD_LOCAL_ESTOQUE",
+						"name": "DT_RECEBIMENTO",
+						"type": "DateTime"
+					},
+					{
+						"name": "VL_RECEBIMENTO",
 						"type": "Decimal"
 					},
 					{
-						"name": "DS_LOCAL_ESTOQUE",
+						"name": "VL_DESPESA_BANCARIA",
+						"type": "Decimal"
+					},
+					{
+						"name": "VL_DEPOSITO",
+						"type": "Decimal"
+					},
+					{
+						"name": "VL_ESTORNO",
+						"type": "Decimal"
+					},
+					{
+						"name": "IE_STATUS",
 						"type": "String"
+					},
+					{
+						"name": "NR_SEQ_CONTA_BANCO",
+						"type": "Decimal"
+					},
+					{
+						"name": "NR_SEQ_TRANS_FIN",
+						"type": "Decimal"
+					},
+					{
+						"name": "NR_LOTE_CONTABIL",
+						"type": "Decimal"
+					},
+					{
+						"name": "DT_FLUXO_CAIXA",
+						"type": "DateTime"
+					},
+					{
+						"name": "DT_LIBERACAO",
+						"type": "DateTime"
+					},
+					{
+						"name": "NR_SEQ_COBRANCA",
+						"type": "Decimal"
+					},
+					{
+						"name": "IE_INTEGRAR_CB_FLUXO",
+						"type": "String"
+					},
+					{
+						"name": "DS_OBSERVACAO",
+						"type": "String"
+					},
+					{
+						"name": "NR_SEQUENCIA",
+						"type": "Decimal"
+					},
+					{
+						"name": "IE_TIPO_GLOSA",
+						"type": "String"
+					},
+					{
+						"name": "NM_USUARIO",
+						"type": "String"
+					},
+					{
+						"name": "NR_ADIANTAMENTO",
+						"type": "Decimal"
+					},
+					{
+						"name": "TX_CAMBIAL",
+						"type": "Decimal"
+					},
+					{
+						"name": "VL_MOEDA_ORIGINAL",
+						"type": "Decimal"
 					},
 					{
 						"name": "CD_ESTABELECIMENTO",
 						"type": "Decimal"
 					},
 					{
-						"name": "DS_ESTABELECIMENTO",
-						"type": "String"
-					},
-					{
-						"name": "CD_MATERIAL",
+						"name": "CD_CONVENIO",
 						"type": "Decimal"
 					},
 					{
-						"name": "DS_MATERIAL_SHORT",
+						"name": "DT_ATUALIZACAO",
+						"type": "DateTime"
+					},
+					{
+						"name": "IE_DEDUZIR_ADIC",
 						"type": "String"
 					},
 					{
-						"name": "CD_GRUPO_MATERIAL",
+						"name": "CD_MOEDA",
 						"type": "Decimal"
 					},
 					{
-						"name": "DS_GRUPO_MATERIAL",
-						"type": "String"
-					},
-					{
-						"name": "CD_CLASSE_MATERIAL",
-						"type": "Decimal"
-					},
-					{
-						"name": "DS_CLASSE_MATERIAL",
-						"type": "String"
-					},
-					{
-						"name": "CD_OPERACAO_ESTOQUE",
-						"type": "Decimal"
-					},
-					{
-						"name": "DS_OPERACAO",
-						"type": "String"
-					},
-					{
-						"name": "QT_MOVIMENTO",
+						"name": "VL_SALDO",
 						"type": "Double"
 					},
 					{
-						"name": "VL_MOVIMENTO",
-						"type": "Double"
+						"name": "DS_ADIANTAMENTO",
+						"type": "String"
+					},
+					{
+						"name": "DS_MOEDA_ESTRANGEIRA",
+						"type": "String"
 					}
 				],
 				"typeProperties": {}
@@ -116097,13 +116726,6 @@
 				"pipelines": [
 					{
 						"pipelineReference": {
-							"referenceName": "Databricks Five9 API",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
-					},
-					{
-						"pipelineReference": {
 							"referenceName": "Maqplan_Vendas",
 							"type": "PipelineReference"
 						},
@@ -116143,7 +116765,6 @@
 				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Databricks Five9 API')]",
 				"[concat(variables('factoryId'), '/pipelines/Maqplan_Vendas')]",
 				"[concat(variables('factoryId'), '/pipelines/ORTOCITY_CARGA_DINAMICA_ADF')]",
 				"[concat(variables('factoryId'), '/pipelines/Projesi_NPS')]"
@@ -116222,8 +116843,23 @@
 			"properties": {
 				"description": "Execução de pipelines as 05:00",
 				"annotations": [],
-				"runtimeState": "Stopped",
-				"pipelines": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "Databricks Five9 API",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					},
+					{
+						"pipelineReference": {
+							"referenceName": "INSTITUTO_DR_OSMAR",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
 				"type": "ScheduleTrigger",
 				"typeProperties": {
 					"recurrence": {
@@ -116242,7 +116878,10 @@
 					}
 				}
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/Databricks Five9 API')]",
+				"[concat(variables('factoryId'), '/pipelines/INSTITUTO_DR_OSMAR')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Daily 03h30')]",
@@ -116393,13 +117032,6 @@
 							"type": "PipelineReference"
 						},
 						"parameters": {}
-					},
-					{
-						"pipelineReference": {
-							"referenceName": "INSTITUTO_DR_OSMAR",
-							"type": "PipelineReference"
-						},
-						"parameters": {}
 					}
 				],
 				"type": "ScheduleTrigger",
@@ -116423,8 +117055,7 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/Agendas Projesi Testes')]",
 				"[concat(variables('factoryId'), '/pipelines/Carga Datamart TASY')]",
-				"[concat(variables('factoryId'), '/pipelines/Cirurgias e Exames Sadalla e HOB')]",
-				"[concat(variables('factoryId'), '/pipelines/INSTITUTO_DR_OSMAR')]"
+				"[concat(variables('factoryId'), '/pipelines/Cirurgias e Exames Sadalla e HOB')]"
 			]
 		},
 		{
