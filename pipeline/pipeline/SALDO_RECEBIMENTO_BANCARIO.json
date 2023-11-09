@@ -5,6 +5,8 @@
 			{
 				"name": "SADALLA - SALDO_RECEBIMENTO_BANCARIO",
 				"type": "Copy",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
 				"dependsOn": [
 					{
 						"activity": "TASY HTML - SALDO_RECEBIMENTO_BANCARIO_copy1",
@@ -335,9 +337,10 @@
 				"typeProperties": {
 					"source": {
 						"type": "OracleSource",
-						"oracleReaderQuery": "SELECT /*+ first_rows(100) */ \n'1' as ESTABELECIMENTO,\n DT_RECEBIMENTO ,\n  VL_RECEBIMENTO ,\n  VL_DESPESA_BANCARIA ,\n  VL_DEPOSITO ,\n  IE_STATUS ,\n  NR_SEQ_CONTA_BANCO ,\n  NR_SEQ_TRANS_FIN ,\n  NR_LOTE_CONTABIL ,\n  DT_FLUXO_CAIXA ,\n  DT_LIBERACAO ,\n  NR_SEQ_COBRANCA ,\n  IE_INTEGRAR_CB_FLUXO ,\n  DS_OBSERVACAO ,\n  NR_SEQUENCIA ,\n  IE_TIPO_GLOSA ,\n  NM_USUARIO ,\n  NR_ADIANTAMENTO ,\n  TX_CAMBIAL ,\n  VL_MOEDA_ORIGINAL ,\n  CD_ESTABELECIMENTO ,\n  CD_CONVENIO ,\n  DT_ATUALIZACAO ,\n  IE_DEDUZIR_ADIC ,\n  CD_MOEDA,\n  to_number(vl_recebimento - FAST_OPS.obter_baixa_conrece(nr_sequencia)) VL_SALDO,\n  substr(FAST_OPS.obter_dados_convenio_receb(nr_sequencia,'AD'),1,255) DS_ADIANTAMENTO,\n  substr(FAST_OPS.obter_ds_moeda_estrangeira(cd_moeda),1,255) DS_MOEDA_ESTRANGEIRA\nFROM FAST_OPS.CONVENIO_RECEB a\nWHERE 1 = 1 \n",
+						"oracleReaderQuery": "SELECT /*+ first_rows(100) */ \n'1' as ESTABELECIMENTO,\n  DT_RECEBIMENTO ,\n  A.VL_RECEBIMENTO ,\n  A.VL_DESPESA_BANCARIA ,\n  A.VL_DEPOSITO ,\n  B.VL_ESTORNO,\n  A.IE_STATUS ,\n  A.NR_SEQ_CONTA_BANCO ,\n  A.NR_SEQ_TRANS_FIN ,\n  A.NR_LOTE_CONTABIL ,\n  A.DT_FLUXO_CAIXA ,\n  A.DT_LIBERACAO ,\n  A.NR_SEQ_COBRANCA ,\n  A.IE_INTEGRAR_CB_FLUXO ,\n  A.DS_OBSERVACAO ,\n  A.NR_SEQUENCIA ,\n  A.IE_TIPO_GLOSA ,\n  A.NM_USUARIO ,\n  A.NR_ADIANTAMENTO ,\n  A.TX_CAMBIAL ,\n  A.VL_MOEDA_ORIGINAL ,\n  A.CD_ESTABELECIMENTO ,\n  A.CD_CONVENIO ,\n  A.DT_ATUALIZACAO ,\n  A.IE_DEDUZIR_ADIC ,\n  A.CD_MOEDA,\n  to_number(A.vl_recebimento - FAST_OPS.obter_baixa_conrece(A.nr_sequencia)) VL_SALDO,\n  substr(FAST_OPS.obter_dados_convenio_receb(A.nr_sequencia,'AD'),1,255) DS_ADIANTAMENTO,\n  substr(FAST_OPS.obter_ds_moeda_estrangeira(A.cd_moeda),1,255) DS_MOEDA_ESTRANGEIRA\nFROM FAST_OPS.CONVENIO_RECEB a\nLEFT JOIN FAST_OPS.convenio_receb_estorno b on a.nr_sequencia = b.nr_seq_receb\nWHERE 1 = 1",
 						"partitionOption": "None",
-						"queryTimeout": "02:00:00"
+						"convertDecimalToInteger": false,
+						"queryTimeout": "01:00:00"
 					},
 					"sink": {
 						"type": "AzureSqlSink",
