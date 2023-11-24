@@ -13,6 +13,1399 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/Geral Atendimentos Itabuna')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Alimenta as informações das tabelas:\n\nAtendimento_ Unidade \nAgendamento_Unidade\nUsuarios_Unidade\nConsultas_Unidade\nAgendas Unidade\n\nPara extração de relatórios do call center.",
+				"activities": [
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					},
+					{
+						"name": "Atendimento Itabuna",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "EXEC sp_getAzureAtendimentos 730",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Atendimento",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Agendamentos Itabuna",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT DISTINCT AGM_PAC AS CD_PESSOA_FISICA\n    , agm.agm_cnv_cod AS CD_CONVENIO\n    , emp_cgc AS CNPJ\n    , CONVERT(DATE, AGM_HINI) AS DATA_AGENDA\n    , LEFT(CONVERT(VARCHAR(12), agm_hini, 114), 8) AS HORA_AGENDA\n    , CASE AGM_ATEND\n        WHEN 'CRG'\n            THEN 'Cirurgia'\n        WHEN 'ASS'\n            THEN 'Consulta'\n        when '' then 'Consulta'\n        ELSE 'Outros'\n        END AS TIPO_AGENDA\n    , pac.PAC_NOME AS NM_PACIENTE\n    , smk.smk_nome AS DS_PROCEDIMENTO_PRINC\n    , ' ' DS_PROCEDIMENTO_ADIC\n    , 1 AS IE_QUANTIDADE\n    , USR_NOME AS NM_USUARIO\n    , psv_nome AS NM_MEDICO\n    , EMP_NOME_FANTASIA AS DS_UNIDADE\n    , EMP_NOME_FANTASIA AS MARCA\n    , CASE \n        WHEN AGM_STAT = 'A'\n            THEN 'Aberta'\n        WHEN AGM_STAT = 'E'\n            THEN 'Executada'\n        WHEN AGM_STAT = 'C'\n            THEN 'Cancelada'\n        WHEN AGM_STAT = 'B'\n            THEN 'Bloqueada'\n        END STATUS_AGENDA\n    , CONVERT(VARCHAR, convert(VARCHAR, AGM_OSM_SERIE) + convert(VARCHAR, AGM_OSM_NUM)) AS NR_ATENDIMENTO\n    , AGM_num AS NR_SEQUENCIA\n    , '' ID\n    , '' AS CD_PROCEDENCIA\n    , agm_proc AS DS_PROCEDENCIA\n    , agm.AGM_DTMRC AS DT_AGENDAMENTO\n    , CONVERT(INT, DAY(AGM_HINI)) AS DIA\n    , CONVERT(INT, MONTH(AGM_HINI)) AS MES\n    , CONVERT(INT, YEAR(AGM_HINI)) AS ANO\n    , ' ' DS_CLASSIFICACAO\n    , ' ' DS_AGRUPAMENTO\n    , agm.AGM_CANC_MOT_COD AS CD_MOTIVO_CANCELAMENTO\n    , agm.AGM_CANC_MOT_TIPO AS DS_MOTIVO_CANCELAMENTO\n    , agm_med AS CD_AGENDA,\n'Smart DH Itabuna' as BASE\nFROM agm\nINNER JOIN usr\n    ON (agm.agm_usr_login = usr.usr_login)\nINNER JOIN psv\n    ON (psv.psv_cod = agm.agm_med)\nINNER JOIN smk\n    ON (\n            agm_smk = smk_cod\n            AND agm_tpsmk = smk_tipo\n            )\nINNER JOIN pac\n    ON (pac_reg = agm_pac)\nINNER JOIN loc\n    ON (AGM_LOC = LOC_COD)\nINNER JOIN str\n    ON (LOC_STR = STR.STR_COD)\nINNER JOIN str str_e\n    ON (STR.STR_STR_COD = STR_E.STR_COD)\nINNER JOIN cnv\n    ON (CNV_COD = AGM_CNV_COD)\nLEFT OUTER JOIN ctf ct1\n    ON (\n            ct1.ctf_cod = smk_ctf\n            AND ct1.ctf_tipo = smk_tipo\n            )\nLEFT OUTER JOIN emp\n    ON emp_cod = str_e.str_emp_cod\n\nWHERE AGM_DTMRC BETWEEN GETDATE() - 730 AND GETDATE()",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Agendamento",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Usuarios Itabuna",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "select\nusr_login as NM_USUARIO,\nusr_nome as DS_USUARIO,\nusr_status as IE_SITUACAO,\nusr_dt_alter_senha as DT_ATUALIZACAO,\n'Dayhorc ITB' AS DS_UNIDADE,\n'13188370000146' as CNPJ,\n'DH' as MARCA,\n'Smart DH Itabuna' as BASE\nfrom usr",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Usuario",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Consulta Itabuna",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT\nRCL_SMM AS NR_SEQUENCIA,\nCONVERT(DATE,RCL_DTHR_ATUAL) AS DT_ATUALIZACAO,\nCONVERT(VARCHAR,RCL_DTHR_ATUAL,108) as HR_ATUALIZACAO,\n\nCONVERT(VARCHAR,CONVERT(VARCHAR,RCL_OSM_SERIE) + CONVERT(VARCHAR,RCL_OSM)) AS NR_ATENDIMENTO, \n\nRCL_MED AS CD_MEDICO,\nPSV_APEL AS NM_MEDICO,\n'' AS DS_RETORNO,\nCONVERT(VARCHAR,RCL_LAUDO_RTF) AS DS_CONDUTA,\nRCL_PAC AS CD_PESSOA_FISICA,\nCONVERT(VARCHAR,RCL_TXT) AS DS_DIAGNOSTICO,\n'Dayhorc ITB' AS DS_UNIDADE,\n'13188370000146' as CNPJ,\n'DH' AS MARCA,\n'Smart DH Itabuna' as BASE\nFROM RCL\nINNER JOIN PSV ON PSV_COD = RCL_MED\n\nWHERE RCL_DTHR_ATUAL BETWEEN GETDATE() - 730 AND GETDATE()",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"enableSkipIncompatibleRow": true
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Consulta",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Agendas Itabuna",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT distinct agd_med AS CD_AGENDA \n    , 0 AS DS_AGENDA\n    , 0 CD_TIPO_AGENDA\n    , psv_cod AS CD_PESSOA_FISICA\n    , emp_cgc AS CNPJ\n    , '' AS DS_AREA_ATUACAO\n    , 'A' AS IE_SITUACAO,\n'Smart DH Itabuna' as BASE\n    -- , CASE \n    --     WHEN (agd_dt_reconstr IS not NULL and AGD_DT_GERA is not null)\n    --         THEN agd_dt_reconstr\n    --     WHEN (agd_dt_reconstr IS NULL and AGD_DT_GERA is not null)\n    --         THEN agd_dt_gera\n    --     ELSE AGD_DT_GERA\n    --     END AS DT_ATUALIZACAO\nFROM agd\nINNER JOIN PSV\n    ON agd_med = psv_cod\nINNER JOIN loc\n    ON loc_cod = agd_loc\nINNER JOIN str\n    ON str_cod = loc_str\nLEFT OUTER JOIN str str_e\n    ON str_e.str_cod = str.str_str_cod\nLEFT OUTER JOIN emp\n    ON emp_cod = str_e.str_emp_cod",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Agenda",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Execute Pipeline Oftalmoclin",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Atendimento Itabuna",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Agendamentos Itabuna",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Usuarios Itabuna",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Consulta Itabuna",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Agendas Itabuna",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "Geral Atendimentos Oftalmoclin",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Atendimento"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-10-23T20:59:08Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Log Tabelas Tasy')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Busca SQL",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT * FROM ADF.CTR_AJUSTE_DW WHERE HABILITA_ETL = 'S'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Gera Dados Busca",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Busca SQL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "ExtracaoLog",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@replace(item().DS_SQL,'\"','')",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"convertDecimalToInteger": false,
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ORACLE_LOG",
+											"type": "DatasetReference",
+											"parameters": {
+												"nm_keyvault": {
+													"value": "@item().NOME_KEYVAULT",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DESTINO_TABELAS_ADF",
+											"type": "DatasetReference",
+											"parameters": {
+												"Schema_Destino": {
+													"value": "@item().NOME_SCHEMA_TABELA_DESTINO",
+													"type": "Expression"
+												},
+												"Tabela_Destino": {
+													"value": "@item().NOME_TABELA_DESTINO",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Insert Dados Stg Final",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Limpa Tabela Destino",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_TABELA_DESTINO,'.',item().NOME_TABELA_DESTINO)",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "AZ_SQL",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZSQL_DINAMICO",
+											"type": "DatasetReference",
+											"parameters": {
+												"schema_destino": {
+													"value": "@item().NOME_SCHEMA_TABELA_DESTINO",
+													"type": "Expression"
+												},
+												"tabela_destino": {
+													"value": "@concat('DW_AJ_',item().NOME_TABELA_ORIGEM,'_TASY')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Limpa Tabela Destino",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Gera Dados Busca",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Truncate Table",
+									"type": "Script",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": {
+													"value": "@concat('BEGIN TRY TRUNCATE TABLE stg.','DW_AJ',item().NOME_TABELA_ORIGEM,'_TASY END TRY BEGIN CATCH PRINT 0 END CATCH ')",
+													"type": "Expression"
+												}
+											}
+										],
+										"scriptBlockExecutionTimeout": "02:00:00"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Busca Tab Pipeline",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Insert Dados Stg Final",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT DISTINCT NOME_TABELA_ORIGEM FROM ADF.CTR_AJUSTE_DW\nWHERE HABILITA_ETL = 'S'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "LIsta Tabelas",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Busca Tab Pipeline",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca Tab Pipeline').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Switch1",
+									"type": "Switch",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"on": {
+											"value": "@item().NOME_TABELA_ORIGEM",
+											"type": "Expression"
+										},
+										"cases": [
+											{
+												"value": "PROCEDIMENTO_PACIENTE",
+												"activities": [
+													{
+														"name": "Execute Pipeline1",
+														"type": "ExecutePipeline",
+														"dependsOn": [],
+														"userProperties": [],
+														"typeProperties": {
+															"pipeline": {
+																"referenceName": "AJ_PROCEDIMENTO_PACIENTE",
+																"type": "PipelineReference"
+															},
+															"waitOnCompletion": true,
+															"parameters": {}
+														}
+													}
+												]
+											},
+											{
+												"value": "MATERIAL_ATEND_PACIENTE",
+												"activities": [
+													{
+														"name": "Execute Pipeline2",
+														"type": "ExecutePipeline",
+														"dependsOn": [],
+														"userProperties": [],
+														"typeProperties": {
+															"pipeline": {
+																"referenceName": "AJ_MATERIAL_ATEND_PACIENTE",
+																"type": "PipelineReference"
+															},
+															"waitOnCompletion": true,
+															"parameters": {}
+														}
+													}
+												]
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ODS Producao Diaria Tasy",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Raw data Producao Diaria Tasy",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "\nIF (EXISTS (SELECT *    \n                 FROM INFORMATION_SCHEMA.TABLES    \n                 WHERE TABLE_SCHEMA = 'stg'    \n                 AND  TABLE_NAME = 'TBL_ODS_AJ_TASY_PROD_DIARIA_TMP'))   \nBEGIN   \n    drop table stg.TBL_ODS_AJ_TASY_PROD_DIARIA_TMP   \nEND;   \n   \n   \nWITH PROC_PRINC AS(   \n    SELECT    \n         A.ESTABELECIMENTO   \n         ,A.NR_INTERNO_CONTA    \n         ,ROW_NUMBER()OVER(PARTITION BY A.ESTABELECIMENTO, A.NR_INTERNO_CONTA ORDER BY A.VL_ITEM DESC) ID_LINHA   \n         ,cast(A.CD_ITEM as varchar(50)) + '|' + CAST(A.IE_ORIGEM_PROCED AS VARCHAR(10)) AS CD_PROC_PRINCIPAL   \n    FROM STG.tbl_tasy_aj_producao_diaria_tmp A   \n   INNER JOIN VW_ESTRUTURA_PROCEDIMENTO EP ON EP.ESTABELECIMENTO = A.ESTABELECIMENTO AND EP.IE_ORIGEM_PROCED = A.IE_ORIGEM_PROCED AND ('P|'+CAST(EP.CD_PROCEDIMENTO AS VARCHAR(100))) = A.CD_ITEM AND EP.IE_MAT_MED_TX = 0    \n    -- WHERE A.NR_INTERNO_CONTA = 55505   \n    --     AND A.ESTABELECIMENTO = 1   \n)   \n   \nSELECT    \n       CAST(A.ESTABELECIMENTO AS VARCHAR(10))          AS ESTABELECIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_INTERNO_CONTA AS VARCHAR(50)) + '|' + CAST(A.NR_SEQUENCIA AS VARCHAR(100)) + '|' + CAST(A.CD_ITEM AS VARCHAR(50))  AS FK_NR_SEQUENCIA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_ESTABELECIMENTO AS VARCHAR(50))                                                                                    AS FK_CD_ESTABELECIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_PESSOA_FISICA AS VARCHAR(50))                                                                                      AS FK_CD_PESSOA_FISICA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_ATENDIMENTO AS VARCHAR(50))                                                                                        AS FK_NR_ATENDIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_INTERNO_CONTA AS VARCHAR(50))                                                                                      AS FK_NR_INTERNO_CONTA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_CONVENIO AS VARCHAR(50))                                                                                           AS FK_CD_CONVENIO   \n       ,A.DT_ENTRADA                                                       \n       ,A.DT_LANCAMENTO                                                    \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(X.CD_PROC_PRINCIPAL AS VARCHAR(50))                                                                                     AS FK_CD_PROC_PRINCIPAL   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_ITEM AS VARCHAR(100)) + '|' + CAST(A.IE_ORIGEM_PROCED AS VARCHAR(10))                                               AS FK_CD_ITEM   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_PROC_INTERNO AS VARCHAR(100))                                                                                      AS FK_NR_PROC_INTERNO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_ATENDIMENTO AS VARCHAR(100))                                                                                AS FK_CD_MEDICO_ATENDIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_SOL AS VARCHAR(100))                                                                                        AS FK_CD_MEDICO_SOLICITANTE   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_EXECUTANTE AS VARCHAR(100))                                                                                 AS FK_CD_MEDICO_EXECUTANTE   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_RESP AS VARCHAR(100))                                                                                       AS FK_CD_MEDICO_RESPONSAVEL   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_SETOR_ATENDIMENTO AS VARCHAR(100))     AS FK_CD_SETOR_ATENDIMENTO   \n     ,CAST(A.QTD_ITEM AS decimal)                                                                                                                                                 AS QT_ITEM   \n       ,CAST(A.QT_PROCEDIMENTO AS decimal)                                                                                                                                          AS QT_PROCEDIMENTO   \n       ,CAST(A.VL_ITEM  AS money)                                                                                                                                                   AS VL_ITEM      \n       ,CAST(A.VL_ITEM  AS money)                                                                                                                                                   AS VL_ITEM_AJUSTE      \n       ,CAST(A.VL_MEDICO  AS money)                                                                                                                                                 AS VL_HM    \n       ,1                                                                                                                                                                           AS IE_CONSIDERAR      \n       ,GETDATE()                                                                                                                                                                   AS DT_PROCESSAMENTO   \n   \nINTO STG.TBL_ODS_AJ_TASY_PROD_DIARIA_TMP   \nFROM STG.tbl_tasy_aj_producao_diaria_tmp A   \nLEFT JOIN PROC_PRINC X ON A.ESTABELECIMENTO = X.ESTABELECIMENTO AND A.NR_INTERNO_CONTA = X.NR_INTERNO_CONTA AND X.ID_LINHA = 1   \nWHERE A.NR_INTERNO_CONTA IS NOT NULL   \n   "
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Raw data Producao Diaria Tasy",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "LIsta Tabelas",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "IF (EXISTS (SELECT *        \n                 FROM INFORMATION_SCHEMA.TABLES        \n                 WHERE TABLE_SCHEMA = 'stg'        \n                 AND  TABLE_NAME = 'tbl_tasy_aj_producao_diaria_tmp'))       \nBEGIN       \n    drop table stg.tbl_tasy_aj_producao_diaria_tmp       \nEND;        \n        \nwith prod as (        \n        \nselect DISTINCT        \n    pp.estabelecimento,        \n    ap.CD_ESTABELECIMENTO,            \n    PP.nr_atendimento                                              as NR_ATENDIMENTO ,        \n    PP.nr_interno_conta                                            as NR_INTERNO_CONTA ,        \n    CP.cd_convenio_parametro                                       as CD_CONVENIO ,        \n    ap.cd_pessoa_fisica,                \n    AP.dt_entrada                                                  as DT_ENTRADA ,            \n    pp.cd_medico_executor                                          AS CD_MEDICO_EXECUTANTE ,        \n    ap.cd_medico_resp,        \n    ap.cd_medico_atendimento,        \n    pp.cd_medico_req                                               AS CD_MEDICO_SOL,        \n    pp.cd_setor_atendimento,        \n    'P|' + CAST(PP.NR_SEQUENCIA AS VARCHAR(255))                   AS NR_SEQUENCIA,        \n    cast(pp.DT_PROCEDIMENTO as date)                               as DT_LANCAMENTO,         \n    PP.IE_ORIGEM_PROCED                                            AS IE_ORIGEM_PROCED,            \n    'P|'+CAST(PP.cd_procedimento AS VARCHAR(100))                  as CD_ITEM,         \n    PP.NR_SEQ_PROC_INTERNO                                         AS NR_PROC_INTERNO,                \n    PP.qt_procedimento                                             as QTD_ITEM,    \n    CASE    \n        WHEN EP.IE_PACOTE = 0 AND EP.IE_MAT_MED_TX = 0 THEN 1    \n            ELSE 0    \n    END                                                            AS QT_PROCEDIMENTO,                 \n    PP.vl_medico                                                   as VL_MEDICO ,        \n    CASE   \n        WHEN EP.IE_PACOTE = 1 THEN 0   \n            ELSE PP.vl_procedimento   \n    END                                                            as VL_ITEM,        \n    PP.DT_ATUALIZACAO        \n        \n            \nfrom stg.aj_procedimento_paciente          pp           with(nolock)        \n-- inner join stg.tbl_procedimento             P            with(nolock)         on  ((pp.cd_procedimento = p.cd_procedimento)                      and (pp.ie_origem_proced = p.ie_origem_proced)) and pp.estabelecimento = p.ESTABELECIMENTO        \ninner join dw.tbl_atendimento_paciente     ap           with(nolock)         on ap.nr_atendimento = pp.nr_atendimento                           and ap.ESTABELECIMENTO = pp.ESTABELECIMENTO        \nleft join dw.tbl_conta_paciente            cp           with(nolock)         on cp.nr_interno_conta = pp.nr_interno_conta                       and cp.ESTABELECIMENTO = pp.ESTABELECIMENTO        \nOUTER APPLY(        \n        SELECT TOP 1 C.CD_AREA_PROCEDIMENTO, C.IE_PACOTE, C.IE_MAT_MED_TX, C.DS_AREA_PROCEDIMENTO        \n        FROM vw_estrutura_procedimento C        \n        WHERE C.CD_PROCEDIMENTO = PP.CD_PROCEDIMENTO AND C.IE_ORIGEM_PROCED = PP.IE_ORIGEM_PROCED AND C.ESTABELECIMENTO = PP.ESTABELECIMENTO AND C.IE_SITUACAO = 'A'         \n)ep        \n        \nwhere pp.cd_motivo_exc_conta is null        \n        and CP.ie_cancelamento is null        \n        and CP.nr_interno_conta is not null        \n        or (--(ep.CD_AREA_PROCEDIMENTO <> 10 and PP.ESTABELECIMENTO = 1)  OR     \n            (PP.ESTABELECIMENTO = 2 AND PP.NR_PRESCRICAO IS NOT NULL))  \n        -- and cast(pp.DT_ATUALIZACAO as date) >= @DT_PROCESSAMENTO   \n        -- and cp.ESTABELECIMENTO = 1        \n        -- and cp.NR_INTERNO_CONTA = 1305983        \n        -- and pp.nr_atendimento = 938011 and pp.ESTABELECIMENTO = '1'        \n        -- AND PP.NR_ATENDIMENTO = 6324040 AND PP.ESTABELECIMENTO = '2'        \n        -- AND PP.NR_ATENDIMENTO = 6322484 AND PP.ESTABELECIMENTO = '2'        \n                \n    --and obter_area_procedimento(a.cd_procedimento  a.ie_origem_proced) <> 10        \n        \n         \n        \nunion all        \n        \n         \n     \nselect         \n    map.estabelecimento,        \n    ap.cd_estabelecimento,        \n    map.nr_atendimento                                           as NR_ATENDIMENTO ,        \n    map.nr_interno_conta                                         as NR_INTERNO_CONTA,         \n    cp.cd_convenio_parametro                                     as CD_CONVENIO ,        \n    ap.cd_pessoa_fisica,         \n     ap.dt_entrada                                               as DT_ENTRADA ,        \n    0                                                            AS CD_MEDICO_EXECUTANTE,        \n    ap.cd_medico_resp,        \n    ap.cd_medico_atendimento,        \n    0 as CD_MEDICO_SOL,        \n    map.CD_SETOR_ATENDIMENTO,        \n    'M|' + CAST(MAP.NR_SEQUENCIA AS VARCHAR(255)) AS NR_SEQUENCIA,        \n    cast(map.dt_atendimento as date)                            as DT_LANCAMENTO ,        \n    NULL                                                        AS IE_ORIGEM_PROCED,        \n    'M|'+ CAST(map.cd_material AS VARCHAR(100))                 as CD_ITEM ,        \n    0                                                           AS NR_PROC_INTERNO,         \n    map.qt_material                                             as QT_ITEM ,    \n    0                                                           AS QT_PROCEDIMENTO,        \n    0                                                           as VL_MEDICO ,        \n    map.vl_material                                             as VL_ITEM,         \n    MAP.DT_ATUALIZACAO        \n        \nfrom stg.aj_material_atend_paciente            map          with(nolock)          \nleft join dw.tbl_atendimento_paciente           ap           with(nolock)          on ap.nr_atendimento = map.nr_atendimento                             and ap.ESTABELECIMENTO = map.ESTABELECIMENTO        \nleft join dw.tbl_conta_paciente                 cp           with(nolock)          on cp.nr_interno_conta = map.nr_interno_conta                         and cp.ESTABELECIMENTO = map.ESTABELECIMENTO        \n        \n        \nwhere map.cd_motivo_exc_conta is null        \nand cp.ie_cancelamento is null        \nand cp.nr_interno_conta is not null     \nAND ((MAP.ESTABELECIMENTO = 1 AND MAP.NR_PRESCRICAO IS NOT NULL OR MAP.NR_PRESCRICAO IS NULL) OR (MAP.ESTABELECIMENTO = 2 AND MAP.NR_PRESCRICAO IS NOT NULL))  \n-- and cast(map.DT_ATUALIZACAO as date) >= @DT_PROCESSAMENTO              \n-- and cp.estabelecimento = 1        \n-- and cp.nr_interno_conta = 1305983        \n-- and map.nr_atendimento = 938011 and map.ESTABELECIMENTO = '1'        \n-- AND MAP.NR_ATENDIMENTO = 6324040 AND MAP.ESTABELECIMENTO = '2'        \n-- AND MAP.NR_ATENDIMENTO = 6322484 AND MAP.ESTABELECIMENTO = '2'        \n        \n)        \n        \nselect *        \nINTO stg.tbl_tasy_aj_producao_diaria_tmp       \nfrom prod  \n\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Ajuste DW Tasy/Antigo"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Log Tabelas Tasy_antigo')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Busca SQL",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT * FROM ADF.CTR_AJUSTE_DW WHERE HABILITA_ETL = 'S'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "Gera Dados Busca",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Busca SQL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "ExtracaoLog",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "OracleSource",
+											"oracleReaderQuery": {
+												"value": "@replace(item().DS_SQL,'\"','')",
+												"type": "Expression"
+											},
+											"partitionOption": "None",
+											"convertDecimalToInteger": false,
+											"queryTimeout": "02:00:00"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ORACLE_LOG",
+											"type": "DatasetReference",
+											"parameters": {
+												"nm_keyvault": {
+													"value": "@item().NOME_KEYVAULT",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DESTINO_TABELAS_ADF",
+											"type": "DatasetReference",
+											"parameters": {
+												"Schema_Destino": {
+													"value": "@item().NOME_SCHEMA_TABELA_DESTINO",
+													"type": "Expression"
+												},
+												"Tabela_Destino": {
+													"value": "@item().NOME_TABELA_DESTINO",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Insert Dados Stg Final",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Limpa Tabela Destino",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Copy data1",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@concat('SELECT * FROM ',item().NOME_SCHEMA_TABELA_DESTINO,'.',item().NOME_TABELA_DESTINO)",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "AZ_SQL",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZSQL_DINAMICO",
+											"type": "DatasetReference",
+											"parameters": {
+												"schema_destino": {
+													"value": "@item().NOME_SCHEMA_TABELA_DESTINO",
+													"type": "Expression"
+												},
+												"tabela_destino": {
+													"value": "@concat('DW_AJ_',item().NOME_TABELA_ORIGEM,'_TASY')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "Limpa Tabela Destino",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Gera Dados Busca",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca SQL').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Truncate Table",
+									"type": "Script",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": {
+													"value": "@concat('BEGIN TRY TRUNCATE TABLE stg.','DW_AJ',item().NOME_TABELA_ORIGEM,'_TASY END TRY BEGIN CATCH PRINT 0 END CATCH ')",
+													"type": "Expression"
+												}
+											}
+										],
+										"scriptBlockExecutionTimeout": "02:00:00"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Busca Tab Pipeline",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "Insert Dados Stg Final",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "SELECT DISTINCT NOME_TABELA_ORIGEM FROM ADF.CTR_AJUSTE_DW\nWHERE HABILITA_ETL = 'S'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "AZ_SQL",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "LIsta Tabelas",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Busca Tab Pipeline",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Busca Tab Pipeline').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Switch1",
+									"type": "Switch",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"on": {
+											"value": "@item().NOME_TABELA_ORIGEM",
+											"type": "Expression"
+										},
+										"cases": [
+											{
+												"value": "PROCEDIMENTO_PACIENTE",
+												"activities": [
+													{
+														"name": "Execute Pipeline1",
+														"type": "ExecutePipeline",
+														"dependsOn": [],
+														"userProperties": [],
+														"typeProperties": {
+															"pipeline": {
+																"referenceName": "AJ_PROCEDIMENTO_PACIENTE",
+																"type": "PipelineReference"
+															},
+															"waitOnCompletion": true,
+															"parameters": {}
+														}
+													}
+												]
+											},
+											{
+												"value": "MATERIAL_ATEND_PACIENTE",
+												"activities": [
+													{
+														"name": "Execute Pipeline2",
+														"type": "ExecutePipeline",
+														"dependsOn": [],
+														"userProperties": [],
+														"typeProperties": {
+															"pipeline": {
+																"referenceName": "AJ_MATERIAL_ATEND_PACIENTE",
+																"type": "PipelineReference"
+															},
+															"waitOnCompletion": true,
+															"parameters": {}
+														}
+													}
+												]
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "ODS Producao Diaria Tasy",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Raw data Producao Diaria Tasy",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "\nIF (EXISTS (SELECT *    \n                 FROM INFORMATION_SCHEMA.TABLES    \n                 WHERE TABLE_SCHEMA = 'stg'    \n                 AND  TABLE_NAME = 'TBL_ODS_AJ_TASY_PROD_DIARIA_TMP'))   \nBEGIN   \n    drop table stg.TBL_ODS_AJ_TASY_PROD_DIARIA_TMP   \nEND;   \n   \n   \nWITH PROC_PRINC AS(   \n    SELECT    \n         A.ESTABELECIMENTO   \n         ,A.NR_INTERNO_CONTA    \n         ,ROW_NUMBER()OVER(PARTITION BY A.ESTABELECIMENTO, A.NR_INTERNO_CONTA ORDER BY A.VL_ITEM DESC) ID_LINHA   \n         ,cast(A.CD_ITEM as varchar(50)) + '|' + CAST(A.IE_ORIGEM_PROCED AS VARCHAR(10)) AS CD_PROC_PRINCIPAL   \n    FROM STG.tbl_tasy_aj_producao_diaria_tmp A   \n   INNER JOIN VW_ESTRUTURA_PROCEDIMENTO EP ON EP.ESTABELECIMENTO = A.ESTABELECIMENTO AND EP.IE_ORIGEM_PROCED = A.IE_ORIGEM_PROCED AND ('P|'+CAST(EP.CD_PROCEDIMENTO AS VARCHAR(100))) = A.CD_ITEM AND EP.IE_MAT_MED_TX = 0    \n    -- WHERE A.NR_INTERNO_CONTA = 55505   \n    --     AND A.ESTABELECIMENTO = 1   \n)   \n   \nSELECT    \n       CAST(A.ESTABELECIMENTO AS VARCHAR(10))          AS ESTABELECIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_INTERNO_CONTA AS VARCHAR(50)) + '|' + CAST(A.NR_SEQUENCIA AS VARCHAR(100)) + '|' + CAST(A.CD_ITEM AS VARCHAR(50))  AS FK_NR_SEQUENCIA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_ESTABELECIMENTO AS VARCHAR(50))                                                                                    AS FK_CD_ESTABELECIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_PESSOA_FISICA AS VARCHAR(50))                                                                                      AS FK_CD_PESSOA_FISICA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_ATENDIMENTO AS VARCHAR(50))                                                                                        AS FK_NR_ATENDIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_INTERNO_CONTA AS VARCHAR(50))                                                                                      AS FK_NR_INTERNO_CONTA   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_CONVENIO AS VARCHAR(50))                                                                                           AS FK_CD_CONVENIO   \n       ,A.DT_ENTRADA                                                       \n       ,A.DT_LANCAMENTO                                                    \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(X.CD_PROC_PRINCIPAL AS VARCHAR(50))                                                                                     AS FK_CD_PROC_PRINCIPAL   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_ITEM AS VARCHAR(100)) + '|' + CAST(A.IE_ORIGEM_PROCED AS VARCHAR(10))                                               AS FK_CD_ITEM   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.NR_PROC_INTERNO AS VARCHAR(100))                                                                                      AS FK_NR_PROC_INTERNO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_ATENDIMENTO AS VARCHAR(100))                                                                                AS FK_CD_MEDICO_ATENDIMENTO   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_SOL AS VARCHAR(100))                                                                                        AS FK_CD_MEDICO_SOLICITANTE   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_EXECUTANTE AS VARCHAR(100))                                                                                 AS FK_CD_MEDICO_EXECUTANTE   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_MEDICO_RESP AS VARCHAR(100))                                                                                       AS FK_CD_MEDICO_RESPONSAVEL   \n       ,CAST(A.ESTABELECIMENTO AS VARCHAR(10)) + '|' + CAST(A.CD_SETOR_ATENDIMENTO AS VARCHAR(100))     AS FK_CD_SETOR_ATENDIMENTO   \n     ,CAST(A.QTD_ITEM AS decimal)                                                                                                                                                 AS QT_ITEM   \n       ,CAST(A.QT_PROCEDIMENTO AS decimal)                                                                                                                                          AS QT_PROCEDIMENTO   \n       ,CAST(A.VL_ITEM  AS money)                                                                                                                                                   AS VL_ITEM      \n       ,CAST(A.VL_ITEM  AS money)                                                                                                                                                   AS VL_ITEM_AJUSTE      \n       ,CAST(A.VL_MEDICO  AS money)                                                                                                                                                 AS VL_HM    \n       ,1                                                                                                                                                                           AS IE_CONSIDERAR      \n       ,GETDATE()                                                                                                                                                                   AS DT_PROCESSAMENTO   \n   \nINTO STG.TBL_ODS_AJ_TASY_PROD_DIARIA_TMP   \nFROM STG.tbl_tasy_aj_producao_diaria_tmp A   \nLEFT JOIN PROC_PRINC X ON A.ESTABELECIMENTO = X.ESTABELECIMENTO AND A.NR_INTERNO_CONTA = X.NR_INTERNO_CONTA AND X.ID_LINHA = 1   \nWHERE A.NR_INTERNO_CONTA IS NOT NULL   \n   "
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Raw data Producao Diaria Tasy",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "LIsta Tabelas",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "IF (EXISTS (SELECT *        \n                 FROM INFORMATION_SCHEMA.TABLES        \n                 WHERE TABLE_SCHEMA = 'stg'        \n                 AND  TABLE_NAME = 'tbl_tasy_aj_producao_diaria_tmp'))       \nBEGIN       \n    drop table stg.tbl_tasy_aj_producao_diaria_tmp       \nEND;        \n        \nwith prod as (        \n        \nselect DISTINCT        \n    pp.estabelecimento,        \n    ap.CD_ESTABELECIMENTO,            \n    PP.nr_atendimento                                              as NR_ATENDIMENTO ,        \n    PP.nr_interno_conta                                            as NR_INTERNO_CONTA ,        \n    CP.cd_convenio_parametro                                       as CD_CONVENIO ,        \n    ap.cd_pessoa_fisica,                \n    AP.dt_entrada                                                  as DT_ENTRADA ,            \n    pp.cd_medico_executor                                          AS CD_MEDICO_EXECUTANTE ,        \n    ap.cd_medico_resp,        \n    ap.cd_medico_atendimento,        \n    pp.cd_medico_req                                               AS CD_MEDICO_SOL,        \n    pp.cd_setor_atendimento,        \n    'P|' + CAST(PP.NR_SEQUENCIA AS VARCHAR(255))                   AS NR_SEQUENCIA,        \n    cast(pp.DT_PROCEDIMENTO as date)                               as DT_LANCAMENTO,         \n    PP.IE_ORIGEM_PROCED                                            AS IE_ORIGEM_PROCED,            \n    'P|'+CAST(PP.cd_procedimento AS VARCHAR(100))                  as CD_ITEM,         \n    PP.NR_SEQ_PROC_INTERNO                                         AS NR_PROC_INTERNO,                \n    PP.qt_procedimento                                             as QTD_ITEM,    \n    CASE    \n        WHEN EP.IE_PACOTE = 0 AND EP.IE_MAT_MED_TX = 0 THEN 1    \n            ELSE 0    \n    END                                                            AS QT_PROCEDIMENTO,                 \n    PP.vl_medico                                                   as VL_MEDICO ,        \n    CASE   \n        WHEN EP.IE_PACOTE = 1 THEN 0   \n            ELSE PP.vl_procedimento   \n    END                                                            as VL_ITEM,        \n    PP.DT_ATUALIZACAO        \n        \n            \nfrom stg.aj_procedimento_paciente          pp           with(nolock)        \n-- inner join stg.tbl_procedimento             P            with(nolock)         on  ((pp.cd_procedimento = p.cd_procedimento)                      and (pp.ie_origem_proced = p.ie_origem_proced)) and pp.estabelecimento = p.ESTABELECIMENTO        \ninner join dw.tbl_atendimento_paciente     ap           with(nolock)         on ap.nr_atendimento = pp.nr_atendimento                           and ap.ESTABELECIMENTO = pp.ESTABELECIMENTO        \nleft join dw.tbl_conta_paciente            cp           with(nolock)         on cp.nr_interno_conta = pp.nr_interno_conta                       and cp.ESTABELECIMENTO = pp.ESTABELECIMENTO        \nOUTER APPLY(        \n        SELECT TOP 1 C.CD_AREA_PROCEDIMENTO, C.IE_PACOTE, C.IE_MAT_MED_TX, C.DS_AREA_PROCEDIMENTO        \n        FROM vw_estrutura_procedimento C        \n        WHERE C.CD_PROCEDIMENTO = PP.CD_PROCEDIMENTO AND C.IE_ORIGEM_PROCED = PP.IE_ORIGEM_PROCED AND C.ESTABELECIMENTO = PP.ESTABELECIMENTO AND C.IE_SITUACAO = 'A'         \n)ep        \n        \nwhere pp.cd_motivo_exc_conta is null        \n        and CP.ie_cancelamento is null        \n        and CP.nr_interno_conta is not null        \n        or (--(ep.CD_AREA_PROCEDIMENTO <> 10 and PP.ESTABELECIMENTO = 1)  OR     \n            (PP.ESTABELECIMENTO = 2 AND PP.NR_PRESCRICAO IS NOT NULL))  \n        -- and cast(pp.DT_ATUALIZACAO as date) >= @DT_PROCESSAMENTO   \n        -- and cp.ESTABELECIMENTO = 1        \n        -- and cp.NR_INTERNO_CONTA = 1305983        \n        -- and pp.nr_atendimento = 938011 and pp.ESTABELECIMENTO = '1'        \n        -- AND PP.NR_ATENDIMENTO = 6324040 AND PP.ESTABELECIMENTO = '2'        \n        -- AND PP.NR_ATENDIMENTO = 6322484 AND PP.ESTABELECIMENTO = '2'        \n                \n    --and obter_area_procedimento(a.cd_procedimento  a.ie_origem_proced) <> 10        \n        \n         \n        \nunion all        \n        \n         \n     \nselect         \n    map.estabelecimento,        \n    ap.cd_estabelecimento,        \n    map.nr_atendimento                                           as NR_ATENDIMENTO ,        \n    map.nr_interno_conta                                         as NR_INTERNO_CONTA,         \n    cp.cd_convenio_parametro                                     as CD_CONVENIO ,        \n    ap.cd_pessoa_fisica,         \n     ap.dt_entrada                                               as DT_ENTRADA ,        \n    0                                                            AS CD_MEDICO_EXECUTANTE,        \n    ap.cd_medico_resp,        \n    ap.cd_medico_atendimento,        \n    0 as CD_MEDICO_SOL,        \n    map.CD_SETOR_ATENDIMENTO,        \n    'M|' + CAST(MAP.NR_SEQUENCIA AS VARCHAR(255)) AS NR_SEQUENCIA,        \n    cast(map.dt_atendimento as date)                            as DT_LANCAMENTO ,        \n    NULL                                                        AS IE_ORIGEM_PROCED,        \n    'M|'+ CAST(map.cd_material AS VARCHAR(100))                 as CD_ITEM ,        \n    0                                                           AS NR_PROC_INTERNO,         \n    map.qt_material                                             as QT_ITEM ,    \n    0                                                           AS QT_PROCEDIMENTO,        \n    0                                                           as VL_MEDICO ,        \n    map.vl_material                                             as VL_ITEM,         \n    MAP.DT_ATUALIZACAO        \n        \nfrom stg.aj_material_atend_paciente            map          with(nolock)          \nleft join dw.tbl_atendimento_paciente           ap           with(nolock)          on ap.nr_atendimento = map.nr_atendimento                             and ap.ESTABELECIMENTO = map.ESTABELECIMENTO        \nleft join dw.tbl_conta_paciente                 cp           with(nolock)          on cp.nr_interno_conta = map.nr_interno_conta                         and cp.ESTABELECIMENTO = map.ESTABELECIMENTO        \n        \n        \nwhere map.cd_motivo_exc_conta is null        \nand cp.ie_cancelamento is null        \nand cp.nr_interno_conta is not null     \nAND ((MAP.ESTABELECIMENTO = 1 AND MAP.NR_PRESCRICAO IS NOT NULL OR MAP.NR_PRESCRICAO IS NULL) OR (MAP.ESTABELECIMENTO = 2 AND MAP.NR_PRESCRICAO IS NOT NULL))  \n-- and cast(map.DT_ATUALIZACAO as date) >= @DT_PROCESSAMENTO              \n-- and cp.estabelecimento = 1        \n-- and cp.nr_interno_conta = 1305983        \n-- and map.nr_atendimento = 938011 and map.ESTABELECIMENTO = '1'        \n-- AND MAP.NR_ATENDIMENTO = 6324040 AND MAP.ESTABELECIMENTO = '2'        \n-- AND MAP.NR_ATENDIMENTO = 6322484 AND MAP.ESTABELECIMENTO = '2'        \n        \n)        \n        \nselect *        \nINTO stg.tbl_tasy_aj_producao_diaria_tmp       \nfrom prod  \n\n"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Ajuste DW Tasy/Antigo"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Producao Medica Oftalmoclin')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Pipeline desenvolvido para extração de informações de produção medica das unidades com o sistema Tasy e Smart.",
+				"activities": [
+					{
+						"name": "Wait1",
+						"type": "Wait",
+						"dependsOn": [],
+						"userProperties": [],
+						"typeProperties": {
+							"waitTimeInSeconds": 1
+						}
+					},
+					{
+						"name": "Producao Procedimentos Oftamoclin",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "select \n        'Oftalmoclin' as BASE\n        ,EMP_CGC as CNPJ\n        ,gcc.gcc_descr as MARCA\n        ,smm_dthr_alter as DT_ATUALIZACAO \n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_ATENDIMENTO --duvida\n        ,osm_dthr as DT_ENTRADA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_INTERNO_CONTA --duvida\n        ,osm_pac as CD_PESSOA_FISICA\n        ,pac_nasc as DT_NASCIMENTO\n        ,pac_numcpf as NR_CPF\n        ,pac_sexo as IE_SEXO\n        ,pac_cep as NR_CEP\n        ,case \n            when isnumeric(pac_cid) = 1 then (select cde_nome from cde where cde_cod = pac_cid)\n        else pac_cid end as DS_CIDADE\n        ,pac_nome as DS_PESSOA_FISICA\n        ,cnv_cod as CD_CONVENIO\n        ,cnv_nome as DS_CONVENIO\n        ,psv_exe.psv_cod as CD_MEDICO_EXECUTOR\n        ,psv_exe.psv_apel as DS_MEDICO_EXECUTOR\n        ,psv_req.psv_cod as CD_MEDICO_REQUISITANTE\n        ,psv_req.psv_apel as DS_MEDICO_REQUISITANTE\n        ,isnull(tab_padrao,0) as IE_ORIGEM_PROCEDIMENTO\n        ,smm_cod as CD_PROCEDIMENTO\n        ,smk_rot as DS_PROCEDIMENTO\n        ,case ctf_categ \n            when 'C' then 'Consulta'\n            when 'E' then 'Exames'\n            when 'R' then 'Cirurgia'\n            when 'T' then 'Taxas'\n            when 'A' then 'Terapia'\n            when 'O' then 'Outras'\n            when 'M' then 'Materiais'\n            when 'S' then 'Materiais Especiais'\n            when 'N' then 'Medicamentos'\n            when 'G' then 'Gases'\n            when 'O' then 'Outros'\n        end as DS_CLASSIFICACAO\n        ,smm_qt as QT_PROCEDIMENTO\n        ,smm_vlr + isnull(smm_ajuste_vlr,0) as VL_PROCEDIMENTO\n        ,case \n            when smm_fat_serie is not null then 2\n        else 1 end AS IE_STATUS_ACERTO\n        ,case \n            when smm_fat_serie is not null then 'Definitivo'\n        else 'Provisório' end as STATUS_CONTA\n        ,0 as CD_TUSS,\n        0 as NR_SEQ_PROC_INTERNO\n    from \n        osm\n        inner join smm on (smm_osm_serie = osm_serie and smm_osm = osm_num)\n        inner join str str_osm on (str_osm.str_cod = osm_str)\n        inner join str str_emp on (str_osm.str_str_cod = str_emp.str_cod)\n        inner join pac on (pac_reg = osm_pac)\n        inner join cnv on (cnv_cod = osm_cnv)\n        inner join psv psv_exe on (psv_exe.psv_cod = smm_med)\n        inner join psv psv_req on (psv_req.psv_cod = smm_med)\n        inner join smk on (smk_cod = smm_cod and smk_tipo = smm_tpcod)\n        inner join ctf on (ctf_cod = smk_ctf and ctf_tipo = smk_tipo)\n        \n        inner join emp ON (emp_cod = str_emp.str_emp_cod)\n        inner join gcc ON (gcc_str_cod = str_emp.str_cod)\n\n        left outer join tab on (tab_cod = smm_tab_cod)\n        \n    where \n        1 = 1\n        and convert(varchar(10), osm_dthr, 103) = convert(varchar(10), getdate(), 103)\nand osm_dthr between GETDATE() - 730 and GETDATE()",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Unidade_Producao_Medica",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Convenios",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "select cnv_cod AS CD_CONVENIO, cnv.cnv_nome AS DS_CONVENIO, gcc.gcc_cod AS CD_ESTABELECIMENTO, emp.emp_cgc AS CNPJ\nfrom cnv,\n     gcc,\n     str,\n     emp\nwhere gcc.gcc_str_cod = str_cod\nand str_emp_cod = emp_cod\nand emp_cgc <> '-'\nand cnv_cod <> '999'\nand cnv_stat = 'A'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Convenio",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Setor",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Wait1",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT STR_COD AS CD_SETOR_ATENDIMENTO, \nSTR_NOME AS DS_SETOR_ATENDIMENTO, \nEMP_CGC AS CNPJ\nFROM STR, EMP\nWHERE STR_EMP_COD = EMP_COD\nAND EMP_CGC <> '-'\nAND STR_COD <> '999'",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_TB_Setor",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Execute Sadalla",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "Producao Procedimentos Oftamoclin",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Convenios",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "Setor",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "Producao Medica Sadalla",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Produção Médica CSI"
+				},
+				"annotations": [],
+				"lastPublishTime": "2020-02-10T20:56:26Z"
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Daily 0100 AM')]",
 			"type": "Microsoft.DataFactory/factories/triggers",
 			"apiVersion": "2018-06-01",
@@ -628,7 +2021,9 @@
 				"annotations": [],
 				"lastPublishTime": "2020-02-10T13:01:25Z"
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/Geral Atendimentos Itabuna')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Producao Medica Itaigara')]",
@@ -830,7 +2225,9 @@
 				"annotations": [],
 				"lastPublishTime": "2020-02-10T20:56:26Z"
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/Producao Medica Oftalmoclin')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Daily 00 AM')]",
@@ -2271,667 +3668,6 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/Geral Atendimentos HOSL')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Producao Medica INOB')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Pipeline desenvolvido para extração de informações de produção medica das unidades com o sistema Tasy e Smart.",
-				"activities": [
-					{
-						"name": "Wait1",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					},
-					{
-						"name": "Producao Procedimentos INOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": " select\n        'INOB' as BASE\n        ,EMP_CGC as CNPJ\n        ,gcc_descr as MARCA\n        ,smm_dthr_alter as DT_ATUALIZACAO\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_ATENDIMENTO --duvida\n        ,osm_dthr as DT_ENTRADA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_INTERNO_CONTA --duvida\n        ,osm_pac as CD_PESSOA_FISICA\n        ,pac_nasc as DT_NASCIMENTO\n        ,pac_numcpf as NR_CPF\n        ,pac_sexo as IE_SEXO\n        ,pac_cep as NR_CEP\n        ,case when isnumeric(pac_cid) = 1 then (select cde_nome from cde where cde_cod = pac_cid)\n        else pac_cid end as DS_CIDADE\n        ,pac_nome as DS_PESSOA_FISICA\n        ,cnv_cod as CD_CONVENIO\n        ,cnv_nome as DS_CONVENIO\n        ,psv_exe.psv_cod as CD_MEDICO_EXECUTOR\n        ,psv_exe.psv_apel as DS_MEDICO_EXECUTOR\n        ,psv_req.psv_cod as CD_MEDICO_REQUISITANTE\n        ,psv_req.psv_apel as DS_MEDICO_REQUISITANTE\n        ,isnull(tab_padrao,0) as IE_ORIGEM_PROCEDIMENTO\n        ,smm_cod as CD_PROCEDIMENTO\n        ,smk_rot as DS_PROCEDIMENTO\n        ,case ctf_categ \n            when 'C' then 'Consulta'\n            when 'E' then 'Exames'\n            when 'R' then 'Cirurgia'\n            when 'T' then 'Taxas'\n            when 'A' then 'Terapia'\n            when 'O' then 'Outras'\n            when 'M' then 'Materiais'\n            when 'S' then 'Materiais Especiais'\n            when 'N' then 'Medicamentos'\n            when 'G' then 'Gases'\n            when 'O' then 'Outros'\n        end as DS_CLASSIFICACAO\n        ,smm_qt as QT_PROCEDIMENTO\n        ,smm_vlr + isnull(smm_ajuste_vlr,0) as VL_PROCEDIMENTO\n        ,case \n            when smm_fat_serie is not null then 2\n        else 1 end AS IE_STATUS_ACERTO\n        ,case \n            when smm_fat_serie is not null then 'Definitivo'\n        else 'Provisório' end as STATUS_CONTA\n        ,0 as CD_TUSS,\n        0 as NR_SEQ_PROC_INTERNO\n    from \n        osm\n        inner join smm on (smm_osm_serie = osm_serie and smm_osm = osm_num)\n        inner join str str_osm on (str_osm.str_cod = osm_str)\n        inner join str str_emp on (str_osm.str_str_cod = str_emp.str_cod)\n        inner join pac on (pac_reg = osm_pac)inner join cnv on (cnv_cod = osm_cnv)\n        inner join psv psv_exe on (psv_exe.psv_cod = smm_med)\n        inner join psv psv_req on (psv_req.psv_cod = smm_med)\n        inner join smk on (smk_cod = smm_cod and smk_tipo = smm_tpcod)\n        inner join gcc on (str_emp.str_cod = gcc_cod)\n        \n        inner join emp ON (emp_cod = str_emp.str_emp_cod)\n\n        inner join ctf on (ctf_cod = smk_ctf and ctf_tipo = smk_tipo)\n        left outer join tab on (tab_cod = smm_tab_cod)\n    where \n        1 = 1\n        --and convert(varchar(10), osm_dthr, 103) = convert(varchar(10), getdate(), 103)\nand osm_dthr between GETDATE() - 730 and GETDATE()",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_INOB_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Unidade_Producao_Medica",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Convenios",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "select cnv_cod AS CD_CONVENIO, cnv.cnv_nome AS DS_CONVENIO, gcc.gcc_cod AS CD_ESTABELECIMENTO, emp.emp_cgc AS CNPJ\nfrom cnv,\n     gcc,\n     str,\n     emp\nwhere gcc.gcc_str_cod = str_cod\nand str_emp_cod = emp_cod\nand emp_cgc <> '-'\nand cnv_cod <> '999'\nand cnv_stat = 'A'",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_INOB_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Convenio",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Setor",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "SELECT STR_COD AS CD_SETOR_ATENDIMENTO, \nSTR_NOME AS DS_SETOR_ATENDIMENTO, \nEMP_CGC AS CNPJ\nFROM STR, EMP\nWHERE STR_EMP_COD = EMP_COD\nAND EMP_CGC <> '-'\nAND STR_COD <> '999'",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_INOB_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Setor",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Execute IOF",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "Producao Procedimentos INOB",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Convenios",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Setor",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "Producao Medica IOF",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"folder": {
-					"name": "Produção Médica CSI"
-				},
-				"annotations": [],
-				"lastPublishTime": "2020-02-10T20:56:27Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Producao Medica IOF')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Producao Medica HOSL')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Pipeline desenvolvido para extração de informações de produção medica das unidades com o sistema Tasy e Smart.",
-				"activities": [
-					{
-						"name": "Wait1",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					},
-					{
-						"name": "Producao Procedimentos HOSL",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "    select\n        'Smart HOSL' as BASE\n        ,EMP_CGC as CNPJ\n        ,gcc_descr as MARCA\n        ,smm_dthr_alter as DT_ATUALIZACAO \n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_ATENDIMENTO --duvida\n        ,osm_dthr as DT_ENTRADA\n        ,convert(varchar,osm_serie) + convert(varchar,osm_num) as NR_INTERNO_CONTA --duvida\n        ,osm_pac as CD_PESSOA_FISICA\n        ,pac_nasc as DT_NASCIMENTO\n        ,pac_numcpf as NR_CPF\n        ,pac_sexo as IE_SEXO\n        ,pac_cep as NR_CEP\n        ,case when isnumeric(pac_cid) = 1 then (select cde_nome from cde where cde_cod = pac_cid)\n        else pac_cid end as DS_CIDADE\n        ,pac_nome as DS_PESSOA_FISICA\n        ,cnv_cod as CD_CONVENIO\n        ,cnv_nome as DS_CONVENIO\n        ,psv_exe.psv_cod as CD_MEDICO_EXECUTOR\n        ,psv_exe.psv_apel as DS_MEDICO_EXECUTOR\n        ,psv_req.psv_cod as CD_MEDICO_REQUISITANTE\n        ,psv_req.psv_apel as DS_MEDICO_REQUISITANTE\n        ,isnull(tab_padrao,0) as IE_ORIGEM_PROCEDIMENTO\n        ,smm_cod as CD_PROCEDIMENTO\n        ,smk_rot as DS_PROCEDIMENTO\n        ,case ctf_categ \n            when 'C' then 'Consulta'\n            when 'E' then 'Exames'\n            when 'R' then 'Cirurgia'\n            when 'T' then 'Taxas'\n            when 'A' then 'Terapia'\n            when 'O' then 'Outras'\n            when 'M' then 'Materiais'\n            when 'S' then 'Materiais Especiais'\n            when 'N' then 'Medicamentos'\n            when 'G' then 'Gases'\n            when 'O' then 'Outros'\n        end as DS_CLASSIFICACAO\n        ,smm_qt as QT_PROCEDIMENTO\n        ,smm_vlr + isnull(smm_ajuste_vlr,0) as VL_PROCEDIMENTO\n        ,case \n            when smm_fat_serie is not null then 2\n        else 1 end AS IE_STATUS_ACERTO\n        ,case \n            when smm_fat_serie is not null then 'Definitivo'\n        else 'Provisório' end as STATUS_CONTA\n        ,0 as CD_TUSS,\n        0 as NR_SEQ_PROC_INTERNO\n    from \n        osm\n        inner join smm on (smm_osm_serie = osm_serie and smm_osm = osm_num)\n        inner join str str_osm on (str_osm.str_cod = osm_str)\n        inner join str str_emp on (str_osm.str_str_cod = str_emp.str_cod)\n        inner join pac on (pac_reg = osm_pac)inner join cnv on (cnv_cod = osm_cnv)\n        inner join psv psv_exe on (psv_exe.psv_cod = smm_med)\n        inner join psv psv_req on (psv_req.psv_cod = smm_med)\n        inner join smk on (smk_cod = smm_cod and smk_tipo = smm_tpcod)\n        inner join gcc on (str_emp.str_cod = gcc_cod)\n        \n        inner join emp ON (emp_cod = str_emp.str_emp_cod)\n\n        inner join ctf on (ctf_cod = smk_ctf and ctf_tipo = smk_tipo)\n        left outer join tab on (tab_cod = smm_tab_cod)\n    where \n        1 = 1\n        and convert(varchar(10), osm_dthr, 103) = convert(varchar(10), getdate(), 103)\nand osm_dthr between GETDATE() - 730 and GETDATE()",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_HOSL_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Unidade_Producao_Medica",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Convenios",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "select cnv_cod AS CD_CONVENIO, cnv.cnv_nome AS DS_CONVENIO, gcc.gcc_cod AS CD_ESTABELECIMENTO, emp.emp_cgc AS CNPJ\nfrom cnv,\n     gcc,\n     str,\n     emp\nwhere gcc.gcc_str_cod = str_cod\nand str_emp_cod = emp_cod\nand emp_cgc <> '-'\nand cnv_cod <> '999'\nand cnv_stat = 'A'",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_HOSL_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Convenio",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Setor",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "SELECT STR_COD AS CD_SETOR_ATENDIMENTO, \nSTR_NOME AS DS_SETOR_ATENDIMENTO, \nEMP_CGC AS CNPJ\nFROM STR, EMP\nWHERE STR_EMP_COD = EMP_COD\nAND EMP_CGC <> '-'\nAND STR_COD <> '999'",
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_HOSL_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Setor",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Execute INOB",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "Producao Procedimentos HOSL",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Convenios",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Setor",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "Producao Medica INOB",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"folder": {
-					"name": "Produção Médica CSI"
-				},
-				"annotations": [],
-				"lastPublishTime": "2020-02-10T20:56:27Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Producao Medica INOB')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Producao Medica HOB')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Pipeline desenvolvido para extração de informações de produção medica das unidades com o sistema Tasy e Smart.",
-				"activities": [
-					{
-						"name": "Wait1",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					},
-					{
-						"name": "Producao Procedimentos HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select \n\n'Tasy HTML' as BASE,\ne.cd_cgc as CNPJ,\ne.nm_fantasia_estab as marca,\np.dt_atualizacao,\np.nr_atendimento,\nat.dt_entrada,\np.nr_interno_conta,\n--obter_nome_estab(c.cd_estabelecimento) as ds_estabelecimento,\npf.cd_pessoa_fisica,\npf.dt_nascimento,\npf.nr_cpf,\npf.ie_sexo,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CEP') as nr_cep,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CI') as ds_cidade,\nobter_nome_pf(at.cd_pessoa_fisica) as ds_pessoa_fisica,\np.cd_convenio as cd_convenio,\nobter_nome_convenio(c.cd_convenio_parametro) as ds_convenio,\np.cd_medico_executor,\nobter_nome_pf(p.cd_medico_executor) as ds_medico_executor,\np.cd_medico_req as cd_medico_requisitante,\nobter_nome_pf(p.cd_medico_req) as ds_medico_requisitante,\np.ie_origem_proced as ie_origem_procedimento,\np.cd_procedimento,\nobter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced) as ds_procedimento, \nobter_valor_dominio(19,pr.ie_classificacao) as ds_classificacao,\np.qt_procedimento,\n--c.vl_conta,\np.vl_procedimento,\nc.ie_status_acerto,\ndecode(c.ie_status_acerto, 1,'Provisorio' , 2 ,'Definitivo') as status_conta,\n'' as cd_tuss,\np.nr_seq_proc_interno\nfrom procedimento_paciente p,\natendimento_paciente at,\npessoa_fisica pf,\nprocedimento pr,\nconta_paciente c,\nestabelecimento e,\nempresa em\nwhere p.nr_atendimento = at.nr_atendimento\nand at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand p.cd_procedimento = pr.cd_procedimento\nand p.ie_origem_proced = pr.ie_origem_proced\nand p.nr_interno_conta = c.nr_interno_conta\nand at.cd_estabelecimento = e.cd_estabelecimento\nand e.cd_empresa = em.cd_empresa\nand p.cd_motivo_exc_conta is null\nand c.ie_cancelamento is null\nand at.dt_entrada between sysdate - 730 and sysdate",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Unidade_Producao_Medica",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Producao Materiais HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select 'Tasy HTML' as BASE,\ne.cd_cgc as CNPJ,\ne.nm_fantasia_estab as marca,\nmp.dt_atualizacao,\nmp.nr_atendimento,\nat.dt_entrada,\nmp.nr_interno_conta,\npf.cd_pessoa_fisica,\npf.dt_nascimento,\npf.nr_cpf,\npf.ie_sexo,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CEP') as nr_cep,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CI') as ds_cidade,\nobter_nome_pf(at.cd_pessoa_fisica) as ds_pessoa_fisica,\nmp.cd_convenio as cd_convenio,\nobter_nome_convenio(c.cd_convenio_parametro) as ds_convenio,\nat.cd_medico_atendimento as cd_medico_executor,\nobter_nome_pf(at.cd_medico_atendimento) as ds_medico_executor,\nmp.cd_medico_prescritor as cd_medico_requisitante,\nobter_nome_pf(mp.cd_medico_prescritor) as ds_medico_requisitante,\n' ' ie_origem_procedimento,\nmp.cd_material as cd_procedimento,\nm.ds_material as ds_procedimento, \n'Material'  ds_classificacao,\nmp.qt_material as qt_procedimento,\nmp.vl_material as vl_procedimento,\nc.ie_status_acerto,\ndecode(c.ie_status_acerto, 1,'Provisorio' , 2 ,'Definitivo') as status_conta,\n'' as cd_tuss,\n0 as nr_seq_proc_interno\nfrom  conta_paciente c,\n      material_atend_paciente mp,\n      material m,\n      estabelecimento e,\n      atendimento_paciente at,\n      pessoa_fisica pf\nwhere c.nr_atendimento = mp.nr_atendimento\nand c.nr_interno_conta = mp.nr_interno_conta\nand mp.cd_material = m.cd_material\nand c.cd_estabelecimento = e.cd_estabelecimento\nand mp.nr_atendimento = at.nr_atendimento\nand at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand mp.dt_atualizacao between sysdate -730 and sysdate\nand mp.cd_motivo_exc_conta is null",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Unidade_Producao_Medica",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Convenios",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select cn.cd_convenio, cn.ds_convenio, e.cd_estabelecimento, e.cd_cgc as cnpj\nfrom convenio cn,\n     convenio_estabelecimento ce,\n     estabelecimento e\nwhere cn.cd_convenio = ce.cd_convenio\nand ce.cd_estabelecimento = e.cd_estabelecimento\norder by 2",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Convenio",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Setor",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select a.cd_setor_atendimento, a.ds_setor_atendimento, e.cd_cgc as cnpj\nfrom setor_atendimento a,\nestabelecimento e\nwhere a.cd_estabelecimento = e.cd_estabelecimento\nand e.ie_situacao = 'A'",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Setor",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Execute HOSL",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "Producao Procedimentos HOB",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Producao Materiais HOB",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Convenios",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Setor",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "Producao Medica HOSL",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"folder": {
-					"name": "Produção Médica CSI"
-				},
-				"annotations": [],
-				"lastPublishTime": "2020-02-10T20:56:28Z"
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/Producao Medica HOSL')]"
 			]
 		}
 	]

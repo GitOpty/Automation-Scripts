@@ -23376,6 +23376,79 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/CONTAS PENDENTES')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "CONTAS PENDENTES",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "SELECT \na.*\nFROM W_EIS_CONTA_PENDENTE a\nWHERE 1 = 1\nORDER BY NR_SEQUENCIA",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ORACLE_DIN",
+								"type": "DatasetReference",
+								"parameters": {
+									"NOME_KEYVAULT_SECRET": "SadallaTasy"
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DESTINO_TABELAS_ADF",
+								"type": "DatasetReference",
+								"parameters": {
+									"Schema_Destino": "stg",
+									"Tabela_Destino": "tbl_contas_pendentes"
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ORACLE_DIN')]",
+				"[concat(variables('factoryId'), '/datasets/DESTINO_TABELAS_ADF')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Carga Datamart TASY')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -105764,6 +105837,32 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/DS_HDATADRIVEN_BINARY')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_hmaisbrasildatadriven",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FileSystem": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_hmaisbrasildatadriven')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DS_HMAISDATADRIVEN')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -112241,6 +112340,38 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/ORACLE_DIN')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Tasy_Connections",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"NOME_KEYVAULT_SECRET": {
+							"value": "@dataset().NOME_KEYVAULT_SECRET",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"NOME_KEYVAULT_SECRET": {
+						"type": "string"
+					}
+				},
+				"folder": {
+					"name": "Data Warehouse"
+				},
+				"annotations": [],
+				"type": "OracleTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Tasy_Connections')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/ORACLE_DINAMICO')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -118342,6 +118473,63 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/pipelines/Kill_Sessions_Sql')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Hours')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "Databricks Five9 API",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Week",
+						"interval": 1,
+						"startTime": "2023-11-24T20:12:00Z",
+						"timeZone": "UTC",
+						"schedule": {
+							"minutes": [
+								30
+							],
+							"hours": [
+								7,
+								8,
+								9,
+								10,
+								11,
+								12,
+								13,
+								14,
+								15,
+								16,
+								17,
+								18,
+								19
+							],
+							"weekDays": [
+								"Tuesday",
+								"Wednesday",
+								"Thursday",
+								"Friday",
+								"Monday"
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/Databricks Five9 API')]"
 			]
 		},
 		{
