@@ -3,16 +3,9 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "Copy data1",
+				"name": "CONTAS PENDENTES",
 				"type": "Copy",
-				"dependsOn": [
-					{
-						"activity": "Stored procedure1",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
+				"dependsOn": [],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
@@ -24,30 +17,46 @@
 				"typeProperties": {
 					"source": {
 						"type": "OracleSource",
+						"oracleReaderQuery": "SELECT \na.*\nFROM W_EIS_CONTA_PENDENTE a\nWHERE 1 = 1\nORDER BY NR_SEQUENCIA",
 						"partitionOption": "None",
 						"queryTimeout": "02:00:00"
 					},
-					"enableStaging": false
+					"sink": {
+						"type": "AzureSqlSink",
+						"writeBehavior": "insert",
+						"sqlWriterUseTableLock": false,
+						"tableOption": "autoCreate",
+						"disableMetricsCollection": false
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
 				},
 				"inputs": [
 					{
 						"referenceName": "ORACLE_DIN",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"NOME_KEYVAULT_SECRET": "SadallaTasy"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DESTINO_TABELAS_ADF",
+						"type": "DatasetReference",
+						"parameters": {
+							"Schema_Destino": "stg",
+							"Tabela_Destino": "tbl_contas_pendentes"
+						}
 					}
 				]
-			},
-			{
-				"name": "Stored procedure1",
-				"type": "SqlServerStoredProcedure",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": []
 			}
 		],
 		"annotations": []
