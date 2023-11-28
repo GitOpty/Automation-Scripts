@@ -1,55 +1,7 @@
 {
-	"name": "Posicao Estoque_manual",
+	"name": "Posicao Estoque_manual_smart",
 	"properties": {
 		"activities": [
-			{
-				"name": "DT_INICIO",
-				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "Lookup Periodo Inicial",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "DT_INICIO",
-					"value": {
-						"value": "@activity('Lookup Periodo Inicial').output.firstRow.Data_Inicial",
-						"type": "Expression"
-					}
-				}
-			},
-			{
-				"name": "DT_FIM",
-				"type": "SetVariable",
-				"dependsOn": [
-					{
-						"activity": "Lookup Periodo Inicial",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"variableName": "DT_FIM",
-					"value": {
-						"value": "@activity('Lookup Periodo Inicial').output.firstRow.data_final",
-						"type": "Expression"
-					}
-				}
-			},
 			{
 				"name": "LIMPA STAGE SMART",
 				"type": "Script",
@@ -80,273 +32,17 @@
 				}
 			},
 			{
-				"name": "LIMPA STAGE TASY",
-				"type": "Script",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"typeProperties": {
-					"scripts": [
-						{
-							"type": "NonQuery",
-							"text": {
-								"value": "truncate table stg.posicao_estoque_tasy",
-								"type": "Expression"
-							}
-						}
-					],
-					"scriptBlockExecutionTimeout": "02:00:00"
-				}
-			},
-			{
-				"name": "Lookup Periodo Inicial",
-				"type": "Lookup",
-				"dependsOn": [
-					{
-						"activity": "LIMPA STAGE SMART",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					},
-					{
-						"activity": "LIMPA STAGE TASY",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "AzureSqlSource",
-						"sqlReaderQuery": "declare @qtde_dias integer\n\nset @qtde_dias = 8\n\n\nSELECT\n\tCASE \n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\n\tEND as Data_Inicial,\n\n\t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\n\n\n\tCASE\n\t\tWHEN day(getdate()) <= @qtde_dias THEN\n\t\t\tconcat('01' ,'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate()),120),6,2),'/',\n\t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate())),8,4))\n\n\t\tWHEN day(getdate()) > @qtde_dias THEN\n\t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\n\tEND as Data_Inicial_Oracle,\n        substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\n",
-						"queryTimeout": "02:00:00",
-						"partitionOption": "None"
-					},
-					"dataset": {
-						"referenceName": "SQL_DIN",
-						"type": "DatasetReference"
-					}
-				}
-			},
-			{
-				"name": "Posicao Estoque Tasy HTML",
-				"type": "Copy",
-				"dependsOn": [
-					{
-						"activity": "DT_INICIO",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					},
-					{
-						"activity": "DT_FIM",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					},
-					{
-						"activity": "ForEach1",
-						"dependencyConditions": [
-							"Completed"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "OracleSource",
-						"oracleReaderQuery": {
-							"value": "@concat(\n    'SELECT ',\n    '''1''', ' as ESTABELECIMENTO\n    ,TO_CHAR(SE.DT_MESANO_REFERENCIA,''YYYY-MM-DD'') AS DT_MESANO_REFERENCIA\n    ,SE.CD_ESTABELECIMENTO\t  \n    ,ESTB.NM_FANTASIA_ESTAB                        AS DS_ESTABELECIMENTO\n    ,SE.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,SE.CD_MATERIAL\n    ,MAT.DS_MATERIAL                            AS DS_MATERIAL\n    ,MAT_G.CD_GRUPO_MATERIAL\n    ,MAT_G.DS_GRUPO_MATERIAL\n    ,MAT_C.CD_CLASSE_MATERIAL\n    ,MAT_C.DS_CLASSE_MATERIAL\n    ,SUM(SE.QT_ESTOQUE)                          AS QT_ESTOQUE\n    ,SUM(SE.QT_ESTOQUE * SE.VL_CUSTO_MEDIO)      AS VL_ESTOQUE\n    ,SE.VL_CUSTO_MEDIO\n    ,SE.VL_PRECO_ULT_COMPRA\n    ,TO_CHAR(SE.dt_ult_compra, ', '''YYYY-MM-DD''', ') dt_ult_compra\nFROM FAST_OPS.SALDO_ESTOQUE SE\nINNER JOIN FAST_OPS.LOCAL_ESTOQUE LE                                 ON LE.CD_LOCAL_ESTOQUE = SE.CD_LOCAL_ESTOQUE\nLEFT JOIN  FAST_OPS.ESTABELECIMENTO ESTB                              ON ESTB.CD_ESTABELECIMENTO = SE.CD_ESTABELECIMENTO\nINNER JOIN FAST_OPS.MATERIAL MAT                                     ON MAT.CD_MATERIAL = SE.CD_MATERIAL\nLEFT JOIN  FAST_OPS.CLASSE_MATERIAL  MAT_C                            ON MAT_C.CD_CLASSE_MATERIAL = MAT.CD_CLASSE_MATERIAL\nLEFT JOIN  FAST_OPS.SUBGRUPO_MATERIAL MAT_S                           ON MAT_S.CD_SUBGRUPO_MATERIAL = MAT_C.CD_SUBGRUPO_MATERIAL\nLEFT JOIN  FAST_OPS.GRUPO_MATERIAL    MAT_G                           ON MAT_G.CD_GRUPO_MATERIAL = MAT_S.CD_GRUPO_MATERIAL\n\nWHERE TO_CHAR(SE.DT_MESANO_REFERENCIA,', '''YYYY-MM-DD''', ') BETWEEN ','''', variables('DT_INICIO'), '''', ' AND ', '''', variables('DT_FIM'), '''',\n\n'GROUP BY\n    TO_CHAR(SE.DT_MESANO_REFERENCIA, ', '''YYYY-MM-DD''', ')\n    ,SE.CD_ESTABELECIMENTO\t\n    ,ESTB.NM_FANTASIA_ESTAB\n    ,SE.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,SE.CD_MATERIAL\n    ,MAT.DS_MATERIAL\n    ,MAT_G.CD_GRUPO_MATERIAL\n    ,MAT_G.DS_GRUPO_MATERIAL\n    ,MAT_C.CD_CLASSE_MATERIAL\n    ,MAT_C.DS_CLASSE_MATERIAL    \n    ,SE.VL_CUSTO_MEDIO\n    ,SE.VL_PRECO_ULT_COMPRA\n    ,TO_CHAR(SE.dt_ult_compra, ', '''YYYY-MM-DD''', ' ) '\n    )",
-							"type": "Expression"
-						},
-						"partitionOption": "None",
-						"convertDecimalToInteger": false,
-						"queryTimeout": "02:00:00"
-					},
-					"sink": {
-						"type": "AzureSqlSink",
-						"writeBehavior": "insert",
-						"sqlWriterUseTableLock": false,
-						"disableMetricsCollection": false
-					},
-					"enableStaging": false
-				},
-				"inputs": [
-					{
-						"referenceName": "CloudTasyPrdDataSet",
-						"type": "DatasetReference"
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "AZSQL_DINAMICO",
-						"type": "DatasetReference",
-						"parameters": {
-							"schema_destino": "stg",
-							"tabela_destino": "posicao_estoque_tasy"
-						}
-					}
-				]
-			},
-			{
-				"name": "Posicao Estoque Sadalla",
-				"type": "Copy",
-				"dependsOn": [
-					{
-						"activity": "Posicao Estoque Tasy HTML",
-						"dependencyConditions": [
-							"Completed"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "OracleSource",
-						"oracleReaderQuery": {
-							"value": "@concat(\n'SELECT\t',\n    '''2''' ,' as ESTABELECIMENTO\t\n    ,TO_CHAR(SE.DT_MESANO_REFERENCIA,','''YYYY-MM-DD''', ') AS DT_MESANO_REFERENCIA\t\n    ,SE.CD_ESTABELECIMENTO\t  \n    ,ESTB.NM_FANTASIA_ESTAB                        AS DS_ESTABELECIMENTO\t\n    ,SE.CD_LOCAL_ESTOQUE\t\n    ,LE.DS_LOCAL_ESTOQUE\t\n    ,SE.CD_MATERIAL\t\n    ,MAT.DS_MATERIAL                            AS DS_MATERIAL\t\n    ,MAT_G.CD_GRUPO_MATERIAL\t\n    ,MAT_G.DS_GRUPO_MATERIAL\t\n    ,MAT_C.CD_CLASSE_MATERIAL\t\n    ,MAT_C.DS_CLASSE_MATERIAL\t\n    ,SUM(SE.QT_ESTOQUE)                          AS QT_ESTOQUE\t\n    ,SUM(SE.QT_ESTOQUE * SE.VL_CUSTO_MEDIO)      AS VL_ESTOQUE\t\n    ,SE.VL_CUSTO_MEDIO\t\n    ,SE.VL_PRECO_ULT_COMPRA\t\n    ,TO_CHAR(SE.dt_ult_compra,', '''YYYY-MM-DD''',') dt_ult_compra\t\nFROM SALDO_ESTOQUE SE\t\nINNER JOIN LOCAL_ESTOQUE LE                                 ON LE.CD_LOCAL_ESTOQUE = SE.CD_LOCAL_ESTOQUE\t\nLEFT JOIN  ESTABELECIMENTO ESTB                              ON ESTB.CD_ESTABELECIMENTO = SE.CD_ESTABELECIMENTO\t\nINNER JOIN MATERIAL MAT                                     ON MAT.CD_MATERIAL = SE.CD_MATERIAL\t\nLEFT JOIN  CLASSE_MATERIAL  MAT_C                            ON MAT_C.CD_CLASSE_MATERIAL = MAT.CD_CLASSE_MATERIAL\t\nLEFT JOIN  SUBGRUPO_MATERIAL MAT_S                           ON MAT_S.CD_SUBGRUPO_MATERIAL = MAT_C.CD_SUBGRUPO_MATERIAL\t\nLEFT JOIN  GRUPO_MATERIAL    MAT_G                           ON MAT_G.CD_GRUPO_MATERIAL = MAT_S.CD_GRUPO_MATERIAL\t\n\t\nWHERE TO_CHAR(SE.DT_MESANO_REFERENCIA,','''YYYY-MM-DD''', ') BETWEEN ' ,'''', variables('DT_INICIO'), '''',' AND ', '''', variables('DT_FIM'), '''',\n\n' GROUP BY\t\n    TO_CHAR(SE.DT_MESANO_REFERENCIA,','''YYYY-MM-DD''',')\t\n    ,SE.CD_ESTABELECIMENTO\t\n    ,ESTB.NM_FANTASIA_ESTAB\t\n    ,SE.CD_LOCAL_ESTOQUE\t\n    ,LE.DS_LOCAL_ESTOQUE\t\n    ,SE.CD_MATERIAL\t\n    ,MAT.DS_MATERIAL\t\n    ,MAT_G.CD_GRUPO_MATERIAL\t\n    ,MAT_G.DS_GRUPO_MATERIAL\t\n    ,MAT_C.CD_CLASSE_MATERIAL\t\n    ,MAT_C.DS_CLASSE_MATERIAL    \t\n    ,SE.VL_CUSTO_MEDIO\t\n    ,SE.VL_PRECO_ULT_COMPRA\t\n    ,TO_CHAR(SE.dt_ult_compra,','''YYYY-MM-DD''',')'\t\n\n)",
-							"type": "Expression"
-						},
-						"partitionOption": "None",
-						"convertDecimalToInteger": false,
-						"queryTimeout": "02:00:00"
-					},
-					"sink": {
-						"type": "AzureSqlSink",
-						"writeBehavior": "insert",
-						"sqlWriterUseTableLock": false
-					},
-					"enableStaging": false
-				},
-				"inputs": [
-					{
-						"referenceName": "SadallaTasyPrdDataSet",
-						"type": "DatasetReference"
-					}
-				],
-				"outputs": [
-					{
-						"referenceName": "AZSQL_DINAMICO",
-						"type": "DatasetReference",
-						"parameters": {
-							"schema_destino": "stg",
-							"tabela_destino": "posicao_estoque_tasy"
-						}
-					}
-				]
-			},
-			{
-				"name": "DELETE MOVIMENTO",
-				"description": "Apaga o movimento com base na faixa de data definida no início do processo",
-				"type": "Script",
-				"dependsOn": [
-					{
-						"activity": "Posicao Estoque Sadalla",
-						"dependencyConditions": [
-							"Completed"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.1:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"typeProperties": {
-					"scripts": [
-						{
-							"type": "NonQuery",
-							"text": {
-								"value": "DELETE  DM.TBL_POSICAO_ESTOQUE \nFROM DM.TBL_POSICAO_ESTOQUE\nINNER JOIN \n(\nSELECT distinct ESTABELECIMENTO, DT_MESANO_REFERENCIA  from stg.posicao_estoque_tasy  with(nolock) \nUNION\nSELECT DISTINCT id_sys as 'ESTABELECIMENTO', concat(MES_REF,'-01') as DT_MESANO_REFERENCIA  from stg.posicao_estoque_smart with(nolock)\n) AS STG ON \n\tCONVERT(varchar(10),DM.TBL_POSICAO_ESTOQUE.ESTABELECIMENTO) = CONVERT(varchar(10),STG.ESTABELECIMENTO) AND \n\tCONVERT(varchar(20),DM.TBL_POSICAO_ESTOQUE.DT_MESANO_REFERENCIA) = CONVERT(varchar(20),STG.DT_MESANO_REFERENCIA)",
-								"type": "Expression"
-							}
-						}
-					],
-					"scriptBlockExecutionTimeout": "02:00:00"
-				}
-			},
-			{
-				"name": "INSERT",
-				"description": "Insere o movimento com base na faixa de data definida no início do processo",
-				"type": "Script",
-				"dependsOn": [
-					{
-						"activity": "DELETE MOVIMENTO",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.1:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"typeProperties": {
-					"scripts": [
-						{
-							"type": "NonQuery",
-							"text": {
-								"value": "WITH REF AS(\n\nSELECT \nCAST(ESTABELECIMENTO AS VARCHAR(5)) ESTABELECIMENTO\n,CAST(DT_MESANO_REFERENCIA AS DATE) DT_MESANO_REFERENCIA\n,CAST(DT_ULT_COMPRA AS DATE)DT_ULT_COMPRA\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + cast(CD_ESTABELECIMENTO as varchar(50)) AS FK_CD_ESTABELECIMENTO\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_MATERIAL AS VARCHAR(50)) FK_CD_MATERIAL\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) FK_CD_GRUPO_MATERIAL\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_CLASSE_MATERIAL AS VARCHAR(50))FK_CD_CLASSE_MATERIAL\n,CAST(QT_ESTOQUE AS INT) QT_ESTOQUE\n,CAST(VL_ESTOQUE AS MONEY) VL_ESTOQUE\n,CAST(VL_CUSTO_MEDIO AS MONEY) VL_CUSTO_MEDIO \n,CAST(VL_PRECO_ULT_COMPRA AS MONEY) VL_PRECO_ULT_COMPRA\nFROM STG.POSICAO_ESTOQUE_TASY WITH(NOLOCK)\n\nUNION ALL\n\nSELECT \nCAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n,CAST(MES_REF + '-01' AS DATE) AS DT_MESANO_REFERENCIA\n,NULL AS DT_ULT_COMPRA\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_ESTABELECIMENTO AS VARCHAR(50)) AS FK_CD_ESTABELECIMENTO\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_MATERIAL AS VARCHAR(50)) AS FK_CD_MATERIAL\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) AS FK_CD_GRUPO_MATERIAL\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_CLASSE_MATERIAL AS VARCHAR(50)) AS FK_CD_CLASSE_MATERIAL\n,CAST(QT_ESTOQUE AS INT) AS QT_ESTOQUE\n,CAST(VL_TOTAL AS MONEY) AS VL_ESTOQUE\n,CAST(VL_MED_UNIT AS MONEY) AS VL_CUSTO_MEDIO\n,NULL AS VL_PRECO_ULT_COMPRA\nFROM STG.POSICAO_ESTOQUE_SMART )\n\nINSERT INTO  DM.TBL_POSICAO_ESTOQUE\nSELECT *  FROM REF",
-								"type": "Expression"
-							}
-						}
-					],
-					"scriptBlockExecutionTimeout": "02:00:00"
-				}
-			},
-			{
 				"name": "Lookup Periodo",
 				"type": "Lookup",
 				"dependsOn": [
 					{
-						"activity": "Lookup Periodo Inicial",
+						"activity": "Add Ano Inicio Reprocessar",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Add Ano Final Reprocessar",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -364,7 +60,7 @@
 					"source": {
 						"type": "AzureSqlSource",
 						"sqlReaderQuery": {
-							"value": "declare @qtde_dias integer\nset @qtde_dias = 8\n\nBEGIN\n\n    WITH DADOS_CALENDAR AS(\n\n    Select \n\n    concat(SUBSTRING(data_Inicial,1,7),'-01') as Mes_Ano\n\n    from \n\n    (\n    SELECT\n    \tCASE \n    \t\tWHEN day(getdate()) <= @qtde_dias THEN\n    \t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\n    \t\tWHEN day(getdate()) > @qtde_dias THEN\n    \t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\n    \tEND as Data_Inicial,\n\n    \t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\n\n\n    \tCASE\n    \t\tWHEN day(getdate()) <= @qtde_dias THEN\n    \t\t\tconcat('01' ,'/',\n    \t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate()),120),6,2),'/',\n    \t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate())),8,4))\n\n    \t\tWHEN day(getdate()) > @qtde_dias THEN\n    \t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\n    \tEND as Data_Inicial_Oracle,\n            substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\n    ) as DT_INI \n\n    UNION\n\n\n    Select \n\n    concat(SUBSTRING(data_Final,1,7),'-01')  as Mes_Ano\n    from \n\n    (\n    SELECT\n    \tCASE \n    \t\tWHEN day(getdate()) <= @qtde_dias THEN\n    \t\t\tconcat(substring(convert(varchar(30),DATEADD(MONTH,-1,getdate()),120),1,8),'01')\n    \t\tWHEN day(getdate()) > @qtde_dias THEN\n    \t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1))),1,10)\n    \tEND as Data_Inicial,\n\n    \t\tsubstring(convert(varchar(30),DATEADD(day,-1,getdate()),120),1,10) as 'data_final' ,\n\n\n    \tCASE\n    \t\tWHEN day(getdate()) <= @qtde_dias THEN\n    \t\t\tconcat('01' ,'/',\n    \t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate()),120),6,2),'/',\n    \t\t\tsubstring(convert(varchar(20),DATEADD(MONTH,-1,getdate())),8,4))\n\n    \t\tWHEN day(getdate()) > @qtde_dias THEN\n    \t\t\tSubstring(convert(varchar(30),dateadd(day,1,EOMONTH(getdate(),-1)),103),1,10)\n    \tEND as Data_Inicial_Oracle,\n            substring(convert(varchar(30),DATEADD(day,-1,getdate()),103),1,10) as 'data_final_Oracle'\n    ) as DT_FIM \n\n    )\n\n\n    SELECT \n        CAST(C.TheLastOfMonth AS VARCHAR(50)) AS Mes_Ano\n    FROM DADOS_CALENDAR A\n    OUTER APPLY(\n        SELECT TOP 1\n            X.TheLastOfMonth\n        FROM calendar X\n        WHERE X.TheDate = A.Mes_Ano\n    )C\n\nEND\n\n",
+							"value": "@concat('\nselect distinct\n    CAST(a.TheLastOfMonth AS VARCHAR(50)) AS Mes_Ano\nfrom calendar a\nwhere a.TheYear BETWEEN\n','''',variables('ANO_REPROCESSAR'),'''',' AND ','''',variables('ANO_FINAL_REPROCESSAR'),'''')",
 							"type": "Expression"
 						},
 						"queryTimeout": "02:00:00",
@@ -1743,6 +1439,129 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "Add Ano Inicio Reprocessar",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "LIMPA STAGE SMART",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "ANO_REPROCESSAR",
+					"value": "2021"
+				}
+			},
+			{
+				"name": "INSERT NO DATAMART",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "ForEach1",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "DELETE DATAMART",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "\nINSERT INTO  DM.TBL_POSICAO_ESTOQUE\nSELECT \nCAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n,CAST(MES_REF + '-01' AS DATE) AS DT_MESANO_REFERENCIA\n,NULL AS DT_ULT_COMPRA\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_ESTABELECIMENTO AS VARCHAR(50)) AS FK_CD_ESTABELECIMENTO\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_MATERIAL AS VARCHAR(50)) AS FK_CD_MATERIAL\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) AS FK_CD_GRUPO_MATERIAL\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_CLASSE_MATERIAL AS VARCHAR(50)) AS FK_CD_CLASSE_MATERIAL\n,CAST(QT_ESTOQUE AS INT) AS QT_ESTOQUE\n,CAST(VL_TOTAL AS MONEY) AS VL_ESTOQUE\n,CAST(VL_MED_UNIT AS MONEY) AS VL_CUSTO_MEDIO\n,NULL AS VL_PRECO_ULT_COMPRA\nFROM STG.POSICAO_ESTOQUE_SMART"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "Add Ano Final Reprocessar",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "LIMPA STAGE SMART",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "ANO_FINAL_REPROCESSAR",
+					"value": "2023"
+				}
+			},
+			{
+				"name": "DELETE DATAMART",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "Add Ano Inicio Reprocessar",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "Add Ano Final Reprocessar",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "AzureSQL_DB_Procedimentos",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": {
+								"value": "@concat('DELETE FROM DM.TBL_POSICAO_ESTOQUE WHERE ESTABELECIMENTO IN (90,91,92,93,94) WHERE YEAR(DT_MESANO_REFERENCIA) BETWEEN ','''',variables('ANO_REPROCESSAR'),'''',' AND ',variables('ANO_FINAL_REPROCESSAR'),'''')",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
 			}
 		],
 		"variables": {
@@ -1753,6 +1572,12 @@
 				"type": "String"
 			},
 			"Mes_Ano": {
+				"type": "String"
+			},
+			"ANO_REPROCESSAR": {
+				"type": "String"
+			},
+			"ANO_FINAL_REPROCESSAR": {
 				"type": "String"
 			}
 		},
