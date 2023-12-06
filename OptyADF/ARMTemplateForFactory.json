@@ -84675,6 +84675,341 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Posicao Estoque_manual_Tasy')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "DT_INICIO",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup Periodo Inicial",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "DT_INICIO",
+							"value": {
+								"value": "@activity('Lookup Periodo Inicial').output.firstRow.Data_Inicial",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "DT_FIM",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup Periodo Inicial",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "DT_FIM",
+							"value": {
+								"value": "@activity('Lookup Periodo Inicial').output.firstRow.data_final",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "LIMPA STAGE TASY",
+						"type": "Script",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "truncate table stg.posicao_estoque_tasy",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Lookup Periodo Inicial",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "LIMPA STAGE TASY",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select '2023-08-01' as Data_Inicial, '2023-08-31' as data_final",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "SQL_DIN",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "Posicao Estoque Tasy HTML",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "DT_INICIO",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "DT_FIM",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": {
+									"value": "@concat(\n    'SELECT ',\n    '''1''', ' as ESTABELECIMENTO\n    ,TO_CHAR(SE.DT_MESANO_REFERENCIA,''YYYY-MM-DD'') AS DT_MESANO_REFERENCIA\n    ,SE.CD_ESTABELECIMENTO\t  \n    ,ESTB.NM_FANTASIA_ESTAB                        AS DS_ESTABELECIMENTO\n    ,SE.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,SE.CD_MATERIAL\n    ,MAT.DS_MATERIAL                            AS DS_MATERIAL\n    ,MAT_G.CD_GRUPO_MATERIAL\n    ,MAT_G.DS_GRUPO_MATERIAL\n    ,MAT_C.CD_CLASSE_MATERIAL\n    ,MAT_C.DS_CLASSE_MATERIAL\n    ,SUM(SE.QT_ESTOQUE)                          AS QT_ESTOQUE\n    ,SUM(SE.QT_ESTOQUE * SE.VL_CUSTO_MEDIO)      AS VL_ESTOQUE\n    ,SE.VL_CUSTO_MEDIO\n    ,SE.VL_PRECO_ULT_COMPRA\n    ,TO_CHAR(SE.dt_ult_compra, ', '''YYYY-MM-DD''', ') dt_ult_compra\nFROM FAST_OPS.SALDO_ESTOQUE SE\nINNER JOIN FAST_OPS.LOCAL_ESTOQUE LE                                 ON LE.CD_LOCAL_ESTOQUE = SE.CD_LOCAL_ESTOQUE\nLEFT JOIN  FAST_OPS.ESTABELECIMENTO ESTB                              ON ESTB.CD_ESTABELECIMENTO = SE.CD_ESTABELECIMENTO\nINNER JOIN FAST_OPS.MATERIAL MAT                                     ON MAT.CD_MATERIAL = SE.CD_MATERIAL\nLEFT JOIN  FAST_OPS.CLASSE_MATERIAL  MAT_C                            ON MAT_C.CD_CLASSE_MATERIAL = MAT.CD_CLASSE_MATERIAL\nLEFT JOIN  FAST_OPS.SUBGRUPO_MATERIAL MAT_S                           ON MAT_S.CD_SUBGRUPO_MATERIAL = MAT_C.CD_SUBGRUPO_MATERIAL\nLEFT JOIN  FAST_OPS.GRUPO_MATERIAL    MAT_G                           ON MAT_G.CD_GRUPO_MATERIAL = MAT_S.CD_GRUPO_MATERIAL\n\nWHERE TO_CHAR(SE.DT_MESANO_REFERENCIA,', '''YYYY-MM-DD''', ') BETWEEN ','''', variables('DT_INICIO'), '''', ' AND ', '''', variables('DT_FIM'), '''',\n\n'GROUP BY\n    TO_CHAR(SE.DT_MESANO_REFERENCIA, ', '''YYYY-MM-DD''', ')\n    ,SE.CD_ESTABELECIMENTO\t\n    ,ESTB.NM_FANTASIA_ESTAB\n    ,SE.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,SE.CD_MATERIAL\n    ,MAT.DS_MATERIAL\n    ,MAT_G.CD_GRUPO_MATERIAL\n    ,MAT_G.DS_GRUPO_MATERIAL\n    ,MAT_C.CD_CLASSE_MATERIAL\n    ,MAT_C.DS_CLASSE_MATERIAL    \n    ,SE.VL_CUSTO_MEDIO\n    ,SE.VL_PRECO_ULT_COMPRA\n    ,TO_CHAR(SE.dt_ult_compra, ', '''YYYY-MM-DD''', ' ) '\n    )",
+									"type": "Expression"
+								},
+								"partitionOption": "None",
+								"convertDecimalToInteger": false,
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "stg",
+									"tabela_destino": "posicao_estoque_tasy"
+								}
+							}
+						]
+					},
+					{
+						"name": "Posicao Estoque Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Posicao Estoque Tasy HTML",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": {
+									"value": "@concat(\n'SELECT\t',\n    '''2''' ,' as ESTABELECIMENTO\t\n    ,TO_CHAR(SE.DT_MESANO_REFERENCIA,','''YYYY-MM-DD''', ') AS DT_MESANO_REFERENCIA\t\n    ,SE.CD_ESTABELECIMENTO\t  \n    ,ESTB.NM_FANTASIA_ESTAB                        AS DS_ESTABELECIMENTO\t\n    ,SE.CD_LOCAL_ESTOQUE\t\n    ,LE.DS_LOCAL_ESTOQUE\t\n    ,SE.CD_MATERIAL\t\n    ,MAT.DS_MATERIAL                            AS DS_MATERIAL\t\n    ,MAT_G.CD_GRUPO_MATERIAL\t\n    ,MAT_G.DS_GRUPO_MATERIAL\t\n    ,MAT_C.CD_CLASSE_MATERIAL\t\n    ,MAT_C.DS_CLASSE_MATERIAL\t\n    ,SUM(SE.QT_ESTOQUE)                          AS QT_ESTOQUE\t\n    ,SUM(SE.QT_ESTOQUE * SE.VL_CUSTO_MEDIO)      AS VL_ESTOQUE\t\n    ,SE.VL_CUSTO_MEDIO\t\n    ,SE.VL_PRECO_ULT_COMPRA\t\n    ,TO_CHAR(SE.dt_ult_compra,', '''YYYY-MM-DD''',') dt_ult_compra\t\nFROM SALDO_ESTOQUE SE\t\nINNER JOIN LOCAL_ESTOQUE LE                                 ON LE.CD_LOCAL_ESTOQUE = SE.CD_LOCAL_ESTOQUE\t\nLEFT JOIN  ESTABELECIMENTO ESTB                              ON ESTB.CD_ESTABELECIMENTO = SE.CD_ESTABELECIMENTO\t\nINNER JOIN MATERIAL MAT                                     ON MAT.CD_MATERIAL = SE.CD_MATERIAL\t\nLEFT JOIN  CLASSE_MATERIAL  MAT_C                            ON MAT_C.CD_CLASSE_MATERIAL = MAT.CD_CLASSE_MATERIAL\t\nLEFT JOIN  SUBGRUPO_MATERIAL MAT_S                           ON MAT_S.CD_SUBGRUPO_MATERIAL = MAT_C.CD_SUBGRUPO_MATERIAL\t\nLEFT JOIN  GRUPO_MATERIAL    MAT_G                           ON MAT_G.CD_GRUPO_MATERIAL = MAT_S.CD_GRUPO_MATERIAL\t\n\t\nWHERE TO_CHAR(SE.DT_MESANO_REFERENCIA,','''YYYY-MM-DD''', ') BETWEEN ' ,'''', variables('DT_INICIO'), '''',' AND ', '''', variables('DT_FIM'), '''',\n\n' GROUP BY\t\n    TO_CHAR(SE.DT_MESANO_REFERENCIA,','''YYYY-MM-DD''',')\t\n    ,SE.CD_ESTABELECIMENTO\t\n    ,ESTB.NM_FANTASIA_ESTAB\t\n    ,SE.CD_LOCAL_ESTOQUE\t\n    ,LE.DS_LOCAL_ESTOQUE\t\n    ,SE.CD_MATERIAL\t\n    ,MAT.DS_MATERIAL\t\n    ,MAT_G.CD_GRUPO_MATERIAL\t\n    ,MAT_G.DS_GRUPO_MATERIAL\t\n    ,MAT_C.CD_CLASSE_MATERIAL\t\n    ,MAT_C.DS_CLASSE_MATERIAL    \t\n    ,SE.VL_CUSTO_MEDIO\t\n    ,SE.VL_PRECO_ULT_COMPRA\t\n    ,TO_CHAR(SE.dt_ult_compra,','''YYYY-MM-DD''',')'\t\n\n)",
+									"type": "Expression"
+								},
+								"partitionOption": "None",
+								"convertDecimalToInteger": false,
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "stg",
+									"tabela_destino": "posicao_estoque_tasy"
+								}
+							}
+						]
+					},
+					{
+						"name": "DELETE MOVIMENTO",
+						"description": "Apaga o movimento com base na faixa de data definida no início do processo",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Posicao Estoque Sadalla",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.1:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "DELETE  DM.TBL_POSICAO_ESTOQUE \nFROM DM.TBL_POSICAO_ESTOQUE\nINNER JOIN \n(\nSELECT distinct ESTABELECIMENTO, DT_MESANO_REFERENCIA  from stg.posicao_estoque_tasy  with(nolock) \n\n) AS STG ON \n\tCONVERT(varchar(10),DM.TBL_POSICAO_ESTOQUE.ESTABELECIMENTO) = CONVERT(varchar(10),STG.ESTABELECIMENTO) AND \n\tCONVERT(varchar(20),DM.TBL_POSICAO_ESTOQUE.DT_MESANO_REFERENCIA) = CONVERT(varchar(20),STG.DT_MESANO_REFERENCIA)",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "INSERT",
+						"description": "Insere o movimento com base na faixa de data definida no início do processo",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "DELETE MOVIMENTO",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.1:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "WITH REF AS(\n\nSELECT \nCAST(ESTABELECIMENTO AS VARCHAR(5)) ESTABELECIMENTO\n,CAST(DT_MESANO_REFERENCIA AS DATE) DT_MESANO_REFERENCIA\n,CAST(DT_ULT_COMPRA AS DATE)DT_ULT_COMPRA\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + cast(CD_ESTABELECIMENTO as varchar(50)) AS FK_CD_ESTABELECIMENTO\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_MATERIAL AS VARCHAR(50)) FK_CD_MATERIAL\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) FK_CD_GRUPO_MATERIAL\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_CLASSE_MATERIAL AS VARCHAR(50))FK_CD_CLASSE_MATERIAL\n,CAST(QT_ESTOQUE AS INT) QT_ESTOQUE\n,CAST(VL_ESTOQUE AS MONEY) VL_ESTOQUE\n,CAST(VL_CUSTO_MEDIO AS MONEY) VL_CUSTO_MEDIO \n,CAST(VL_PRECO_ULT_COMPRA AS MONEY) VL_PRECO_ULT_COMPRA\nFROM STG.POSICAO_ESTOQUE_TASY WITH(NOLOCK)\n\n )\n\nINSERT INTO  DM.TBL_POSICAO_ESTOQUE\nSELECT *  FROM REF",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"DT_INICIO": {
+						"type": "String"
+					},
+					"DT_FIM": {
+						"type": "String"
+					},
+					"Mes_Ano": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "Data Warehouse/Suprimentos/Estoque"
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSQL_DB_Procedimentos')]",
+				"[concat(variables('factoryId'), '/datasets/SQL_DIN')]",
+				"[concat(variables('factoryId'), '/datasets/CloudTasyPrdDataSet')]",
+				"[concat(variables('factoryId'), '/datasets/AZSQL_DINAMICO')]",
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Posicao Estoque_manual_smart')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",

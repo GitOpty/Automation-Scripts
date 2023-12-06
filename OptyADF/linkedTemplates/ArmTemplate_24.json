@@ -24658,15 +24658,250 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/Posicao Estoque_manual_smart')]",
+			"name": "[concat(parameters('factoryName'), '/Posicao Estoque_manual_Tasy')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
 				"activities": [
 					{
-						"name": "LIMPA STAGE SMART",
+						"name": "DT_INICIO",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup Periodo Inicial",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "DT_INICIO",
+							"value": {
+								"value": "@activity('Lookup Periodo Inicial').output.firstRow.Data_Inicial",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "DT_FIM",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "Lookup Periodo Inicial",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "DT_FIM",
+							"value": {
+								"value": "@activity('Lookup Periodo Inicial').output.firstRow.data_final",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "LIMPA STAGE TASY",
 						"type": "Script",
 						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": {
+										"value": "truncate table stg.posicao_estoque_tasy",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "Lookup Periodo Inicial",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "LIMPA STAGE TASY",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": "select '2023-08-01' as Data_Inicial, '2023-08-31' as data_final",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "SQL_DIN",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "Posicao Estoque Tasy HTML",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "DT_INICIO",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "DT_FIM",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": {
+									"value": "@concat(\n    'SELECT ',\n    '''1''', ' as ESTABELECIMENTO\n    ,TO_CHAR(SE.DT_MESANO_REFERENCIA,''YYYY-MM-DD'') AS DT_MESANO_REFERENCIA\n    ,SE.CD_ESTABELECIMENTO\t  \n    ,ESTB.NM_FANTASIA_ESTAB                        AS DS_ESTABELECIMENTO\n    ,SE.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,SE.CD_MATERIAL\n    ,MAT.DS_MATERIAL                            AS DS_MATERIAL\n    ,MAT_G.CD_GRUPO_MATERIAL\n    ,MAT_G.DS_GRUPO_MATERIAL\n    ,MAT_C.CD_CLASSE_MATERIAL\n    ,MAT_C.DS_CLASSE_MATERIAL\n    ,SUM(SE.QT_ESTOQUE)                          AS QT_ESTOQUE\n    ,SUM(SE.QT_ESTOQUE * SE.VL_CUSTO_MEDIO)      AS VL_ESTOQUE\n    ,SE.VL_CUSTO_MEDIO\n    ,SE.VL_PRECO_ULT_COMPRA\n    ,TO_CHAR(SE.dt_ult_compra, ', '''YYYY-MM-DD''', ') dt_ult_compra\nFROM FAST_OPS.SALDO_ESTOQUE SE\nINNER JOIN FAST_OPS.LOCAL_ESTOQUE LE                                 ON LE.CD_LOCAL_ESTOQUE = SE.CD_LOCAL_ESTOQUE\nLEFT JOIN  FAST_OPS.ESTABELECIMENTO ESTB                              ON ESTB.CD_ESTABELECIMENTO = SE.CD_ESTABELECIMENTO\nINNER JOIN FAST_OPS.MATERIAL MAT                                     ON MAT.CD_MATERIAL = SE.CD_MATERIAL\nLEFT JOIN  FAST_OPS.CLASSE_MATERIAL  MAT_C                            ON MAT_C.CD_CLASSE_MATERIAL = MAT.CD_CLASSE_MATERIAL\nLEFT JOIN  FAST_OPS.SUBGRUPO_MATERIAL MAT_S                           ON MAT_S.CD_SUBGRUPO_MATERIAL = MAT_C.CD_SUBGRUPO_MATERIAL\nLEFT JOIN  FAST_OPS.GRUPO_MATERIAL    MAT_G                           ON MAT_G.CD_GRUPO_MATERIAL = MAT_S.CD_GRUPO_MATERIAL\n\nWHERE TO_CHAR(SE.DT_MESANO_REFERENCIA,', '''YYYY-MM-DD''', ') BETWEEN ','''', variables('DT_INICIO'), '''', ' AND ', '''', variables('DT_FIM'), '''',\n\n'GROUP BY\n    TO_CHAR(SE.DT_MESANO_REFERENCIA, ', '''YYYY-MM-DD''', ')\n    ,SE.CD_ESTABELECIMENTO\t\n    ,ESTB.NM_FANTASIA_ESTAB\n    ,SE.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,SE.CD_MATERIAL\n    ,MAT.DS_MATERIAL\n    ,MAT_G.CD_GRUPO_MATERIAL\n    ,MAT_G.DS_GRUPO_MATERIAL\n    ,MAT_C.CD_CLASSE_MATERIAL\n    ,MAT_C.DS_CLASSE_MATERIAL    \n    ,SE.VL_CUSTO_MEDIO\n    ,SE.VL_PRECO_ULT_COMPRA\n    ,TO_CHAR(SE.dt_ult_compra, ', '''YYYY-MM-DD''', ' ) '\n    )",
+									"type": "Expression"
+								},
+								"partitionOption": "None",
+								"convertDecimalToInteger": false,
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "stg",
+									"tabela_destino": "posicao_estoque_tasy"
+								}
+							}
+						]
+					},
+					{
+						"name": "Posicao Estoque Sadalla",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Posicao Estoque Tasy HTML",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": {
+									"value": "@concat(\n'SELECT\t',\n    '''2''' ,' as ESTABELECIMENTO\t\n    ,TO_CHAR(SE.DT_MESANO_REFERENCIA,','''YYYY-MM-DD''', ') AS DT_MESANO_REFERENCIA\t\n    ,SE.CD_ESTABELECIMENTO\t  \n    ,ESTB.NM_FANTASIA_ESTAB                        AS DS_ESTABELECIMENTO\t\n    ,SE.CD_LOCAL_ESTOQUE\t\n    ,LE.DS_LOCAL_ESTOQUE\t\n    ,SE.CD_MATERIAL\t\n    ,MAT.DS_MATERIAL                            AS DS_MATERIAL\t\n    ,MAT_G.CD_GRUPO_MATERIAL\t\n    ,MAT_G.DS_GRUPO_MATERIAL\t\n    ,MAT_C.CD_CLASSE_MATERIAL\t\n    ,MAT_C.DS_CLASSE_MATERIAL\t\n    ,SUM(SE.QT_ESTOQUE)                          AS QT_ESTOQUE\t\n    ,SUM(SE.QT_ESTOQUE * SE.VL_CUSTO_MEDIO)      AS VL_ESTOQUE\t\n    ,SE.VL_CUSTO_MEDIO\t\n    ,SE.VL_PRECO_ULT_COMPRA\t\n    ,TO_CHAR(SE.dt_ult_compra,', '''YYYY-MM-DD''',') dt_ult_compra\t\nFROM SALDO_ESTOQUE SE\t\nINNER JOIN LOCAL_ESTOQUE LE                                 ON LE.CD_LOCAL_ESTOQUE = SE.CD_LOCAL_ESTOQUE\t\nLEFT JOIN  ESTABELECIMENTO ESTB                              ON ESTB.CD_ESTABELECIMENTO = SE.CD_ESTABELECIMENTO\t\nINNER JOIN MATERIAL MAT                                     ON MAT.CD_MATERIAL = SE.CD_MATERIAL\t\nLEFT JOIN  CLASSE_MATERIAL  MAT_C                            ON MAT_C.CD_CLASSE_MATERIAL = MAT.CD_CLASSE_MATERIAL\t\nLEFT JOIN  SUBGRUPO_MATERIAL MAT_S                           ON MAT_S.CD_SUBGRUPO_MATERIAL = MAT_C.CD_SUBGRUPO_MATERIAL\t\nLEFT JOIN  GRUPO_MATERIAL    MAT_G                           ON MAT_G.CD_GRUPO_MATERIAL = MAT_S.CD_GRUPO_MATERIAL\t\n\t\nWHERE TO_CHAR(SE.DT_MESANO_REFERENCIA,','''YYYY-MM-DD''', ') BETWEEN ' ,'''', variables('DT_INICIO'), '''',' AND ', '''', variables('DT_FIM'), '''',\n\n' GROUP BY\t\n    TO_CHAR(SE.DT_MESANO_REFERENCIA,','''YYYY-MM-DD''',')\t\n    ,SE.CD_ESTABELECIMENTO\t\n    ,ESTB.NM_FANTASIA_ESTAB\t\n    ,SE.CD_LOCAL_ESTOQUE\t\n    ,LE.DS_LOCAL_ESTOQUE\t\n    ,SE.CD_MATERIAL\t\n    ,MAT.DS_MATERIAL\t\n    ,MAT_G.CD_GRUPO_MATERIAL\t\n    ,MAT_G.DS_GRUPO_MATERIAL\t\n    ,MAT_C.CD_CLASSE_MATERIAL\t\n    ,MAT_C.DS_CLASSE_MATERIAL    \t\n    ,SE.VL_CUSTO_MEDIO\t\n    ,SE.VL_PRECO_ULT_COMPRA\t\n    ,TO_CHAR(SE.dt_ult_compra,','''YYYY-MM-DD''',')'\t\n\n)",
+									"type": "Expression"
+								},
+								"partitionOption": "None",
+								"convertDecimalToInteger": false,
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "stg",
+									"tabela_destino": "posicao_estoque_tasy"
+								}
+							}
+						]
+					},
+					{
+						"name": "DELETE MOVIMENTO",
+						"description": "Apaga o movimento com base na faixa de data definida no início do processo",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Posicao Estoque Sadalla",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
 						"policy": {
 							"timeout": "0.1:00:00",
 							"retry": 0,
@@ -24684,7 +24919,7 @@
 								{
 									"type": "NonQuery",
 									"text": {
-										"value": "truncate table stg.posicao_estoque_smart",
+										"value": "DELETE  DM.TBL_POSICAO_ESTOQUE \nFROM DM.TBL_POSICAO_ESTOQUE\nINNER JOIN \n(\nSELECT distinct ESTABELECIMENTO, DT_MESANO_REFERENCIA  from stg.posicao_estoque_tasy  with(nolock) \n\n) AS STG ON \n\tCONVERT(varchar(10),DM.TBL_POSICAO_ESTOQUE.ESTABELECIMENTO) = CONVERT(varchar(10),STG.ESTABELECIMENTO) AND \n\tCONVERT(varchar(20),DM.TBL_POSICAO_ESTOQUE.DT_MESANO_REFERENCIA) = CONVERT(varchar(20),STG.DT_MESANO_REFERENCIA)",
 										"type": "Expression"
 									}
 								}
@@ -24693,1520 +24928,19 @@
 						}
 					},
 					{
-						"name": "Lookup Periodo",
-						"type": "Lookup",
-						"dependsOn": [
-							{
-								"activity": "Add Ano Inicio Reprocessar",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Add Ano Final Reprocessar",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": {
-									"value": "@concat('\nselect distinct\n    CAST(a.TheLastOfMonth AS VARCHAR(50)) AS Mes_Ano\nfrom calendar a\nwhere a.TheYear BETWEEN\n','''',variables('ANO_REPROCESSAR'),'''',' AND ','''',variables('ANO_FINAL_REPROCESSAR'),'''',' ORDER BY Mes_Ano DESC')",
-									"type": "Expression"
-								},
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "SQL_DIN",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "ForEach1",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "Lookup Periodo",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('Lookup Periodo').output.value",
-								"type": "Expression"
-							},
-							"isSequential": true,
-							"activities": [
-								{
-									"name": "v_Mes_Ano",
-									"type": "SetVariable",
-									"dependsOn": [],
-									"policy": {
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"variableName": "Mes_Ano",
-										"value": {
-											"value": "@item().Mes_Ano",
-											"type": "Expression"
-										}
-									}
-								},
-								{
-									"name": "IOF Posicao Estoque",
-									"description": "Primeiro a rodar q deleta o mês ref do dbo.posicao_estoque",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "v_Mes_Ano",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "SqlServerSource",
-											"sqlReaderQuery": {
-												"value": "@concat('\n\nWITH AUX AS(\n\nSELECT \n    NULL AS mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE) AS estoque\n    , ROUND((\n            SUM(CASE \n                    WHEN etq.etq_cml_preco_medio IS NULL\n                        THEN 0\n                    ELSE etq.etq_cml_preco_medio\n                    END * etq.etq_quantidade) / SUM(ETQ.ETQ_QUANTIDADE)\n            ) * 1.0000000000, 10) etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10) AS valor_total\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END AS consignado\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n   \nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) <> 0\n\nUNION ALL\n\nSELECT \n    NULL AS mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE)\n    , mat.mat_vlr_pm etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10)\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n\nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) = 0\n\nUNION ALL\n\nSELECT \n    mma.mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , sum(mma_qtd * mma_tipo_es_fator * - 1)\n    , 0\n    , ROUND(sum(mma_valor * mma_tipo_es_fator * - 1), 10)\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN mma.mma_ind_consig = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END AS consignado\n    , MMA.MMA_IND_APLIC_DIRETA\nFROM MMA (nolock)\nLEFT OUTER JOIN ETQ  (nolock)  ON (mma.mma_mat_cod = etq.etq_mat_cod AND mma.mma_sba_cod = etq.etq_sba_cod)\n        , MAT   (nolock)\n        , cfg   (nolock)\n        , gmm   (nolock)\n        , LMA   (nolock)   \nWHERE (mma.mma_data_mov >= ''', variables('Mes_Ano'),' 23:59:59', ''')','\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (MMA.MMA_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (gmm.gmm_cod = mma.mma_gmm_cod)\n    AND (7 = 7)\nGROUP BY \n    mma.mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN mma.mma_ind_consig = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MMA.MMA_IND_APLIC_DIRETA\n\n)\n\n,DADO AS(\nSELECT \n    GCC.gcc_cod                                                                 AS CD_ESTABELECIMENTO,\n    a.cfg_emp                                                                   AS DS_ESTABELECIMENTO,\n    SBA_COD                                                                     as CD_LOCAL_ESTOQUE,\n    SBA_NOME                                                                    AS DS_LOCAL_ESTOQUE,\n    A.MAT_COD                                                                   AS CD_MATERIAL\n    ,A.MAT_DESC_RESUMIDA                                                        AS DS_MATERIAL_SHORT\n    ,A.LMA_COD                                                                  AS CD_CLASSE_MATERIAL\n    ,A.LMA_NOME                                                                 AS DS_CLASSE_MATERIAL\n    ,A.gmm_cod                                                                  AS CD_GRUPO_MATERIAL\n    ,A.gmm_nome                                                                 AS DS_GRUPO_MATERIAL\n    ,sum(A.estoque)                                                             AS QT_ESTOQUE\n    ,avg(A.etq_etq_cml_preco_medio)                                             AS VL_MED_UNIT\n    ,sum(A.valor_total)                                                         AS VL_TOTAL\n    -- ,A.consignado                                                            AS IE_CONSIGNADO\nFROM AUX A\nLEFT JOIN SBA SBA (NOLOCK) ON SBA.SBA_COD = A.etq_sba_cod\nLEFT JOIN STR STR (NOLOCK) ON STR.str_cod = SBA.SBA_STR_COD\nLEFT JOIN GCC GCC (NOLOCK) ON GCC.gcc_str_cod = STR.str_str_cod \n\nGROUP BY\n-- SUBSTRING(CAST(CAST(GETDATE()-30 AS DATE) AS VARCHAR(30)),1,7)\nGCC.gcc_cod                                                   \n,a.cfg_emp                                                 \n,STR.str_cod                                                   \n,STR.str_nome                                                  \n,SBA_COD                                                       \n,SBA_NOME                                                      \n,A.MAT_COD                                                     \n,A.MAT_DESC_RESUMIDA                                          \n,A.LMA_COD                                                    \n,A.LMA_NOME                                                   \n,A.gmm_cod                                                    \n,A.gmm_nome\n-- ,A.consignado          \n\n)\n\nSELECT SUBSTRING( ''',variables('Mes_Ano'),'''',',1,7)',' as MES_REF,'\n,'''92''', 'AS ID_SYS'\n,',null', ' as IE_CONSIGNADO'\n,',X.*\n\nFROM DADO X\nWHERE X.VL_MED_UNIT > 0\n')",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"sink": {
-											"type": "AzureSqlSink",
-											"tableOption": "autoCreate",
-											"disableMetricsCollection": false
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"mappings": [
-												{
-													"source": {
-														"name": "MES_REF",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "MES_REF",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "ID_SYS",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "ID_SYS",
-														"type": "Int32",
-														"physicalType": "int"
-													}
-												},
-												{
-													"source": {
-														"name": "IE_CONSIGNADO",
-														"type": "Int32",
-														"physicalType": "int"
-													},
-													"sink": {
-														"name": "IE_CONSIGNADO",
-														"type": "Int32",
-														"physicalType": "int"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_MATERIAL",
-														"type": "Int32",
-														"physicalType": "int"
-													},
-													"sink": {
-														"name": "CD_MATERIAL",
-														"type": "Int64",
-														"physicalType": "bigint"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_MATERIAL_SHORT",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_MATERIAL_SHORT",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "DS_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "QT_ESTOQUE",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 0,
-														"precision": 38
-													},
-													"sink": {
-														"name": "QT_ESTOQUE",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 0,
-														"precision": 38
-													}
-												},
-												{
-													"source": {
-														"name": "VL_MED_UNIT",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 7,
-														"precision": 38
-													},
-													"sink": {
-														"name": "VL_MED_UNIT",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 7,
-														"precision": 38
-													}
-												},
-												{
-													"source": {
-														"name": "VL_TOTAL",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 10,
-														"precision": 38
-													},
-													"sink": {
-														"name": "VL_TOTAL",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 10,
-														"precision": 38
-													}
-												}
-											],
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "SMART_IOF_PrdDataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "stg",
-												"tabela_destino": "posicao_estoque_smart"
-											}
-										}
-									]
-								},
-								{
-									"name": "ITG Posicao Estoque",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "IOF Posicao Estoque",
-											"dependencyConditions": [
-												"Completed"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "SqlServerSource",
-											"sqlReaderQuery": {
-												"value": "@concat('\n\nWITH AUX AS(\n\nSELECT \n    NULL AS mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE) AS estoque\n    , ROUND((\n            SUM(CASE \n                    WHEN etq.etq_cml_preco_medio IS NULL\n                        THEN 0\n                    ELSE etq.etq_cml_preco_medio\n                    END * etq.etq_quantidade) / SUM(ETQ.ETQ_QUANTIDADE)\n            ) * 1.0000000000, 10) etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10) AS valor_total\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END AS consignado\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n   \nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) <> 0\n\nUNION ALL\n\nSELECT \n    NULL AS mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE)\n    , mat.mat_vlr_pm etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10)\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n\nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) = 0\n\nUNION ALL\n\nSELECT \n    mma.mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , sum(mma_qtd * mma_tipo_es_fator * - 1)\n    , 0\n    , ROUND(sum(mma_valor * mma_tipo_es_fator * - 1), 10)\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN mma.mma_ind_consig = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END AS consignado\n    , MMA.MMA_IND_APLIC_DIRETA\nFROM MMA (nolock)\nLEFT OUTER JOIN ETQ  (nolock)  ON (mma.mma_mat_cod = etq.etq_mat_cod AND mma.mma_sba_cod = etq.etq_sba_cod)\n        , MAT   (nolock)\n        , cfg   (nolock)\n        , gmm   (nolock)\n        , LMA   (nolock)   \nWHERE (mma.mma_data_mov >= ''', variables('Mes_Ano'),' 23:59:59', ''')','\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (MMA.MMA_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (gmm.gmm_cod = mma.mma_gmm_cod)\n    AND (7 = 7)\nGROUP BY \n    mma.mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN mma.mma_ind_consig = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MMA.MMA_IND_APLIC_DIRETA\n\n)\n\n,DADO AS(\nSELECT \n    GCC.gcc_cod                                                                 AS CD_ESTABELECIMENTO,\n    a.cfg_emp                                                                   AS DS_ESTABELECIMENTO,\n    SBA_COD                                                                     as CD_LOCAL_ESTOQUE,\n    SBA_NOME                                                                    AS DS_LOCAL_ESTOQUE,\n    A.MAT_COD                                                                   AS CD_MATERIAL\n    ,A.MAT_DESC_RESUMIDA                                                        AS DS_MATERIAL_SHORT\n    ,A.LMA_COD                                                                  AS CD_CLASSE_MATERIAL\n    ,A.LMA_NOME                                                                 AS DS_CLASSE_MATERIAL\n    ,A.gmm_cod                                                                  AS CD_GRUPO_MATERIAL\n    ,A.gmm_nome                                                                 AS DS_GRUPO_MATERIAL\n    ,sum(A.estoque)                                                             AS QT_ESTOQUE\n    ,avg(A.etq_etq_cml_preco_medio)                                             AS VL_MED_UNIT\n    ,sum(A.valor_total)                                                         AS VL_TOTAL\n    -- ,A.consignado                                                            AS IE_CONSIGNADO\nFROM AUX A\nLEFT JOIN SBA SBA (NOLOCK) ON SBA.SBA_COD = A.etq_sba_cod\nLEFT JOIN STR STR (NOLOCK) ON STR.str_cod = SBA.SBA_STR_COD\nLEFT JOIN GCC GCC (NOLOCK) ON GCC.gcc_str_cod = STR.str_str_cod \n\nGROUP BY\n-- SUBSTRING(CAST(CAST(GETDATE()-30 AS DATE) AS VARCHAR(30)),1,7)\nGCC.gcc_cod                                                   \n,a.cfg_emp                                                 \n,STR.str_cod                                                   \n,STR.str_nome                                                  \n,SBA_COD                                                       \n,SBA_NOME                                                      \n,A.MAT_COD                                                     \n,A.MAT_DESC_RESUMIDA                                          \n,A.LMA_COD                                                    \n,A.LMA_NOME                                                   \n,A.gmm_cod                                                    \n,A.gmm_nome\n-- ,A.consignado          \n\n)\n\nSELECT SUBSTRING( ''',variables('Mes_Ano'),'''',',1,7)',' as MES_REF,'\n,'''90''', 'AS ID_SYS'\n,',null', ' as IE_CONSIGNADO'\n,',X.*\n\nFROM DADO X\nWHERE X.VL_MED_UNIT > 0\n')",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"sink": {
-											"type": "AzureSqlSink"
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"mappings": [
-												{
-													"source": {
-														"name": "MES_REF",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "MES_REF",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "ID_SYS",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "ID_SYS",
-														"type": "Int32",
-														"physicalType": "int"
-													}
-												},
-												{
-													"source": {
-														"name": "IE_CONSIGNADO",
-														"type": "Int32",
-														"physicalType": "int"
-													},
-													"sink": {
-														"name": "IE_CONSIGNADO",
-														"type": "Int32",
-														"physicalType": "int"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_MATERIAL",
-														"type": "Int32",
-														"physicalType": "int"
-													},
-													"sink": {
-														"name": "CD_MATERIAL",
-														"type": "Int64",
-														"physicalType": "bigint"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_MATERIAL_SHORT",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_MATERIAL_SHORT",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "DS_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "QT_ESTOQUE",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 0,
-														"precision": 38
-													},
-													"sink": {
-														"name": "QT_ESTOQUE",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 0,
-														"precision": 38
-													}
-												},
-												{
-													"source": {
-														"name": "VL_MED_UNIT",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 7,
-														"precision": 38
-													},
-													"sink": {
-														"name": "VL_MED_UNIT",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 7,
-														"precision": 38
-													}
-												},
-												{
-													"source": {
-														"name": "VL_TOTAL",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 10,
-														"precision": 38
-													},
-													"sink": {
-														"name": "VL_TOTAL",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 10,
-														"precision": 38
-													}
-												}
-											],
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "SMART_ITAIGARA_PrdDataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "stg",
-												"tabela_destino": "posicao_estoque_smart"
-											}
-										}
-									]
-								},
-								{
-									"name": "ITB Posicao Estoque",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "ITG Posicao Estoque",
-											"dependencyConditions": [
-												"Completed"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "SqlServerSource",
-											"sqlReaderQuery": {
-												"value": "@concat('\n\nWITH AUX AS(\n\nSELECT \n    NULL AS mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE) AS estoque\n    , ROUND((\n            SUM(CASE \n                    WHEN etq.etq_cml_preco_medio IS NULL\n                        THEN 0\n                    ELSE etq.etq_cml_preco_medio\n                    END * etq.etq_quantidade) / SUM(ETQ.ETQ_QUANTIDADE)\n            ) * 1.0000000000, 10) etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10) AS valor_total\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END AS consignado\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n   \nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) <> 0\n\nUNION ALL\n\nSELECT \n    NULL AS mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE)\n    , mat.mat_vlr_pm etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10)\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n\nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) = 0\n\nUNION ALL\n\nSELECT \n    mma.mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , sum(mma_qtd * mma_tipo_es_fator * - 1)\n    , 0\n    , ROUND(sum(mma_valor * mma_tipo_es_fator * - 1), 10)\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN mma.mma_ind_consig = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END AS consignado\n    , MMA.MMA_IND_APLIC_DIRETA\nFROM MMA (nolock)\nLEFT OUTER JOIN ETQ  (nolock)  ON (mma.mma_mat_cod = etq.etq_mat_cod AND mma.mma_sba_cod = etq.etq_sba_cod)\n        , MAT   (nolock)\n        , cfg   (nolock)\n        , gmm   (nolock)\n        , LMA   (nolock)   \nWHERE (mma.mma_data_mov >= ''', variables('Mes_Ano'),' 23:59:59', ''')','\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (MMA.MMA_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (gmm.gmm_cod = mma.mma_gmm_cod)\n    AND (7 = 7)\nGROUP BY \n    mma.mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN mma.mma_ind_consig = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MMA.MMA_IND_APLIC_DIRETA\n\n)\n\n,DADO AS(\nSELECT \n    GCC.gcc_cod                                                                 AS CD_ESTABELECIMENTO,\n    a.cfg_emp                                                                   AS DS_ESTABELECIMENTO,\n    SBA_COD                                                                     as CD_LOCAL_ESTOQUE,\n    SBA_NOME                                                                    AS DS_LOCAL_ESTOQUE,\n    A.MAT_COD                                                                   AS CD_MATERIAL\n    ,A.MAT_DESC_RESUMIDA                                                        AS DS_MATERIAL_SHORT\n    ,A.LMA_COD                                                                  AS CD_CLASSE_MATERIAL\n    ,A.LMA_NOME                                                                 AS DS_CLASSE_MATERIAL\n    ,A.gmm_cod                                                                  AS CD_GRUPO_MATERIAL\n    ,A.gmm_nome                                                                 AS DS_GRUPO_MATERIAL\n    ,sum(A.estoque)                                                             AS QT_ESTOQUE\n    ,avg(A.etq_etq_cml_preco_medio)                                             AS VL_MED_UNIT\n    ,sum(A.valor_total)                                                         AS VL_TOTAL\n    -- ,A.consignado                                                            AS IE_CONSIGNADO\nFROM AUX A\nLEFT JOIN SBA SBA (NOLOCK) ON SBA.SBA_COD = A.etq_sba_cod\nLEFT JOIN STR STR (NOLOCK) ON STR.str_cod = SBA.SBA_STR_COD\nLEFT JOIN GCC GCC (NOLOCK) ON GCC.gcc_str_cod = STR.str_str_cod \n\nGROUP BY\n-- SUBSTRING(CAST(CAST(GETDATE()-30 AS DATE) AS VARCHAR(30)),1,7)\nGCC.gcc_cod                                                   \n,a.cfg_emp                                                 \n,STR.str_cod                                                   \n,STR.str_nome                                                  \n,SBA_COD                                                       \n,SBA_NOME                                                      \n,A.MAT_COD                                                     \n,A.MAT_DESC_RESUMIDA                                          \n,A.LMA_COD                                                    \n,A.LMA_NOME                                                   \n,A.gmm_cod                                                    \n,A.gmm_nome\n-- ,A.consignado          \n\n)\n\nSELECT SUBSTRING( ''',variables('Mes_Ano'),'''',',1,7)',' as MES_REF,'\n,'''91''', 'AS ID_SYS'\n,',null', ' as IE_CONSIGNADO'\n,',X.*\n\nFROM DADO X\nWHERE X.VL_MED_UNIT > 0\n')",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"sink": {
-											"type": "AzureSqlSink"
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"mappings": [
-												{
-													"source": {
-														"name": "MES_REF",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "MES_REF",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "ID_SYS",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "ID_SYS",
-														"type": "Int32",
-														"physicalType": "int"
-													}
-												},
-												{
-													"source": {
-														"name": "IE_CONSIGNADO",
-														"type": "Int32",
-														"physicalType": "int"
-													},
-													"sink": {
-														"name": "IE_CONSIGNADO",
-														"type": "Int32",
-														"physicalType": "int"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_MATERIAL",
-														"type": "Int32",
-														"physicalType": "int"
-													},
-													"sink": {
-														"name": "CD_MATERIAL",
-														"type": "Int64",
-														"physicalType": "bigint"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_MATERIAL_SHORT",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_MATERIAL_SHORT",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "DS_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "QT_ESTOQUE",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 0,
-														"precision": 38
-													},
-													"sink": {
-														"name": "QT_ESTOQUE",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 0,
-														"precision": 38
-													}
-												},
-												{
-													"source": {
-														"name": "VL_MED_UNIT",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 7,
-														"precision": 38
-													},
-													"sink": {
-														"name": "VL_MED_UNIT",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 7,
-														"precision": 38
-													}
-												},
-												{
-													"source": {
-														"name": "VL_TOTAL",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 10,
-														"precision": 38
-													},
-													"sink": {
-														"name": "VL_TOTAL",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 10,
-														"precision": 38
-													}
-												}
-											],
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "SMART_ITABUNA_PrdDataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "stg",
-												"tabela_destino": "posicao_estoque_smart"
-											}
-										}
-									]
-								},
-								{
-									"name": "OFTALMOCLIN Posicao Estoque",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "ITB Posicao Estoque",
-											"dependencyConditions": [
-												"Completed"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "SqlServerSource",
-											"sqlReaderQuery": {
-												"value": "@concat('\n\nWITH AUX AS(\n\nSELECT \n    NULL AS mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE) AS estoque\n    , ROUND((\n            SUM(CASE \n                    WHEN etq.etq_cml_preco_medio IS NULL\n                        THEN 0\n                    ELSE etq.etq_cml_preco_medio\n                    END * etq.etq_quantidade) / SUM(ETQ.ETQ_QUANTIDADE)\n            ) * 1.0000000000, 10) etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10) AS valor_total\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END AS consignado\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n   \nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) <> 0\n\nUNION ALL\n\nSELECT \n    NULL AS mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE)\n    , mat.mat_vlr_pm etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10)\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n\nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) = 0\n\nUNION ALL\n\nSELECT \n    mma.mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , sum(mma_qtd * mma_tipo_es_fator * - 1)\n    , 0\n    , ROUND(sum(mma_valor * mma_tipo_es_fator * - 1), 10)\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN mma.mma_ind_consig = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END AS consignado\n    , MMA.MMA_IND_APLIC_DIRETA\nFROM MMA (nolock)\nLEFT OUTER JOIN ETQ  (nolock)  ON (mma.mma_mat_cod = etq.etq_mat_cod AND mma.mma_sba_cod = etq.etq_sba_cod)\n        , MAT   (nolock)\n        , cfg   (nolock)\n        , gmm   (nolock)\n        , LMA   (nolock)   \nWHERE (mma.mma_data_mov >= ''', variables('Mes_Ano'),' 23:59:59', ''')',' \n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (MMA.MMA_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (gmm.gmm_cod = mma.mma_gmm_cod)\n    AND (7 = 7)\nGROUP BY \n    mma.mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN mma.mma_ind_consig = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MMA.MMA_IND_APLIC_DIRETA\n\n)\n\n,DADO AS(\nSELECT \n    GCC.gcc_cod                                                                 AS CD_ESTABELECIMENTO,\n    a.cfg_emp                                                                   AS DS_ESTABELECIMENTO,\n    SBA_COD                                                                     as CD_LOCAL_ESTOQUE,\n    SBA_NOME                                                                    AS DS_LOCAL_ESTOQUE,\n    A.MAT_COD                                                                   AS CD_MATERIAL\n    ,A.MAT_DESC_RESUMIDA                                                        AS DS_MATERIAL_SHORT\n    ,A.LMA_COD                                                                  AS CD_CLASSE_MATERIAL\n    ,A.LMA_NOME                                                                 AS DS_CLASSE_MATERIAL\n    ,A.gmm_cod                                                                  AS CD_GRUPO_MATERIAL\n    ,A.gmm_nome                                                                 AS DS_GRUPO_MATERIAL\n    ,sum(A.estoque)                                                             AS QT_ESTOQUE\n    ,avg(A.etq_etq_cml_preco_medio)                                             AS VL_MED_UNIT\n    ,sum(A.valor_total)                                                         AS VL_TOTAL\n    -- ,A.consignado                                                            AS IE_CONSIGNADO\nFROM AUX A\nLEFT JOIN SBA SBA (NOLOCK) ON SBA.SBA_COD = A.etq_sba_cod\nLEFT JOIN STR STR (NOLOCK) ON STR.str_cod = SBA.SBA_STR_COD\nLEFT JOIN GCC GCC (NOLOCK) ON GCC.gcc_str_cod = STR.str_str_cod \n\nGROUP BY\n-- SUBSTRING(CAST(CAST(GETDATE()-30 AS DATE) AS VARCHAR(30)),1,7)\nGCC.gcc_cod                                                   \n,a.cfg_emp                                                 \n,STR.str_cod                                                   \n,STR.str_nome                                                  \n,SBA_COD                                                       \n,SBA_NOME                                                      \n,A.MAT_COD                                                     \n,A.MAT_DESC_RESUMIDA                                          \n,A.LMA_COD                                                    \n,A.LMA_NOME                                                   \n,A.gmm_cod                                                    \n,A.gmm_nome\n-- ,A.consignado          \n\n)\n\nSELECT SUBSTRING( ''',variables('Mes_Ano'),'''',',1,7)',' as MES_REF,'\n,'''93''', 'AS ID_SYS'\n,',null', ' as IE_CONSIGNADO'\n,',X.*\n\nFROM DADO X\nWHERE X.VL_MED_UNIT > 0\n')",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"sink": {
-											"type": "AzureSqlSink"
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"mappings": [
-												{
-													"source": {
-														"name": "MES_REF",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "MES_REF",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "ID_SYS",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "ID_SYS",
-														"type": "Int32",
-														"physicalType": "int"
-													}
-												},
-												{
-													"source": {
-														"name": "IE_CONSIGNADO",
-														"type": "Int32",
-														"physicalType": "int"
-													},
-													"sink": {
-														"name": "IE_CONSIGNADO",
-														"type": "Int32",
-														"physicalType": "int"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_MATERIAL",
-														"type": "Int32",
-														"physicalType": "int"
-													},
-													"sink": {
-														"name": "CD_MATERIAL",
-														"type": "Int64",
-														"physicalType": "bigint"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_MATERIAL_SHORT",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_MATERIAL_SHORT",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "DS_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "QT_ESTOQUE",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 0,
-														"precision": 38
-													},
-													"sink": {
-														"name": "QT_ESTOQUE",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 0,
-														"precision": 38
-													}
-												},
-												{
-													"source": {
-														"name": "VL_MED_UNIT",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 7,
-														"precision": 38
-													},
-													"sink": {
-														"name": "VL_MED_UNIT",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 7,
-														"precision": 38
-													}
-												},
-												{
-													"source": {
-														"name": "VL_TOTAL",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 10,
-														"precision": 38
-													},
-													"sink": {
-														"name": "VL_TOTAL",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 10,
-														"precision": 38
-													}
-												}
-											],
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "stg",
-												"tabela_destino": "posicao_estoque_smart"
-											}
-										}
-									]
-								},
-								{
-									"name": "HOSL Posicao Estoque",
-									"type": "Copy",
-									"dependsOn": [
-										{
-											"activity": "OFTALMOCLIN Posicao Estoque",
-											"dependencyConditions": [
-												"Completed"
-											]
-										}
-									],
-									"policy": {
-										"timeout": "7.00:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "SqlServerSource",
-											"sqlReaderQuery": {
-												"value": "@concat('\n\nWITH AUX AS(\n\nSELECT \n    NULL AS mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE) AS estoque\n    , ROUND((\n            SUM(CASE \n                    WHEN etq.etq_cml_preco_medio IS NULL\n                        THEN 0\n                    ELSE etq.etq_cml_preco_medio\n                    END * etq.etq_quantidade) / SUM(ETQ.ETQ_QUANTIDADE)\n            ) * 1.0000000000, 10) etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10) AS valor_total\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END AS consignado\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n   \nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) <> 0\n\nUNION ALL\n\nSELECT \n    NULL AS mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , SUM(ETQ.ETQ_QUANTIDADE)\n    , mat.mat_vlr_pm etq_etq_cml_preco_medio\n    , ROUND(SUM(CASE \n                WHEN etq.etq_cml_preco_medio IS NULL\n                    THEN 0\n                ELSE etq.etq_cml_preco_medio\n                END * etq.etq_quantidade), 10)\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nFROM MAT    (nolock)\n    , cfg   (nolock)\n    , gmm   (nolock)\n    , LMA   (nolock)\n    , ETQ   (nolock)\n\nWHERE (LMA.LMA_GMM_COD = gmm.gmm_cod)\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (ETQ.ETQ_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (8 = 8)\nGROUP BY \n    ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN MAT.MAT_IND_CONSIGNADO = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MAT.MAT_IND_APLIC_DIRETA\nHAVING SUM(etq.etq_quantidade) = 0\n\nUNION ALL\n\nSELECT \n    mma.mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , sum(mma_qtd * mma_tipo_es_fator * - 1)\n    , 0\n    , ROUND(sum(mma_valor * mma_tipo_es_fator * - 1), 10)\n    , mat.mat_prc_ult_entrada AS saldo_residual\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN mma.mma_ind_consig = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END AS consignado\n    , MMA.MMA_IND_APLIC_DIRETA\nFROM MMA (nolock)\nLEFT OUTER JOIN ETQ  (nolock)  ON (mma.mma_mat_cod = etq.etq_mat_cod AND mma.mma_sba_cod = etq.etq_sba_cod)\n        , MAT   (nolock)\n        , cfg   (nolock)\n        , gmm   (nolock)\n        , LMA   (nolock)   \nWHERE (mma.mma_data_mov >= ''', variables('Mes_Ano'),' 23:59:59', ''')','\n    AND (LMA.LMA_GMM_COD = MAT.MAT_GMM_COD)\n    AND (LMA.LMA_COD = MAT.MAT_LMA_COD)\n    AND (MMA.MMA_MAT_COD = MAT.MAT_COD)\n    AND (MAT.MAT_COD > 0)\n    AND (gmm.gmm_cod = mma.mma_gmm_cod)\n    AND (7 = 7)\nGROUP BY \n    mma.mma_data_mov\n    ,ETQ.etq_sba_cod\n    , MAT.MAT_COD\n    , MAT.MAT_DESC_RESUMIDA\n    , MAT.MAT_CONS_MEDIO\n    , MAT.MAT_UNM_COD_SAIDA\n    , MAT.mat_vlr_pm\n    , cfg.cfg_emp\n    , LMA.LMA_NOME\n    , gmm.gmm_nome\n    , gmm.gmm_cod\n    , LMA.LMA_COD\n    , mat.mat_prc_ult_entrada\n    , mat.mat_unm_cod_entrada\n    , MAT.MAT_IND_FRACIONADO\n    , MAT.MAT_FAT_CONV_S_V\n    -- , CASE \n    --     WHEN mma.mma_ind_consig = \"S\"\n    --         THEN \"S\"\n    --     ELSE \"N\"\n    --     END\n    , MMA.MMA_IND_APLIC_DIRETA\n\n)\n\n,DADO AS(\nSELECT \n    GCC.gcc_cod                                                                 AS CD_ESTABELECIMENTO,\n    a.cfg_emp                                                                   AS DS_ESTABELECIMENTO,\n    SBA_COD                                                                     as CD_LOCAL_ESTOQUE,\n    SBA_NOME                                                                    AS DS_LOCAL_ESTOQUE,\n    A.MAT_COD                                                                   AS CD_MATERIAL\n    ,A.MAT_DESC_RESUMIDA                                                        AS DS_MATERIAL_SHORT\n    ,A.LMA_COD                                                                  AS CD_CLASSE_MATERIAL\n    ,A.LMA_NOME                                                                 AS DS_CLASSE_MATERIAL\n    ,A.gmm_cod                                                                  AS CD_GRUPO_MATERIAL\n    ,A.gmm_nome                                                                 AS DS_GRUPO_MATERIAL\n    ,sum(A.estoque)                                                             AS QT_ESTOQUE\n    ,avg(A.etq_etq_cml_preco_medio)                                             AS VL_MED_UNIT\n    ,sum(A.valor_total)                                                         AS VL_TOTAL\n    -- ,A.consignado                                                            AS IE_CONSIGNADO\nFROM AUX A\nLEFT JOIN SBA SBA (NOLOCK) ON SBA.SBA_COD = A.etq_sba_cod\nLEFT JOIN STR STR (NOLOCK) ON STR.str_cod = SBA.SBA_STR_COD\nLEFT JOIN GCC GCC (NOLOCK) ON GCC.gcc_str_cod = STR.str_str_cod \n\nGROUP BY\n-- SUBSTRING(CAST(CAST(GETDATE()-30 AS DATE) AS VARCHAR(30)),1,7)\nGCC.gcc_cod                                                   \n,a.cfg_emp                                                 \n,STR.str_cod                                                   \n,STR.str_nome                                                  \n,SBA_COD                                                       \n,SBA_NOME                                                      \n,A.MAT_COD                                                     \n,A.MAT_DESC_RESUMIDA                                          \n,A.LMA_COD                                                    \n,A.LMA_NOME                                                   \n,A.gmm_cod                                                    \n,A.gmm_nome\n-- ,A.consignado          \n\n)\n\nSELECT SUBSTRING( ''',variables('Mes_Ano'),'''',',1,7)',' as MES_REF,'\n,'''94''', 'AS ID_SYS'\n,',null', ' as IE_CONSIGNADO'\n,',X.*\n\nFROM DADO X\nWHERE X.VL_MED_UNIT > 0\n')",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"sink": {
-											"type": "AzureSqlSink"
-										},
-										"enableStaging": false,
-										"translator": {
-											"type": "TabularTranslator",
-											"mappings": [
-												{
-													"source": {
-														"name": "MES_REF",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "MES_REF",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "ID_SYS",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "ID_SYS",
-														"type": "Int32",
-														"physicalType": "int"
-													}
-												},
-												{
-													"source": {
-														"name": "IE_CONSIGNADO",
-														"type": "Int32",
-														"physicalType": "int"
-													},
-													"sink": {
-														"name": "IE_CONSIGNADO",
-														"type": "Int32",
-														"physicalType": "int"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_ESTABELECIMENTO",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_LOCAL_ESTOQUE",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_MATERIAL",
-														"type": "Int32",
-														"physicalType": "int"
-													},
-													"sink": {
-														"name": "CD_MATERIAL",
-														"type": "Int64",
-														"physicalType": "bigint"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_MATERIAL_SHORT",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_MATERIAL_SHORT",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "DS_CLASSE_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "CD_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "char"
-													},
-													"sink": {
-														"name": "CD_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "DS_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													},
-													"sink": {
-														"name": "DS_GRUPO_MATERIAL",
-														"type": "String",
-														"physicalType": "varchar"
-													}
-												},
-												{
-													"source": {
-														"name": "QT_ESTOQUE",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 0,
-														"precision": 38
-													},
-													"sink": {
-														"name": "QT_ESTOQUE",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 0,
-														"precision": 38
-													}
-												},
-												{
-													"source": {
-														"name": "VL_MED_UNIT",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 7,
-														"precision": 38
-													},
-													"sink": {
-														"name": "VL_MED_UNIT",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 7,
-														"precision": 38
-													}
-												},
-												{
-													"source": {
-														"name": "VL_TOTAL",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 10,
-														"precision": 38
-													},
-													"sink": {
-														"name": "VL_TOTAL",
-														"type": "Decimal",
-														"physicalType": "decimal",
-														"scale": 10,
-														"precision": 38
-													}
-												}
-											],
-											"typeConversion": true,
-											"typeConversionSettings": {
-												"allowDataTruncation": true,
-												"treatBooleanAsNumber": false
-											}
-										}
-									},
-									"inputs": [
-										{
-											"referenceName": "SMART_HOSL_PrdDataSet",
-											"type": "DatasetReference",
-											"parameters": {}
-										}
-									],
-									"outputs": [
-										{
-											"referenceName": "AZSQL_DINAMICO",
-											"type": "DatasetReference",
-											"parameters": {
-												"schema_destino": "stg",
-												"tabela_destino": "posicao_estoque_smart"
-											}
-										}
-									]
-								}
-							]
-						}
-					},
-					{
-						"name": "Add Ano Inicio Reprocessar",
-						"type": "SetVariable",
-						"dependsOn": [
-							{
-								"activity": "LIMPA STAGE SMART",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"variableName": "ANO_REPROCESSAR",
-							"value": "2023"
-						}
-					},
-					{
-						"name": "INSERT NO DATAMART",
+						"name": "INSERT",
+						"description": "Insere o movimento com base na faixa de data definida no início do processo",
 						"type": "Script",
 						"dependsOn": [
 							{
-								"activity": "ForEach1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "DELETE DATAMART",
+								"activity": "DELETE MOVIMENTO",
 								"dependencyConditions": [
 									"Succeeded"
 								]
 							}
 						],
 						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						},
-						"typeProperties": {
-							"scripts": [
-								{
-									"type": "NonQuery",
-									"text": "\nINSERT INTO  DM.TBL_POSICAO_ESTOQUE\nSELECT \nCAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n,CAST(MES_REF + '-01' AS DATE) AS DT_MESANO_REFERENCIA\n,NULL AS DT_ULT_COMPRA\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_ESTABELECIMENTO AS VARCHAR(50)) AS FK_CD_ESTABELECIMENTO\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_MATERIAL AS VARCHAR(50)) AS FK_CD_MATERIAL\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) AS FK_CD_GRUPO_MATERIAL\n,CAST(ID_SYS AS VARCHAR(5)) + '|' + CAST(CD_CLASSE_MATERIAL AS VARCHAR(50)) AS FK_CD_CLASSE_MATERIAL\n,CAST(QT_ESTOQUE AS INT) AS QT_ESTOQUE\n,CAST(VL_TOTAL AS MONEY) AS VL_ESTOQUE\n,CAST(VL_MED_UNIT AS MONEY) AS VL_CUSTO_MEDIO\n,NULL AS VL_PRECO_ULT_COMPRA\nFROM STG.POSICAO_ESTOQUE_SMART"
-								}
-							],
-							"scriptBlockExecutionTimeout": "02:00:00"
-						}
-					},
-					{
-						"name": "Add Ano Final Reprocessar",
-						"type": "SetVariable",
-						"dependsOn": [
-							{
-								"activity": "LIMPA STAGE SMART",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"variableName": "ANO_FINAL_REPROCESSAR",
-							"value": "2023"
-						}
-					},
-					{
-						"name": "DELETE DATAMART",
-						"type": "Script",
-						"dependsOn": [
-							{
-								"activity": "Add Ano Inicio Reprocessar",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Add Ano Final Reprocessar",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
+							"timeout": "0.1:00:00",
 							"retry": 0,
 							"retryIntervalInSeconds": 30,
 							"secureOutput": false,
@@ -26222,7 +24956,7 @@
 								{
 									"type": "NonQuery",
 									"text": {
-										"value": "@concat('DELETE FROM DM.TBL_POSICAO_ESTOQUE WHERE ESTABELECIMENTO IN (90,91,92,93,94) AND YEAR(DT_MESANO_REFERENCIA) BETWEEN ','''',variables('ANO_REPROCESSAR'),'''',' AND ','''',variables('ANO_FINAL_REPROCESSAR'),'''')",
+										"value": "WITH REF AS(\n\nSELECT \nCAST(ESTABELECIMENTO AS VARCHAR(5)) ESTABELECIMENTO\n,CAST(DT_MESANO_REFERENCIA AS DATE) DT_MESANO_REFERENCIA\n,CAST(DT_ULT_COMPRA AS DATE)DT_ULT_COMPRA\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + cast(CD_ESTABELECIMENTO as varchar(50)) AS FK_CD_ESTABELECIMENTO\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_MATERIAL AS VARCHAR(50)) FK_CD_MATERIAL\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) FK_CD_GRUPO_MATERIAL\n,CAST(ESTABELECIMENTO AS VARCHAR(5)) + '|' + CAST(CD_CLASSE_MATERIAL AS VARCHAR(50))FK_CD_CLASSE_MATERIAL\n,CAST(QT_ESTOQUE AS INT) QT_ESTOQUE\n,CAST(VL_ESTOQUE AS MONEY) VL_ESTOQUE\n,CAST(VL_CUSTO_MEDIO AS MONEY) VL_CUSTO_MEDIO \n,CAST(VL_PRECO_ULT_COMPRA AS MONEY) VL_PRECO_ULT_COMPRA\nFROM STG.POSICAO_ESTOQUE_TASY WITH(NOLOCK)\n\n )\n\nINSERT INTO  DM.TBL_POSICAO_ESTOQUE\nSELECT *  FROM REF",
 										"type": "Expression"
 									}
 								}
@@ -26242,12 +24976,6 @@
 						"type": "String"
 					},
 					"Mes_Ano": {
-						"type": "String"
-					},
-					"ANO_REPROCESSAR": {
-						"type": "String"
-					},
-					"ANO_FINAL_REPROCESSAR": {
 						"type": "String"
 					}
 				},
