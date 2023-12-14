@@ -13,6 +13,1694 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/ANTERIOR_Movimento_Estoque')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Mov Estoque HTML",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "WITH AUX AS(\nselect operacao_estoque.cd_operacao_estoque,\n    dt_movimento_estoque,\n    movimento_estoque.cd_local_estoque,\n    ds_local_estoque,\n    movimento_estoque.cd_estabelecimento,\n    nm_fantasia_estab,\n    movimento_estoque.nr_documento,\n    movimento_estoque.cd_material,\n    /*case \n        when ds_familia is null then 'Sem classificação'\n        else ds_familia\n        end familia_padrao,*/\n    MATERIAL.CD_CLASSE_MATERIAL,   \n    ds_classe_material classe_material,\n    ds_subgrupo_material Subgrupo,\n    grupo_material.cd_grupo_material    as CD_GRUPO_MATERIAL,\n    ds_grupo_material DS_GRUPO_MATERIAL,\n    ds_fabricante Fabricante,\n    ds_reduzida,\n    ds_operacao,\n    ie_entrada_saida,\n    cd_acao,\n    case \n        when ds_operacao in ('Consumo', 'Execução Prescrição', 'Consumo da Produção')\n        then sum(qt_movimento)/(avg(QT_CONV_ESTOQUE_CONSUMO))\n        else sum(qt_movimento)\n        end qt_movimento,\n    sum(case when movimento_estoque_valor.cd_tipo_valor = 5 then - movimento_estoque_valor.vl_movimento else + movimento_estoque_valor.vl_movimento end ) valor_movimento\n    \n    from movimento_estoque\n    left join operacao_estoque\n    on movimento_estoque.cd_operacao_estoque = operacao_estoque.cd_operacao_estoque\n    \n    left join estabelecimento\n    on (movimento_estoque.cd_estabelecimento = estabelecimento.cd_estabelecimento)\n    \n    left join local_estoque\n    on (local_estoque.cd_estabelecimento = movimento_estoque.cd_estabelecimento AND\n        local_estoque.cd_local_estoque = movimento_estoque.cd_local_estoque)\n        \n    left join material\n    on (movimento_estoque.cd_material = material.cd_material) \n    \n    left join material_familia\n    on (material.nr_seq_familia = material_familia.nr_sequencia)\n    \n    left join classe_material\n    on (material.cd_classe_material = classe_material.cd_classe_material)\n    \n    left join subgrupo_material\n    on (classe_material.cd_subgrupo_material = subgrupo_material.cd_subgrupo_material)\n    \n    left join grupo_material\n    on (subgrupo_material.cd_grupo_material = grupo_material.cd_grupo_material)\n    \n    left join mat_fabricante\n    on material.nr_seq_fabric =  mat_fabricante.nr_sequencia\n    \n    left join movimento_estoque_valor\n    on movimento_estoque_valor.nr_movimento_estoque = movimento_estoque.nr_movimento_estoque\n\n    --where dt_movimento_estoque >= '01/01/2020' \n\n    GROUP BY operacao_estoque.cd_operacao_estoque,\n        dt_movimento_estoque,\n        movimento_estoque.cd_local_estoque,\n        ds_local_estoque,\n        movimento_estoque.cd_estabelecimento,\n        nm_fantasia_estab,\n        movimento_estoque.nr_documento,\n        movimento_estoque.cd_material,\n        --case when ds_familia is null then 'Sem classificação' else ds_familia end,\n        material.cd_classe_material,\n        ds_classe_material,\n        ds_subgrupo_material,\n        grupo_material.cd_grupo_material,\n        ds_grupo_material,\n        ds_fabricante,\n        ds_reduzida,\n        ds_operacao,\n        ie_entrada_saida,\n        cd_acao\n)\nSELECT \n    TO_CHAR(A.DT_MOVIMENTO_ESTOQUE,'YYYY-MM-DD') AS DATA_MOVIMENTO\n    ,A.CD_LOCAL_ESTOQUE\n    ,A.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,A.nm_fantasia_estab                         AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_REDUZIDA                                AS DS_MATERIAL_SHORT\n    ,A.CD_GRUPO_MATERIAL\n    ,A.DS_GRUPO_MATERIAL\n    ,A.CD_CLASSE_MATERIAL\n    ,A.CLASSE_MATERIAL                           AS DS_CLASSE_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_MOVIMENTO\n    ,CASE \n        WHEN A.CD_ACAO = 2 THEN A.VALOR_MOVIMENTO * -1\n        ELSE A.VALOR_MOVIMENTO\n     END VL_MOVIMENTO   \nFROM AUX A\n--WHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,'MM'),'YYYY-MM-DD') = TO_CHAR(TRUNC(SYSDATE,'MM'),'YYYY-MM-DD')\nWHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,'MM'),'YYYY-MM-DD') BETWEEN '2020-01-01' AND '2021-06-01'",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_OPERACAO_ESTOQUE"
+										},
+										"sink": {
+											"name": "CD_OPERACAO_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO"
+										},
+										"sink": {
+											"name": "DS_OPERACAO_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO"
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO"
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "CloudTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Mov Estoque Delphi",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Mov Estoque HTML",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": "WITH AUX AS(\nselect operacao_estoque.cd_operacao_estoque,\n    dt_movimento_estoque,\n    movimento_estoque.cd_local_estoque,\n    ds_local_estoque,\n    movimento_estoque.cd_estabelecimento,\n    nm_fantasia_estab,\n    movimento_estoque.nr_documento,\n    movimento_estoque.cd_material,\n    /*case \n        when ds_familia is null then 'Sem classificação'\n        else ds_familia\n        end familia_padrao,*/\n    MATERIAL.CD_CLASSE_MATERIAL,   \n    ds_classe_material classe_material,\n    ds_subgrupo_material Subgrupo,\n    grupo_material.cd_grupo_material    as CD_GRUPO_MATERIAL,\n    ds_grupo_material DS_GRUPO_MATERIAL,\n    ds_fabricante Fabricante,\n    ds_reduzida,\n    ds_operacao,\n    ie_entrada_saida,\n    cd_acao,\n    case \n        when ds_operacao in ('Consumo', 'Execução Prescrição', 'Consumo da Produção')\n        then sum(qt_movimento)/(avg(QT_CONV_ESTOQUE_CONSUMO))\n        else sum(qt_movimento)\n        end qt_movimento,\n    sum(case when movimento_estoque_valor.cd_tipo_valor = 5 then - movimento_estoque_valor.vl_movimento else + movimento_estoque_valor.vl_movimento end ) valor_movimento\n    \n    from movimento_estoque\n    left join operacao_estoque\n    on movimento_estoque.cd_operacao_estoque = operacao_estoque.cd_operacao_estoque\n    \n    left join estabelecimento\n    on (movimento_estoque.cd_estabelecimento = estabelecimento.cd_estabelecimento)\n    \n    left join local_estoque\n    on (local_estoque.cd_estabelecimento = movimento_estoque.cd_estabelecimento AND\n        local_estoque.cd_local_estoque = movimento_estoque.cd_local_estoque)\n        \n    left join material\n    on (movimento_estoque.cd_material = material.cd_material) \n    \n    left join material_familia\n    on (material.nr_seq_familia = material_familia.nr_sequencia)\n    \n    left join classe_material\n    on (material.cd_classe_material = classe_material.cd_classe_material)\n    \n    left join subgrupo_material\n    on (classe_material.cd_subgrupo_material = subgrupo_material.cd_subgrupo_material)\n    \n    left join grupo_material\n    on (subgrupo_material.cd_grupo_material = grupo_material.cd_grupo_material)\n    \n    left join mat_fabricante\n    on material.nr_seq_fabric =  mat_fabricante.nr_sequencia\n    \n    left join movimento_estoque_valor\n    on movimento_estoque_valor.nr_movimento_estoque = movimento_estoque.nr_movimento_estoque\n\n    --where dt_movimento_estoque >= '01/01/2020' \n\n    GROUP BY operacao_estoque.cd_operacao_estoque,\n        dt_movimento_estoque,\n        movimento_estoque.cd_local_estoque,\n        ds_local_estoque,\n        movimento_estoque.cd_estabelecimento,\n        nm_fantasia_estab,\n        movimento_estoque.nr_documento,\n        movimento_estoque.cd_material,\n        --case when ds_familia is null then 'Sem classificação' else ds_familia end,\n        material.cd_classe_material,\n        ds_classe_material,\n        ds_subgrupo_material,\n        grupo_material.cd_grupo_material,\n        ds_grupo_material,\n        ds_fabricante,\n        ds_reduzida,\n        ds_operacao,\n        ie_entrada_saida,\n        cd_acao\n)\nSELECT \n    TO_CHAR(A.DT_MOVIMENTO_ESTOQUE,'YYYY-MM-DD') AS DATA_MOVIMENTO\n    ,A.CD_LOCAL_ESTOQUE\n    ,A.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,A.nm_fantasia_estab                         AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_REDUZIDA                                AS DS_MATERIAL_SHORT\n    ,A.CD_GRUPO_MATERIAL\n    ,A.DS_GRUPO_MATERIAL\n    ,A.CD_CLASSE_MATERIAL\n    ,A.CLASSE_MATERIAL                           AS DS_CLASSE_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_MOVIMENTO\n    ,CASE \n        WHEN A.CD_ACAO = 2 THEN A.VALOR_MOVIMENTO * -1\n        ELSE A.VALOR_MOVIMENTO\n     END VL_MOVIMENTO   \nFROM AUX A\n--WHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,'MM'),'YYYY-MM-DD') = TO_CHAR(TRUNC(SYSDATE,'MM'),'YYYY-MM-DD')\nWHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,'MM'),'YYYY-MM-DD') BETWEEN '2020-01-01' AND '2021-06-01'",
+								"partitionOption": "None",
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOQUE"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_OPERACAO_ESTOQUE"
+										},
+										"sink": {
+											"name": "CD_OPERACAO_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO"
+										},
+										"sink": {
+											"name": "DS_OPERACAO_ESTOQUE",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO"
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO"
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String"
+										}
+									}
+								]
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SadallaTasyPrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Mov Estoque ITG - Smart",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Mov Estoque Delphi",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF ='2020-01-01';\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) >= @MES_REF\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOOUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_OPERACAO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_OPERACAO_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_OPERACAO_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 14
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITAIGARA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Mov Estoque ITB - Smart",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Mov Estoque ITG - Smart",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF ='2020-01-01';\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) >= @MES_REF\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOOUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_OPERACAO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_OPERACAO_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_OPERACAO_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 14
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_ITABUNA_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Mov Estoque IOF - Smart",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Mov Estoque ITB - Smart",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF ='2020-01-01';\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) >= @MES_REF\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOOUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_OPERACAO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_OPERACAO_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_OPERACAO_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 14
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_IOF_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Mov Estoque OFTALMOCLIN - Smart",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Mov Estoque IOF - Smart",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF ='2020-01-01';\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) >= @MES_REF\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOOUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_OPERACAO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_OPERACAO_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_OPERACAO_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 14
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_Oftalmoclin_Prd_DataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					},
+					{
+						"name": "Mov Estoque HOSL - Smart",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "Mov Estoque OFTALMOCLIN - Smart",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "DECLARE @MES_REF DATE\n\nSET @MES_REF ='2020-01-01';\n\n\nSELECT DISTINCT \n    CAST(MMA_DATA_MOV AS DATE)  as DATA_MOVIMENTO\n    ,MMA_SBA_COD                AS CD_LOCAL_ESTOOUE\n    ,SBA_NOME                   AS DS_LOCAL_ESTOQUE\n    ,GCC.gcc_cod                AS CD_ESTABELECIMENTO\n    ,GCC.gcc_descr              AS DS_ESTABELECIMENTO\n    ,mma_mat_cod                AS CD_MATERIAL\n    ,MAT_DESC_RESUMIDA          AS DS_MATERIAL_SHORT\n    ,LMA.LMA_COD                AS CD_CLASSE_MATERIAL\n    ,LMA.LMA_NOME               AS DS_CLASSE_MATERIAL\n    ,gmm_cod                    as CD_GRUPO_MATERIAL\n    -- , mma_ism_seq\n    -- , MMA_ISM_SEQ\n    -- , mma_lot_num\n    , gmm_nome                  AS DS_GRUPO_MATERIAL    \n    ,MMA_TIPO_OPERACAO          AS CD_OPERACAO\n    , tmm_descr                 AS DS_OPERACAO\n    , mma_qtd                   AS QT_MOVIMENTO\n    ,cast(mma_valor as decimal) AS VL_MOVIMENTO\nFROM mma with (nolock)\nLEFT JOIN tmm  with (nolock)\n    ON tmm_cod = MMA_TIPO_OPERACAO\nLEFT JOIN mat with (nolock)\n    ON mma_mat_cod = mat_cod\nLEFT JOIN gmm with (nolock)\n    ON gmm_cod = mma_gmm_cod\nLEFT JOIN sba with (nolock)\n    ON sba_cod = mma_sba_cod\nLEFT JOIN str with (nolock)\n    ON str_cod = sba_str_cod\nLEFT JOIN str str_e  with (nolock)\n    ON str.str_str_cod = str_e.str_cod\nLEFT JOIN fne  with (nolock)\n    ON mat_fne_ult_entrada = FNE_COD\nLEFT JOIN GCC GCC (NOLOCK) ON gcc_str_cod = STR.str_str_cod\nLEFT JOIN LMA LMA (NOLOCK) ON LMA.LMA_GMM_COD = MAT_GMM_COD          \n\nWHERE CAST(SUBSTRING(CAST(CAST(MMA_DATA_MOV AS DATE) AS VARCHAR(30)),1,7)+'-01' AS DATE) >= @MES_REF\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert"
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										},
+										"sink": {
+											"name": "DATA_MOVIMENTO",
+											"type": "DateTime",
+											"physicalType": "date"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_LOCAL_ESTOOUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_LOCAL_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_ESTABELECIMENTO",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_MATERIAL",
+											"type": "Int32",
+											"physicalType": "int"
+										},
+										"sink": {
+											"name": "CD_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_MATERIAL_SHORT",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "DS_CLASSE_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_OPERACAO",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_OPERACAO_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "DS_OPERACAO",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_OPERACAO_ESTOQUE",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 14
+										},
+										"sink": {
+											"name": "QT_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										},
+										"sink": {
+											"name": "VL_MOVIMENTO",
+											"type": "Decimal",
+											"physicalType": "decimal",
+											"scale": 0,
+											"precision": 18
+										}
+									},
+									{
+										"source": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										},
+										"sink": {
+											"name": "DS_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									},
+									{
+										"source": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "char"
+										},
+										"sink": {
+											"name": "CD_GRUPO_MATERIAL",
+											"type": "String",
+											"physicalType": "varchar"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "SMART_HOSL_PrdDataSet",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_MOVIMENTO_ESTOQUE",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"DATA": {
+						"type": "String",
+						"defaultValue": "2021-05-01"
+					}
+				},
+				"folder": {
+					"name": "Estoque"
+				},
+				"annotations": [],
+				"lastPublishTime": "2021-07-20T18:04:45Z"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Agenda Plug in Play')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Agenda Naja",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"sqlReaderQuery": "SELECT \n       EMP_COD AS 'CD_ESTABELECIMENTO',\n       EMP_NomFan AS 'NM_ESTABELECIMENTO',\n       SUBSTRING(CAST(CAST(AEX.AEX_Data AS DATE)AS VARCHAR(20)),1,10)+ ' ' + SUBSTRING(AEX.AEX_Hora,1,2) + ':' + SUBSTRING(AEX.AEX_Hora,3,2)  AS 'DT_AGENDAMENTO',\n       SUBSTRING(CAST(CAST(AGD.AGD_DATA AS DATE)AS VARCHAR(20)),1,10)+ ' ' + SUBSTRING(AGI.AGI_HoraSeq,1,2) + ':' + SUBSTRING(AGI.AGI_HoraSeq,3,2) AS 'DT_HORA_AGENDA',\n\t AEX.AEX_ATE_Isn,\n       PAC_COD AS CD_PACIENTE,\n       PAC_Nome AS 'NOME_PACIENTE',\n    --    AEX_NomePac AS 'NOME_PACIENTE_AGENDA',\n\n--   (SELECT Top 1 isnull(FNE_DDD, '')+' '+FNE_NumFon\n--    FROM FoneCont\n--    WHERE FNE_PAC_Cod = PAC_Cod\n--      AND FNE_Tipo = 3) AS 'CONTATO 1',\n\n--   (SELECT Top 1 isnull(FNE_DDD, '')+' '+FNE_NumFon\n--    FROM FoneCont\n--    WHERE FNE_PAC_Cod = PAC_Cod\n--      AND FNE_Tipo = 1) AS 'CONTATO 2',\n    --    (isnull(AEX_DDDFone1, '')+''+AEX_NumFone1) AS 'CONTATO 3',\n    --    (isnull(AEX_DDDFone2, '')+''+AEX_NumFone2) AS 'CONTATO 4',\n    --    Paciente.PAC_CPF AS 'CPF',\n       AGD_RAG_Cod AS 'CD_AGENDA',\n       RAG_Nome AS 'DS_AGENDA',\n       exe.MED_Cod as 'CD_MEDICO_AGENDAMENTO',\n       exe.MED_Nome AS 'DS_MEDICO_AGENDAMENTO',\n       exe.MED_Crm AS 'CRM_MEDICO',\n       MED.MED_Cod AS 'CD_MEDICO_AGENDA',\n       MED.MED_Nome AS 'DS_MEDICO_AGENDA',\n       PAX_PRO_Cod AS 'CD_PROCEDIMENTO',\n       PRO_Nome AS 'DS_PROCEDIMENTO',\n       CON_COD AS 'CD_CONVENIO',\n       CON_NomeFant AS 'DS_CONVENIO',\n       AEX_Status AS 'COD_STATUS',\n       CASE\n           WHEN (AEX_Status) = 1 THEN 'Cancelado'\n           WHEN (AEX_Status) = 2 THEN 'Agendado'\n           WHEN (AEX_Status) = 3 THEN 'Confirmado'\n           WHEN (AEX_Status) = 4 THEN 'Atendido na recepção'\n           WHEN (AEX_Status) = 5 THEN 'Pré-Agendado'\n           WHEN (AEX_Status) = 6 THEN 'Pré-Atendido'\n           WHEN (AEX_Status) = 7 THEN 'Aguardando na recepção'\n           WHEN (AEX_Status) = 8 THEN 'Em Atendimento'\n           WHEN (AEX_Status) = 9 THEN 'Atendido pelo médico'\n           WHEN (AEX_Status) = 11 THEN 'Aguardando agendamento'\n           WHEN (AEX_Status) > 100 THEN\n                  (SELECT TOP 1 AST_Nome\n                   FROM AgendaStatus\n                   WHERE AST_Isn = AEX_Status)\n            WHEN PAC_NOME IS NULL THEN 'Livre'       \n       END AS 'STATUS',\n       Cad.USU_Nome AS 'USUARIO_CADASTRO',\n       Conf.USU_Nome AS 'USUARIO_CONFIRMACAO'\n    --    FGA_Dsc AS 'FATOGERADOR'\n\nFROM AGENDA AGD WITH(NOLOCK)\nINNER JOIN AgendaItem AGI WITH(NOLOCK) ON AGI.AGI_AGD_Isn = AGD.AGD_Isn \nLEFT JOIN ProdAgendaExame WITH (NOLOCK) ON AGI_Isn = PAX_AGI_Isn\nLEFT JOIN AgendaExame AEX WITH (NOLOCK) ON AEX_Isn = PAX_AEX_Isn\nLEFT JOIN Empresa WITH (NOLOCK) ON EMP_Cod = agd.AGD_EMP_Cod\nLEFT JOIN Convenio WITH (NOLOCK) ON CON_Cod = AEX_CON_Cod\nLEFT JOIN Paciente WITH (NOLOCK) ON PAC_Cod = AEX_PAC_Cod\nLEFT JOIN Medico Exe WITH (NOLOCK) ON exe.MED_Cod = PAX_MED_MedRea\nleft join medico med with(nolock) on med.MED_Cod = agd.AGD_MED_Cod\nLEFT JOIN RecursoAg WITH (NOLOCK) ON RAG_Cod = PAX_RAG_Cod\nLEFT JOIN Produto WITH (NOLOCK) ON PRO_Cod = PAX_PRO_Cod\nLEFT JOIN Usuario Cad WITH (NOLOCK) ON Cad.USU_Cod = AEX_USU_Cadastro\nLEFT JOIN Usuario Conf WITH (NOLOCK) ON Conf.USU_Cod = AEX_USU_Confirmacao\n-- LEFT JOIN FatoGeradorAgenda WITH (NOLOCK) ON FGA_Cod = AEX_FGA_Cod\n",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "NAJA_DW",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZSQL_DINAMICO",
+								"type": "DatasetReference",
+								"parameters": {
+									"schema_destino": "dw",
+									"tabela_destino": "naja_bi_agenda"
+								}
+							}
+						]
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Agenda Nacional"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Agendamentos Livres')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -10578,1975 +12266,6 @@
 					}
 				],
 				"concurrency": 5,
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"variables": {
-					"StartTime": {
-						"type": "String"
-					}
-				},
-				"folder": {
-					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
-				},
-				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CARGA_DINAMICA_ADF_NAJA_DW')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "LISTA ORIGEM DESTINO",
-						"type": "Lookup",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.05:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderStoredProcedureName": "[[adf].[sp_origem_destino]",
-								"storedProcedureParameters": {
-									"COD_TABELA": {
-										"type": "String",
-										"value": null
-									},
-									"Dt_inicio_manual": {
-										"type": "DateTime",
-										"value": null
-									},
-									"manual": {
-										"type": "String",
-										"value": "N"
-									},
-									"plataforma": {
-										"type": "String",
-										"value": "NAJA"
-									}
-								},
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "LISTA_TABELAS_ADF",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "PROCESSA ETL",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "DROPA TABELAS DESTINO",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('LISTA ORIGEM DESTINO').output.value",
-								"type": "Expression"
-							},
-							"isSequential": true,
-							"activities": [
-								{
-									"name": "SE CARGA COMPLETA",
-									"type": "IfCondition",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"expression": {
-											"value": "@equals(item().TIPO_CARGA,'COMPLETA')",
-											"type": "Expression"
-										},
-										"ifFalseActivities": [
-											{
-												"name": "DATA_HORA_INICIO_PARCIAL",
-												"type": "SetVariable",
-												"dependsOn": [],
-												"policy": {
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"variableName": "StartTime",
-													"value": {
-														"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-														"type": "Expression"
-													}
-												}
-											},
-											{
-												"name": "CARGA PARCIAL",
-												"type": "Copy",
-												"dependsOn": [
-													{
-														"activity": "DATA_HORA_INICIO_PARCIAL",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.05:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"source": {
-														"type": "OracleSource",
-														"oracleReaderQuery": {
-															"value": "@concat(\n'select * from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' where ', item().nome_coluna_referencia,' >= ''',\nitem().Data_Inicio, ''' and  ', item().nome_coluna_referencia,' <= ''', item().Data_Fim, ''''\n)",
-															"type": "Expression"
-														},
-														"partitionOption": "None",
-														"queryTimeout": "02:00:00"
-													},
-													"sink": {
-														"type": "AzureSqlSink",
-														"writeBehavior": "insert"
-													},
-													"enableStaging": false
-												},
-												"inputs": [
-													{
-														"referenceName": "ORACLE_DINAMICO",
-														"type": "DatasetReference",
-														"parameters": {
-															"NOME_KEYVAULT_SECRET": "@item().NOME_KEYVAULT_SECRET",
-															"schema_name": "@item().NOME_SCHEMA_ORIGEM",
-															"table_name": "@item().NOME_TABELA_ORIGEM"
-														}
-													}
-												],
-												"outputs": [
-													{
-														"referenceName": "DESTINO_TABELAS_ADF",
-														"type": "DatasetReference",
-														"parameters": {
-															"Schema_Destino": {
-																"value": "@item().NOME_SCHEMA_DESTINO",
-																"type": "Expression"
-															},
-															"Tabela_Destino": {
-																"value": "@item().NOME_TABELA_DESTINO",
-																"type": "Expression"
-															}
-														}
-													}
-												]
-											},
-											{
-												"name": "LOG PROCESSAMENTO PARCIAL SUCESSO",
-												"type": "SqlServerStoredProcedure",
-												"dependsOn": [
-													{
-														"activity": "CARGA PARCIAL",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.05:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
-													"storedProcedureParameters": {
-														"CODIGO_TABELA": {
-															"value": {
-																"value": "@item().codigo_tabela",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"COMANDO_SQL": {
-															"value": {
-																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_FIM": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_HORA_EXECUCAO": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_INICIO": {
-															"value": {
-																"value": "@variables('startTime')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_EXECUCAO": {
-															"value": {
-																"value": "@pipeline().RunId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"MENSAGEM_ERRO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_ADF": {
-															"value": {
-																"value": "@pipeline().DataFactory",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_CONTAINER": {
-															"value": {
-																"value": "CARGA_COMPLETA",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ORIGEM": {
-															"value": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PIPELINE": {
-															"value": {
-																"value": "@pipeline().Pipeline",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PROCESSO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_TABELA_ORIGEM": {
-															"value": {
-																"value": "@item().nome_tabela_origem",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerName",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"QUANTIDADE_REGISTROS": {
-															"value": {
-																"value": "@activity('CARGA PARCIAL').output.rowsCopied",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"TIPO_FINALIZACAO": {
-															"value": {
-																"value": "SUCESSO",
-																"type": "Expression"
-															},
-															"type": "String"
-														}
-													}
-												},
-												"linkedServiceName": {
-													"referenceName": "AzureSQL_DB_Procedimentos",
-													"type": "LinkedServiceReference"
-												}
-											},
-											{
-												"name": "LOG PROCESSAMENTO PARCIAL ERRO",
-												"type": "SqlServerStoredProcedure",
-												"dependsOn": [
-													{
-														"activity": "CARGA PARCIAL",
-														"dependencyConditions": [
-															"Failed"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.05:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
-													"storedProcedureParameters": {
-														"CODIGO_TABELA": {
-															"value": {
-																"value": "@item().codigo_tabela",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"COMANDO_SQL": {
-															"value": {
-																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_FIM": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_HORA_EXECUCAO": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_INICIO": {
-															"value": {
-																"value": "@variables('startTime')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_EXECUCAO": {
-															"value": {
-																"value": "@pipeline().RunId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"MENSAGEM_ERRO": {
-															"value": {
-																"value": "@activity('CARGA PARCIAL').error.message",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ADF": {
-															"value": {
-																"value": "@pipeline().DataFactory",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_CONTAINER": {
-															"value": {
-																"value": "CARGA_COMPLETA",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ORIGEM": {
-															"value": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PIPELINE": {
-															"value": {
-																"value": "@pipeline().Pipeline",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PROCESSO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_TABELA_ORIGEM": {
-															"value": {
-																"value": "@item().nome_tabela_origem",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerName",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"QUANTIDADE_REGISTROS": {
-															"value": {
-																"value": "@activity('CARGA PARCIAL').output.rowsCopied",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"TIPO_FINALIZACAO": {
-															"value": {
-																"value": "ERRO",
-																"type": "Expression"
-															},
-															"type": "String"
-														}
-													}
-												},
-												"linkedServiceName": {
-													"referenceName": "AzureSQL_DB_Procedimentos",
-													"type": "LinkedServiceReference"
-												}
-											}
-										],
-										"ifTrueActivities": [
-											{
-												"name": "DATA_HORA_INICIO_COMPLETA",
-												"type": "SetVariable",
-												"dependsOn": [],
-												"policy": {
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"variableName": "StartTime",
-													"value": {
-														"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-														"type": "Expression"
-													}
-												}
-											},
-											{
-												"name": "CARGA COMPLETA",
-												"type": "Copy",
-												"dependsOn": [
-													{
-														"activity": "DATA_HORA_INICIO_COMPLETA",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.10:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"source": {
-														"type": "SqlServerSource",
-														"queryTimeout": "02:00:00",
-														"partitionOption": "None"
-													},
-													"sink": {
-														"type": "AzureSqlSink",
-														"writeBehavior": "insert",
-														"sqlWriterUseTableLock": false,
-														"tableOption": "autoCreate",
-														"disableMetricsCollection": false
-													},
-													"enableStaging": false
-												},
-												"inputs": [
-													{
-														"referenceName": "SQL_DINAMICO",
-														"type": "DatasetReference",
-														"parameters": {
-															"NOME_KEYVAULT_SECRET": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"schema_name": {
-																"value": "@item().NOME_SCHEMA_ORIGEM",
-																"type": "Expression"
-															},
-															"table_name": {
-																"value": "@item().NOME_TABELA_ORIGEM",
-																"type": "Expression"
-															}
-														}
-													}
-												],
-												"outputs": [
-													{
-														"referenceName": "DESTINO_TABELAS_ADF",
-														"type": "DatasetReference",
-														"parameters": {
-															"Schema_Destino": {
-																"value": "@item().NOME_SCHEMA_DESTINO",
-																"type": "Expression"
-															},
-															"Tabela_Destino": {
-																"value": "@item().NOME_TABELA_DESTINO",
-																"type": "Expression"
-															}
-														}
-													}
-												]
-											},
-											{
-												"name": "LOG PROCESSAMENTO COMPLETA SUCESSO",
-												"type": "SqlServerStoredProcedure",
-												"dependsOn": [
-													{
-														"activity": "CARGA COMPLETA",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.05:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
-													"storedProcedureParameters": {
-														"CODIGO_TABELA": {
-															"value": {
-																"value": "@item().codigo_tabela",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"COMANDO_SQL": {
-															"value": {
-																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_FIM": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_HORA_EXECUCAO": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_INICIO": {
-															"value": {
-																"value": "@variables('startTime')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_EXECUCAO": {
-															"value": {
-																"value": "@pipeline().RunId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"MENSAGEM_ERRO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_ADF": {
-															"value": {
-																"value": "@pipeline().DataFactory",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_CONTAINER": {
-															"value": {
-																"value": "CARGA_COMPLETA",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ORIGEM": {
-															"value": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PIPELINE": {
-															"value": {
-																"value": "@pipeline().Pipeline",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PROCESSO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_TABELA_ORIGEM": {
-															"value": {
-																"value": "@item().nome_tabela_origem",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerName",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"QUANTIDADE_REGISTROS": {
-															"value": {
-																"value": "@activity('CARGA COMPLETA').output.rowsCopied",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"TIPO_FINALIZACAO": {
-															"value": {
-																"value": "SUCESSO",
-																"type": "Expression"
-															},
-															"type": "String"
-														}
-													}
-												},
-												"linkedServiceName": {
-													"referenceName": "AzureSQL_DB_Procedimentos",
-													"type": "LinkedServiceReference"
-												}
-											},
-											{
-												"name": "LOG PROCESSAMENTO COMPLETA ERRO",
-												"type": "SqlServerStoredProcedure",
-												"dependsOn": [
-													{
-														"activity": "CARGA COMPLETA",
-														"dependencyConditions": [
-															"Failed"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.05:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
-													"storedProcedureParameters": {
-														"CODIGO_TABELA": {
-															"value": {
-																"value": "@item().codigo_tabela",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"COMANDO_SQL": {
-															"value": {
-																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_FIM": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_HORA_EXECUCAO": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_INICIO": {
-															"value": {
-																"value": "@variables('startTime')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_EXECUCAO": {
-															"value": {
-																"value": "@pipeline().RunId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"MENSAGEM_ERRO": {
-															"value": {
-																"value": "@activity('CARGA COMPLETA').error.message",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ADF": {
-															"value": {
-																"value": "@pipeline().DataFactory",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_CONTAINER": {
-															"value": {
-																"value": "CARGA_COMPLETA",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ORIGEM": {
-															"value": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PIPELINE": {
-															"value": {
-																"value": "@pipeline().Pipeline",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PROCESSO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_TABELA_ORIGEM": {
-															"value": {
-																"value": "@item().nome_tabela_origem",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerName",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"QUANTIDADE_REGISTROS": {
-															"value": {
-																"value": "@activity('CARGA COMPLETA').output.rowsCopied",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"TIPO_FINALIZACAO": {
-															"value": {
-																"value": "ERRO",
-																"type": "Expression"
-															},
-															"type": "String"
-														}
-													}
-												},
-												"linkedServiceName": {
-													"referenceName": "AzureSQL_DB_Procedimentos",
-													"type": "LinkedServiceReference"
-												}
-											}
-										]
-									}
-								}
-							]
-						}
-					},
-					{
-						"name": "DROPA TABELAS DESTINO",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "LISTA ORIGEM DESTINO",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('LISTA ORIGEM DESTINO').output.value",
-								"type": "Expression"
-							},
-							"isSequential": false,
-							"batchCount": 30,
-							"activities": [
-								{
-									"name": "LIMPA TABELA DESTINO",
-									"type": "Lookup",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "0.05:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "AzureSqlSource",
-											"sqlReaderQuery": {
-												"value": "@concat('IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N',\n'''',   \nitem().NOME_SCHEMA_DESTINO,\n'.',\nitem().NOME_TABELA_DESTINO,\n'''',\n') AND type in (N',\n'''',\n'U',\n'''',\n'))',\n' DROP TABLE ',\nitem().NOME_SCHEMA_DESTINO,\n'.',\nitem().NOME_TABELA_DESTINO,\n'  SELECT 0'\n)",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"dataset": {
-											"referenceName": "DESTINO_TABELAS_ADF",
-											"type": "DatasetReference",
-											"parameters": {
-												"Schema_Destino": {
-													"value": "@item().NOME_SCHEMA_DESTINO",
-													"type": "Expression"
-												},
-												"Tabela_Destino": {
-													"value": "@item().NOME_TABELA_DESTINO",
-													"type": "Expression"
-												}
-											}
-										},
-										"firstRowOnly": true
-									}
-								}
-							]
-						}
-					}
-				],
-				"concurrency": 5,
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"variables": {
-					"StartTime": {
-						"type": "String"
-					}
-				},
-				"folder": {
-					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
-				},
-				"annotations": []
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/CARGA_DINAMICA_ADF_SMART')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "LISTA ORIGEM DESTINO",
-						"type": "Lookup",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.05:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderStoredProcedureName": "[[adf].[sp_origem_destino]",
-								"storedProcedureParameters": {
-									"Dt_inicio_manual": {
-										"type": "DateTime",
-										"value": null
-									},
-									"manual": {
-										"type": "String",
-										"value": "N"
-									},
-									"plataforma": {
-										"type": "String",
-										"value": "SMART"
-									},
-									"COD_TABELA": {
-										"type": "String",
-										"value": null
-									}
-								},
-								"queryTimeout": "02:00:00",
-								"partitionOption": "None"
-							},
-							"dataset": {
-								"referenceName": "LISTA_TABELAS_ADF",
-								"type": "DatasetReference",
-								"parameters": {}
-							},
-							"firstRowOnly": false
-						}
-					},
-					{
-						"name": "PROCESSA ETL",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "LIMPA TABELAS DESTINO",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('LISTA ORIGEM DESTINO').output.value",
-								"type": "Expression"
-							},
-							"isSequential": false,
-							"batchCount": 15,
-							"activities": [
-								{
-									"name": "SE CARGA COMPLETA",
-									"type": "IfCondition",
-									"dependsOn": [],
-									"userProperties": [],
-									"typeProperties": {
-										"expression": {
-											"value": "@equals(item().TIPO_CARGA,'COMPLETA')",
-											"type": "Expression"
-										},
-										"ifFalseActivities": [
-											{
-												"name": "DATA_HORA_INICIO_PARCIAL",
-												"type": "SetVariable",
-												"dependsOn": [],
-												"policy": {
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"variableName": "StartTime",
-													"value": {
-														"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-														"type": "Expression"
-													}
-												}
-											},
-											{
-												"name": "CARGA PARCIAL",
-												"type": "Copy",
-												"dependsOn": [
-													{
-														"activity": "DATA_HORA_INICIO_PARCIAL",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.05:00:00",
-													"retry": 2,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"source": {
-														"type": "SqlServerSource",
-														"sqlReaderQuery": {
-															"value": "@concat(\n'select * from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' where ', item().nome_coluna_referencia,' >= ''',\nitem().Data_Inicio, ''' and ', item().nome_coluna_referencia, ' <= ''', item().Data_Fim, ''''\n\n )",
-															"type": "Expression"
-														},
-														"queryTimeout": "02:00:00",
-														"partitionOption": "None"
-													},
-													"sink": {
-														"type": "AzureSqlSink",
-														"writeBehavior": "insert"
-													},
-													"enableStaging": false,
-													"translator": {
-														"type": "TabularTranslator",
-														"typeConversion": true,
-														"typeConversionSettings": {
-															"allowDataTruncation": true,
-															"treatBooleanAsNumber": false
-														}
-													}
-												},
-												"inputs": [
-													{
-														"referenceName": "SQL_DINAMICO",
-														"type": "DatasetReference",
-														"parameters": {
-															"NOME_KEYVAULT_SECRET": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"schema_name": {
-																"value": "@item().NOME_SCHEMA_ORIGEM",
-																"type": "Expression"
-															},
-															"table_name": {
-																"value": "@item().NOME_TABELA_ORIGEM",
-																"type": "Expression"
-															}
-														}
-													}
-												],
-												"outputs": [
-													{
-														"referenceName": "DESTINO_TABELAS_ADF",
-														"type": "DatasetReference",
-														"parameters": {
-															"Schema_Destino": {
-																"value": "@item().NOME_SCHEMA_DESTINO",
-																"type": "Expression"
-															},
-															"Tabela_Destino": {
-																"value": "@item().NOME_TABELA_DESTINO",
-																"type": "Expression"
-															}
-														}
-													}
-												]
-											},
-											{
-												"name": "LOG PROCESSAMENTO PARCIAL SUCESSO",
-												"type": "SqlServerStoredProcedure",
-												"dependsOn": [
-													{
-														"activity": "CARGA PARCIAL",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.05:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
-													"storedProcedureParameters": {
-														"CODIGO_TABELA": {
-															"value": {
-																"value": "@item().codigo_tabela",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"COMANDO_SQL": {
-															"value": {
-																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_FIM": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_HORA_EXECUCAO": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_INICIO": {
-															"value": {
-																"value": "@variables('startTime')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_EXECUCAO": {
-															"value": {
-																"value": "@pipeline().RunId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"MENSAGEM_ERRO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_ADF": {
-															"value": {
-																"value": "@pipeline().DataFactory",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_CONTAINER": {
-															"value": {
-																"value": "CARGA_COMPLETA",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ORIGEM": {
-															"value": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PIPELINE": {
-															"value": {
-																"value": "@pipeline().Pipeline",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PROCESSO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_TABELA_ORIGEM": {
-															"value": {
-																"value": "@item().nome_tabela_origem",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerName",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"QUANTIDADE_REGISTROS": {
-															"value": {
-																"value": "@activity('CARGA PARCIAL').output.rowsCopied",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"TIPO_FINALIZACAO": {
-															"value": {
-																"value": "SUCESSO",
-																"type": "Expression"
-															},
-															"type": "String"
-														}
-													}
-												},
-												"linkedServiceName": {
-													"referenceName": "AzureSQL_DB_Procedimentos",
-													"type": "LinkedServiceReference"
-												}
-											},
-											{
-												"name": "LOG PROCESSAMENTO PARCIAL ERRO",
-												"type": "SqlServerStoredProcedure",
-												"dependsOn": [
-													{
-														"activity": "CARGA PARCIAL",
-														"dependencyConditions": [
-															"Failed"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.05:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
-													"storedProcedureParameters": {
-														"CODIGO_TABELA": {
-															"value": {
-																"value": "@item().codigo_tabela",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"COMANDO_SQL": {
-															"value": {
-																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_FIM": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_HORA_EXECUCAO": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_INICIO": {
-															"value": {
-																"value": "@variables('startTime')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_EXECUCAO": {
-															"value": {
-																"value": "@pipeline().RunId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"MENSAGEM_ERRO": {
-															"value": {
-																"value": "@activity('CARGA PARCIAL').error.message",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ADF": {
-															"value": {
-																"value": "@pipeline().DataFactory",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_CONTAINER": {
-															"value": {
-																"value": "CARGA_COMPLETA",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ORIGEM": {
-															"value": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PIPELINE": {
-															"value": {
-																"value": "@pipeline().Pipeline",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PROCESSO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_TABELA_ORIGEM": {
-															"value": {
-																"value": "@item().nome_tabela_origem",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerName",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"QUANTIDADE_REGISTROS": {
-															"value": {
-																"value": "@activity('CARGA PARCIAL').output.rowsCopied",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"TIPO_FINALIZACAO": {
-															"value": {
-																"value": "ERRO",
-																"type": "Expression"
-															},
-															"type": "String"
-														}
-													}
-												},
-												"linkedServiceName": {
-													"referenceName": "AzureSQL_DB_Procedimentos",
-													"type": "LinkedServiceReference"
-												}
-											}
-										],
-										"ifTrueActivities": [
-											{
-												"name": "DATA_HORA_INICIO_COMPLETA",
-												"type": "SetVariable",
-												"dependsOn": [],
-												"policy": {
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"variableName": "StartTime",
-													"value": {
-														"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-														"type": "Expression"
-													}
-												}
-											},
-											{
-												"name": "CARGA COMPLETA",
-												"type": "Copy",
-												"dependsOn": [
-													{
-														"activity": "DATA_HORA_INICIO_COMPLETA",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.05:00:00",
-													"retry": 2,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"source": {
-														"type": "SqlServerSource",
-														"sqlReaderQuery": {
-															"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-															"type": "Expression"
-														},
-														"queryTimeout": "02:00:00",
-														"partitionOption": "None"
-													},
-													"sink": {
-														"type": "AzureSqlSink",
-														"writeBehavior": "insert"
-													},
-													"enableStaging": false,
-													"translator": {
-														"type": "TabularTranslator",
-														"typeConversion": true,
-														"typeConversionSettings": {
-															"allowDataTruncation": true,
-															"treatBooleanAsNumber": false
-														}
-													}
-												},
-												"inputs": [
-													{
-														"referenceName": "SQL_DINAMICO",
-														"type": "DatasetReference",
-														"parameters": {
-															"NOME_KEYVAULT_SECRET": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"schema_name": {
-																"value": "@item().NOME_SCHEMA_ORIGEM",
-																"type": "Expression"
-															},
-															"table_name": {
-																"value": "@item().NOME_SCHEMA_ORIGEM",
-																"type": "Expression"
-															}
-														}
-													}
-												],
-												"outputs": [
-													{
-														"referenceName": "DESTINO_TABELAS_ADF",
-														"type": "DatasetReference",
-														"parameters": {
-															"Schema_Destino": {
-																"value": "@item().NOME_SCHEMA_DESTINO",
-																"type": "Expression"
-															},
-															"Tabela_Destino": {
-																"value": "@item().NOME_TABELA_DESTINO",
-																"type": "Expression"
-															}
-														}
-													}
-												]
-											},
-											{
-												"name": "LOG PROCESSAMENTO COMPLETA SUCESSO",
-												"type": "SqlServerStoredProcedure",
-												"dependsOn": [
-													{
-														"activity": "CARGA COMPLETA",
-														"dependencyConditions": [
-															"Succeeded"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.05:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
-													"storedProcedureParameters": {
-														"CODIGO_TABELA": {
-															"value": {
-																"value": "@item().codigo_tabela",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"COMANDO_SQL": {
-															"value": {
-																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_FIM": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_HORA_EXECUCAO": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_INICIO": {
-															"value": {
-																"value": "@variables('startTime')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_EXECUCAO": {
-															"value": {
-																"value": "@pipeline().RunId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"MENSAGEM_ERRO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_ADF": {
-															"value": {
-																"value": "@pipeline().DataFactory",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_CONTAINER": {
-															"value": {
-																"value": "CARGA_COMPLETA",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ORIGEM": {
-															"value": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PIPELINE": {
-															"value": {
-																"value": "@pipeline().Pipeline",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PROCESSO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_TABELA_ORIGEM": {
-															"value": {
-																"value": "@item().nome_tabela_origem",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerName",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"QUANTIDADE_REGISTROS": {
-															"value": {
-																"value": "@activity('CARGA COMPLETA').output.rowsCopied",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"TIPO_FINALIZACAO": {
-															"value": {
-																"value": "SUCESSO",
-																"type": "Expression"
-															},
-															"type": "String"
-														}
-													}
-												},
-												"linkedServiceName": {
-													"referenceName": "AzureSQL_DB_Procedimentos",
-													"type": "LinkedServiceReference"
-												}
-											},
-											{
-												"name": "LOG PROCESSAMENTO COMPLETA ERRO",
-												"type": "SqlServerStoredProcedure",
-												"dependsOn": [
-													{
-														"activity": "CARGA COMPLETA",
-														"dependencyConditions": [
-															"Failed"
-														]
-													}
-												],
-												"policy": {
-													"timeout": "0.05:00:00",
-													"retry": 0,
-													"retryIntervalInSeconds": 30,
-													"secureOutput": false,
-													"secureInput": false
-												},
-												"userProperties": [],
-												"typeProperties": {
-													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
-													"storedProcedureParameters": {
-														"CODIGO_TABELA": {
-															"value": {
-																"value": "@item().codigo_tabela",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"COMANDO_SQL": {
-															"value": {
-																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_FIM": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_HORA_EXECUCAO": {
-															"value": {
-																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"DATA_INICIO": {
-															"value": {
-																"value": "@variables('startTime')",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_EXECUCAO": {
-															"value": {
-																"value": "@pipeline().RunId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"ID_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerId",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"MENSAGEM_ERRO": {
-															"value": {
-																"value": "@activity('CARGA COMPLETA').error.message",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ADF": {
-															"value": {
-																"value": "@pipeline().DataFactory",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_CONTAINER": {
-															"value": {
-																"value": "CARGA_COMPLETA",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_ORIGEM": {
-															"value": {
-																"value": "@item().NOME_KEYVAULT_SECRET",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PIPELINE": {
-															"value": {
-																"value": "@pipeline().Pipeline",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_PROCESSO": {
-															"value": null,
-															"type": "String"
-														},
-														"NOME_TABELA_ORIGEM": {
-															"value": {
-																"value": "@item().nome_tabela_origem",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"NOME_TRIGGER": {
-															"value": {
-																"value": "@pipeline().TriggerName",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"QUANTIDADE_REGISTROS": {
-															"value": {
-																"value": "@activity('CARGA COMPLETA').output.rowsCopied",
-																"type": "Expression"
-															},
-															"type": "String"
-														},
-														"TIPO_FINALIZACAO": {
-															"value": {
-																"value": "ERRO",
-																"type": "Expression"
-															},
-															"type": "String"
-														}
-													}
-												},
-												"linkedServiceName": {
-													"referenceName": "AzureSQL_DB_Procedimentos",
-													"type": "LinkedServiceReference"
-												}
-											}
-										]
-									}
-								}
-							]
-						}
-					},
-					{
-						"name": "LIMPA TABELAS DESTINO",
-						"type": "ForEach",
-						"dependsOn": [
-							{
-								"activity": "LISTA ORIGEM DESTINO",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"items": {
-								"value": "@activity('LISTA ORIGEM DESTINO').output.value",
-								"type": "Expression"
-							},
-							"isSequential": false,
-							"batchCount": 15,
-							"activities": [
-								{
-									"name": "LIMPA TABELA DESTINO",
-									"type": "Lookup",
-									"dependsOn": [],
-									"policy": {
-										"timeout": "0.05:00:00",
-										"retry": 0,
-										"retryIntervalInSeconds": 30,
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"source": {
-											"type": "AzureSqlSource",
-											"sqlReaderQuery": {
-												"value": "@concat('truncate table ',\nitem().NOME_SCHEMA_DESTINO,\n'.',\nitem().NOME_TABELA_DESTINO,\n' SELECT 0')",
-												"type": "Expression"
-											},
-											"queryTimeout": "02:00:00",
-											"partitionOption": "None"
-										},
-										"dataset": {
-											"referenceName": "DESTINO_TABELAS_ADF",
-											"type": "DatasetReference",
-											"parameters": {
-												"Schema_Destino": {
-													"value": "@item().NOME_SCHEMA_DESTINO",
-													"type": "Expression"
-												},
-												"Tabela_Destino": {
-													"value": "@item().NOME_TABELA_DESTINO",
-													"type": "Expression"
-												}
-											}
-										},
-										"firstRowOnly": true
-									}
-								}
-							]
-						}
-					},
-					{
-						"name": "CARGA DW",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [
-							{
-								"activity": "PROCESSA ETL",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.07:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "[[dbo].[SP_SMART_CARGA_DW]"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						}
-					},
-					{
-						"name": "Exec Datamart Smart Prod",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "CARGA DW",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "DM_ProdDiariaSMARTV2",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					},
-					{
-						"name": "Exec Datamart Smart Receb",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [
-							{
-								"activity": "CARGA DW",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "[[dbo].[SP_DATAMART_RECEBIMENTO_SMART]"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						}
-					},
-					{
-						"name": "Cobranca Arquivos Externos",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "Exec Datamart Smart Receb",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "Cobranca_Arquivos_Externos",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					},
-					{
-						"name": "SP_AUX_CONVENIO_BI_COBRANCA",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [
-							{
-								"activity": "Cobranca Arquivos Externos",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "[[dbo].[SP_AUX_CONVENIO_BI_COBRANCA]"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSQL_DB_Procedimentos",
-							"type": "LinkedServiceReference"
-						}
-					}
-				],
 				"policy": {
 					"elapsedTimeMetric": {}
 				},

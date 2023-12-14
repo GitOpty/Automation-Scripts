@@ -15,6 +15,10 @@
 			"type": "string",
 			"defaultValue": "0914-173138-dl7s1vxp"
 		},
+		"CNX_SMART_properties_typeProperties_connectionString_secretName": {
+			"type": "string",
+			"defaultValue": "@linkedService().NM_KEYVAULT_SECRET"
+		},
 		"CloudTasyProd_properties_typeProperties_connectionString_secretName": {
 			"type": "string",
 			"defaultValue": "CLOUDTASY"
@@ -48,14 +52,6 @@
 			"defaultValue": "c:\\Storage\\StorageVM"
 		},
 		"Folder_StorageVM_properties_typeProperties_userId": {
-			"type": "string",
-			"defaultValue": "hobrasil\\serv.corp.sa"
-		},
-		"Folder_VM_properties_typeProperties_host": {
-			"type": "string",
-			"defaultValue": "C:\\Pasta repositório BI"
-		},
-		"Folder_VM_properties_typeProperties_userId": {
 			"type": "string",
 			"defaultValue": "hobrasil\\serv.corp.sa"
 		}
@@ -748,6 +744,38 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/CNX_SMART')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"NM_KEYVAULT_SECRET": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "SqlServer",
+				"typeProperties": {
+					"connectionString": {
+						"type": "AzureKeyVaultSecret",
+						"store": {
+							"referenceName": "SV_OptyKeyVault",
+							"type": "LinkedServiceReference"
+						},
+						"secretName": {
+							"value": "[parameters('CNX_SMART_properties_typeProperties_connectionString_secretName')]",
+							"type": "Expression"
+						}
+					}
+				},
+				"connectVia": {
+					"referenceName": "ServidorArquivosBI",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/CloudTasyProd')]",
 			"type": "Microsoft.DataFactory/factories/linkedServices",
 			"apiVersion": "2018-06-01",
@@ -877,32 +905,6 @@
 				"typeProperties": {
 					"host": "[parameters('Folder_StorageVM_properties_typeProperties_host')]",
 					"userId": "[parameters('Folder_StorageVM_properties_typeProperties_userId')]",
-					"password": {
-						"type": "AzureKeyVaultSecret",
-						"store": {
-							"referenceName": "SV_OptyKeyVault",
-							"type": "LinkedServiceReference"
-						},
-						"secretName": "vmSA"
-					}
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Folder_VM')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "FileServer",
-				"typeProperties": {
-					"host": "[parameters('Folder_VM_properties_typeProperties_host')]",
-					"userId": "[parameters('Folder_VM_properties_typeProperties_userId')]",
 					"password": {
 						"type": "AzureKeyVaultSecret",
 						"store": {
