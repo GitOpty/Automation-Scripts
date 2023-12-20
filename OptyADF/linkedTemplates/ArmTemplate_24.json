@@ -12231,9 +12231,9 @@
 									"type": "Copy",
 									"dependsOn": [
 										{
-											"activity": "Movimento Estoque Tasy Sadalla",
+											"activity": "LIMPA STAGE TASY",
 											"dependencyConditions": [
-												"Completed"
+												"Succeeded"
 											]
 										}
 									],
@@ -12249,7 +12249,7 @@
 										"source": {
 											"type": "OracleSource",
 											"oracleReaderQuery": {
-												"value": "@concat(\n\n'WITH AUX AS(\n\nselect\t\n    M.NR_ATENDIMENTO,\n    m.nr_movimento_estoque,\n\tm.cd_estabelecimento,\n\tm.cd_local_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\tfast_ops.obter_convenio_atendimento(m.nr_atendimento) cd_convenio,\n\tsubstr(fast_ops.obter_nome_convenio(fast_ops.obter_convenio_atendimento(m.nr_atendimento)),1,80) ds_convenio,\n\t''M'' ie_periodo,\n\tdecode(\tm.cd_acao,\n\t\t2,\tm.qt_estoque * -1,\n\t\t\tm.qt_estoque) qt_estoque,\n\tdecode(\tm.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1, \tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t                 ''A'', (v.vl_movimento),\n\t\t\t                 ''D'', (v.vl_movimento * -1),\n\t\t\t                 ''N'', (0)))) vl_estoque,\n\tdecode(m.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t''N'', (0)))) vl_movimento,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))),\n\t\t''D'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))) *-1,\n\t0) vl_consumo,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque),\n\t\t\t\tsum((qt_estoque * -1))),\n\t \t''D'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque * -1),\n\t\t\t\tsum(qt_estoque)),\n\t\t0) qt_consumo,\n\tm.cd_material\nfrom fast_ops.tipo_valor t,\n\tfast_ops.operacao_estoque o,\n\tfast_ops.estrutura_material_v e,\n\tfast_ops.movimento_estoque m,\n\tfast_ops.movimento_estoque_valor v\nwhere\tm.nr_movimento_estoque\t= v.nr_movimento_estoque (+)\nand\tv.cd_tipo_valor\t\t= t.cd_tipo_valor(+)\nand\tm.cd_operacao_estoque\t= o.cd_operacao_estoque (+)\nand\tm.cd_material_estoque\t= e.cd_material\nand\tm.dt_processo is not null\ngroup by\n\tm.cd_estabelecimento,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_local_estoque,\n\tm.nr_movimento_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tdecode(m.cd_acao, 2, m.qt_estoque * -1, m.qt_estoque),\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\t''M'',\n\to.ie_consumo,\n\tm.nr_atendimento,\n\tm.cd_material\n)\n\n\nSELECT \n    1   AS ID_SYS\n    ,TO_CHAR(A.DT_PROCESSO,''YYYY-MM-DD'') AS DATA_PROCESSO   \n    ,A.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,ESTB.nm_fantasia_estab                      AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_MATERIAL                               AS DS_MATERIAL\n    ,A.CD_CLASSE_MATERIAL\n    ,A.DS_CLASSE_MATERIAL                        AS DS_CLASSE_MATERIAL\n    ,A.CD_GRUPO_MATERIAL                        \n    ,A.DS_GRUPO_MATERIAL                         AS DS_GRUPO_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_CONSUMO                                AS QT_MOVIMENTO\n    ,A.VL_MOVIMENTO \n    ,PF.CD_PESSOA_FISICA\n    ,PF.NM_PESSOA_FISICA\n    ,AP.NR_ATENDIMENTO      \n    ,AP.DT_ENTRADA\n    ,A.CD_CONVENIO\n    ,A.DS_CONVENIO\n    ,A.NR_MOVIMENTO_ESTOQUE\nFROM AUX A\nINNER JOIN fast_ops.ESTABELECIMENTO ESTB ON ESTB.CD_ESTABELECIMENTO = A.CD_ESTABELECIMENTO\nLEFT JOIN fast_ops.ATENDIMENTO_PACIENTE AP ON AP.NR_ATENDIMENTO = A.NR_ATENDIMENTO\nLEFT JOIN fast_ops.PESSOA_FISICA PF ON PF.CD_PESSOA_FISICA = AP.CD_PESSOA_FISICA\nLEFT JOIN fast_ops.LOCAL_ESTOQUE LE on (LE.cd_estabelecimento = A.cd_estabelecimento AND LE.cd_local_estoque = A.cd_local_estoque)\nWHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,''MM''),''YYYY-MM-DD'') BETWEEN ',\n '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')",
+												"value": "@concat(\n\n'WITH AUX AS(\n\nselect\t\n    M.NR_ATENDIMENTO,\n    m.nr_movimento_estoque,\n\tm.cd_estabelecimento,\n\tm.cd_local_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\tfast_ops.obter_convenio_atendimento(m.nr_atendimento) cd_convenio,\n\tsubstr(fast_ops.obter_nome_convenio(fast_ops.obter_convenio_atendimento(m.nr_atendimento)),1,80) ds_convenio,\n\t''M'' ie_periodo,\n\tdecode(\tm.cd_acao,\n\t\t2,\tm.qt_estoque * -1,\n\t\t\tm.qt_estoque) qt_estoque,\n\tdecode(\tm.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1, \tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t                 ''A'', (v.vl_movimento),\n\t\t\t                 ''D'', (v.vl_movimento * -1),\n\t\t\t                 ''N'', (0)))) vl_estoque,\n\tdecode(m.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t''N'', (0)))) vl_movimento,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))),\n\t\t''D'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))) *-1,\n\t0) vl_consumo,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque),\n\t\t\t\tsum((qt_estoque * -1))),\n\t \t''D'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque * -1),\n\t\t\t\tsum(qt_estoque)),\n\t\t0) qt_consumo,\n\tm.cd_material\nfrom fast_ops.tipo_valor t,\n\tfast_ops.operacao_estoque o,\n\tfast_ops.estrutura_material_v e,\n\tfast_ops.movimento_estoque m,\n\tfast_ops.movimento_estoque_valor v\nwhere\tm.nr_movimento_estoque\t= v.nr_movimento_estoque (+)\nand\tv.cd_tipo_valor\t\t= t.cd_tipo_valor(+)\nand\tm.cd_operacao_estoque\t= o.cd_operacao_estoque (+)\nand\tm.cd_material_estoque\t= e.cd_material\nand\tm.dt_processo is not null\ngroup by\n\tm.cd_estabelecimento,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_local_estoque,\n\tm.nr_movimento_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tdecode(m.cd_acao, 2, m.qt_estoque * -1, m.qt_estoque),\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\t''M'',\n\to.ie_consumo,\n\tm.nr_atendimento,\n\tm.cd_material\n)\n\n\nSELECT \n    1   AS ID_SYS\n    ,TO_CHAR(A.DT_PROCESSO,''YYYY-MM-DD'') AS DATA_PROCESSO   \n    ,A.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,ESTB.nm_fantasia_estab                      AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_MATERIAL                               AS DS_MATERIAL\n    ,A.CD_CLASSE_MATERIAL\n    ,A.DS_CLASSE_MATERIAL                        AS DS_CLASSE_MATERIAL\n    ,A.CD_GRUPO_MATERIAL                        \n    ,A.DS_GRUPO_MATERIAL                         AS DS_GRUPO_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_CONSUMO                                AS QT_MOVIMENTO\n    ,A.VL_MOVIMENTO \n    ,PF.CD_PESSOA_FISICA\n    ,PF.NM_PESSOA_FISICA\n    ,AP.NR_ATENDIMENTO      \n    ,AP.DT_ENTRADA\n    ,A.CD_CONVENIO\n    ,A.DS_CONVENIO\n    ,A.NR_MOVIMENTO_ESTOQUE\nFROM AUX A\nINNER JOIN fast_ops.ESTABELECIMENTO ESTB ON ESTB.CD_ESTABELECIMENTO = A.CD_ESTABELECIMENTO\nLEFT JOIN fast_ops.ATENDIMENTO_PACIENTE AP ON AP.NR_ATENDIMENTO = A.NR_ATENDIMENTO\nLEFT JOIN fast_ops.PESSOA_FISICA PF ON PF.CD_PESSOA_FISICA = AP.CD_PESSOA_FISICA\nLEFT JOIN fast_ops.LOCAL_ESTOQUE LE on (LE.cd_estabelecimento = A.cd_estabelecimento AND LE.cd_local_estoque = A.cd_local_estoque)\nWHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,''MM''),''YYYY-MM-DD'') BETWEEN ',\n '''',variables('PERIODO_INICIAL'),'''',' AND ','''',variables('PERIODO_FINAL'),'''')",
 												"type": "Expression"
 											},
 											"partitionOption": "None",
@@ -12287,13 +12287,7 @@
 									"type": "Copy",
 									"dependsOn": [
 										{
-											"activity": "DT_INICIO_TASY",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										},
-										{
-											"activity": "DT_FIM_TASY",
+											"activity": "LIMPA STAGE TASY",
 											"dependencyConditions": [
 												"Succeeded"
 											]
@@ -12311,7 +12305,7 @@
 										"source": {
 											"type": "OracleSource",
 											"oracleReaderQuery": {
-												"value": "@concat(\n'WITH AUX AS(\n\nselect\t\n    M.NR_ATENDIMENTO,\n    m.nr_movimento_estoque,\n\tm.cd_estabelecimento,\n\tm.cd_local_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\tobter_convenio_atendimento(m.nr_atendimento) cd_convenio,\n\tsubstr(obter_nome_convenio(obter_convenio_atendimento(m.nr_atendimento)),1,80) ds_convenio,\n\t''M'' ie_periodo,\n\tdecode(\tm.cd_acao,\n\t\t2,\tm.qt_estoque * -1,\n\t\t\tm.qt_estoque) qt_estoque,\n\tdecode(\tm.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1, \tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t                 ''A'', (v.vl_movimento),\n\t\t\t                 ''D'', (v.vl_movimento * -1),\n\t\t\t                 ''N'', (0)))) vl_estoque,\n\tdecode(m.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t''N'', (0)))) vl_movimento,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))),\n\t\t''D'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))) *-1,\n\t0) vl_consumo,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque),\n\t\t\t\tsum((qt_estoque * -1))),\n\t \t''D'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque * -1),\n\t\t\t\tsum(qt_estoque)),\n\t\t0) qt_consumo,\n\tm.cd_material\nfrom\ttipo_valor t,\n\toperacao_estoque o,\n\testrutura_material_v e,\n\tmovimento_estoque m,\n\tmovimento_estoque_valor v\nwhere\tm.nr_movimento_estoque\t= v.nr_movimento_estoque (+)\nand\tv.cd_tipo_valor\t\t= t.cd_tipo_valor(+)\nand\tm.cd_operacao_estoque\t= o.cd_operacao_estoque (+)\nand\tm.cd_material_estoque\t= e.cd_material\nand\tm.dt_processo is not null\ngroup by\n\tm.cd_estabelecimento,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_local_estoque,\n\tm.nr_movimento_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tdecode(m.cd_acao, 2, m.qt_estoque * -1, m.qt_estoque),\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\t''M'',\n\to.ie_consumo,\n\tm.nr_atendimento,\n\tm.cd_material\n)\n\n\nSELECT \n    2   AS ID_SYS\n    ,TO_CHAR(A.DT_PROCESSO,''YYYY-MM-DD'') AS DATA_PROCESSO   \n    ,A.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,ESTB.nm_fantasia_estab                      AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_MATERIAL                               AS DS_MATERIAL\n    ,A.CD_CLASSE_MATERIAL\n    ,A.DS_CLASSE_MATERIAL                        AS DS_CLASSE_MATERIAL\n    ,A.CD_GRUPO_MATERIAL                        \n    ,A.DS_GRUPO_MATERIAL                         AS DS_GRUPO_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_CONSUMO                                AS QT_MOVIMENTO\n    ,A.VL_MOVIMENTO \n    ,PF.CD_PESSOA_FISICA\n    ,PF.NM_PESSOA_FISICA\n    ,AP.NR_ATENDIMENTO      \n    ,AP.DT_ENTRADA\n    ,A.CD_CONVENIO\n    ,A.DS_CONVENIO\n    ,A.NR_MOVIMENTO_ESTOQUE\nFROM AUX A\nINNER JOIN ESTABELECIMENTO ESTB ON ESTB.CD_ESTABELECIMENTO = A.CD_ESTABELECIMENTO\nLEFT JOIN ATENDIMENTO_PACIENTE AP ON AP.NR_ATENDIMENTO = A.NR_ATENDIMENTO\nLEFT JOIN PESSOA_FISICA PF ON PF.CD_PESSOA_FISICA = AP.CD_PESSOA_FISICA\nLEFT JOIN LOCAL_ESTOQUE LE on (LE.cd_estabelecimento = A.cd_estabelecimento AND LE.cd_local_estoque = A.cd_local_estoque)\nWHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,''MM''),''YYYY-MM-DD'') BETWEEN',\n '''',variables('DT_INICIO'),'''',' AND ','''',variables('DT_FIM'),'''')\n\n\n\n\n",
+												"value": "@concat(\n'WITH AUX AS(\n\nselect\t\n    M.NR_ATENDIMENTO,\n    m.nr_movimento_estoque,\n\tm.cd_estabelecimento,\n\tm.cd_local_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\tobter_convenio_atendimento(m.nr_atendimento) cd_convenio,\n\tsubstr(obter_nome_convenio(obter_convenio_atendimento(m.nr_atendimento)),1,80) ds_convenio,\n\t''M'' ie_periodo,\n\tdecode(\tm.cd_acao,\n\t\t2,\tm.qt_estoque * -1,\n\t\t\tm.qt_estoque) qt_estoque,\n\tdecode(\tm.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1, \tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t                 ''A'', (v.vl_movimento),\n\t\t\t                 ''D'', (v.vl_movimento * -1),\n\t\t\t                 ''N'', (0)))) vl_estoque,\n\tdecode(m.cd_acao,\n\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t''N'', (0))),\n\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t''N'', (0)))) vl_movimento,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))),\n\t\t''D'',\tdecode(m.cd_acao,\n\t\t\t2,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento * -1),\n\t\t\t\t\t''D'', (v.vl_movimento),\n\t\t\t\t\t''N'', (0))),\n\t\t\t1,\tsum(decode(t.ie_aumenta_diminui_valor,\n\t\t\t\t\t''A'', (v.vl_movimento),\n\t\t\t\t\t''D'', (v.vl_movimento * -1),\n\t\t\t\t\t''N'', (0)))) *-1,\n\t0) vl_consumo,\n\tdecode(o.ie_consumo,\n\t\t''A'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque),\n\t\t\t\tsum((qt_estoque * -1))),\n\t \t''D'',\tdecode(\tm.cd_acao,\n\t\t\t1,\tsum(qt_estoque * -1),\n\t\t\t\tsum(qt_estoque)),\n\t\t0) qt_consumo,\n\tm.cd_material\nfrom\ttipo_valor t,\n\toperacao_estoque o,\n\testrutura_material_v e,\n\tmovimento_estoque m,\n\tmovimento_estoque_valor v\nwhere\tm.nr_movimento_estoque\t= v.nr_movimento_estoque (+)\nand\tv.cd_tipo_valor\t\t= t.cd_tipo_valor(+)\nand\tm.cd_operacao_estoque\t= o.cd_operacao_estoque (+)\nand\tm.cd_material_estoque\t= e.cd_material\nand\tm.dt_processo is not null\ngroup by\n\tm.cd_estabelecimento,\n\tm.dt_mesano_referencia,\n\tm.dt_processo,\n\tm.cd_local_estoque,\n\tm.nr_movimento_estoque,\n\tm.dt_movimento_estoque,\n\tm.cd_operacao_estoque,\n\to.ds_operacao,\n\tm.cd_acao,\n\tm.cd_material_estoque,\n\tm.cd_unidade_medida_estoque,\n\tm.cd_setor_atendimento,\n\tm.ie_origem_documento,\n\tm.nr_documento,\n\tm.nr_sequencia_item_docto,\n\tm.cd_fornecedor,\n\tm.cd_local_estoque_destino,\n\tm.cd_centro_custo,\n\tm.cd_conta_contabil,\n\tm.qt_movimento,\n\tm.cd_unidade_med_mov,\n\tm.nm_usuario,\n\tdecode(m.cd_acao, 2, m.qt_estoque * -1, m.qt_estoque),\n\tm.ds_observacao,\n\te.cd_grupo_material,\n\te.ds_grupo_material,\n\te.cd_subgrupo_material,\n\te.ds_subgrupo_material,\n\te.cd_classe_material,\n\te.ds_classe_material,\n\te.ds_material,\n\tm.nr_seq_tab_orig,\n\t''M'',\n\to.ie_consumo,\n\tm.nr_atendimento,\n\tm.cd_material\n)\n\n\nSELECT \n    2   AS ID_SYS\n    ,TO_CHAR(A.DT_PROCESSO,''YYYY-MM-DD'') AS DATA_PROCESSO   \n    ,A.CD_LOCAL_ESTOQUE\n    ,LE.DS_LOCAL_ESTOQUE\n    ,A.CD_ESTABELECIMENTO\n    ,ESTB.nm_fantasia_estab                      AS DS_ESTABELECIMENTO\n    ,A.CD_MATERIAL\n    ,A.DS_MATERIAL                               AS DS_MATERIAL\n    ,A.CD_CLASSE_MATERIAL\n    ,A.DS_CLASSE_MATERIAL                        AS DS_CLASSE_MATERIAL\n    ,A.CD_GRUPO_MATERIAL                        \n    ,A.DS_GRUPO_MATERIAL                         AS DS_GRUPO_MATERIAL\n    ,A.cd_operacao_estoque\n    ,A.DS_OPERACAO\n    ,A.QT_CONSUMO                                AS QT_MOVIMENTO\n    ,A.VL_MOVIMENTO \n    ,PF.CD_PESSOA_FISICA\n    ,PF.NM_PESSOA_FISICA\n    ,AP.NR_ATENDIMENTO      \n    ,AP.DT_ENTRADA\n    ,A.CD_CONVENIO\n    ,A.DS_CONVENIO\n    ,A.NR_MOVIMENTO_ESTOQUE\nFROM AUX A\nINNER JOIN ESTABELECIMENTO ESTB ON ESTB.CD_ESTABELECIMENTO = A.CD_ESTABELECIMENTO\nLEFT JOIN ATENDIMENTO_PACIENTE AP ON AP.NR_ATENDIMENTO = A.NR_ATENDIMENTO\nLEFT JOIN PESSOA_FISICA PF ON PF.CD_PESSOA_FISICA = AP.CD_PESSOA_FISICA\nLEFT JOIN LOCAL_ESTOQUE LE on (LE.cd_estabelecimento = A.cd_estabelecimento AND LE.cd_local_estoque = A.cd_local_estoque)\nWHERE TO_CHAR(TRUNC(A.DT_MOVIMENTO_ESTOQUE,''MM''),''YYYY-MM-DD'') BETWEEN',\n '''',variables('PERIODO_INICIAL'),'''',' AND ','''',variables('PERIODO_FINAL'),'''')",
 												"type": "Expression"
 											},
 											"partitionOption": "None",
@@ -12347,13 +12341,17 @@
 									"name": "DELETE MOVIMENTO",
 									"description": "Apaga o movimento com base na faixa de data definida no início do processo",
 									"type": "Script",
-									"state": "Inactive",
-									"onInactiveMarkAs": "Succeeded",
 									"dependsOn": [
 										{
 											"activity": "Movimento Estoque Tasy HTML",
 											"dependencyConditions": [
-												"Completed"
+												"Succeeded"
+											]
+										},
+										{
+											"activity": "Movimento Estoque Tasy Sadalla",
+											"dependencyConditions": [
+												"Succeeded"
 											]
 										}
 									],
@@ -12374,7 +12372,7 @@
 											{
 												"type": "NonQuery",
 												"text": {
-													"value": "DELETE\nFROM DM.TBL_MOVIMENTO_ESTOQUE\nWHERE DM.TBL_MOVIMENTO_ESTOQUE.DATA_MOVIMENTO IN \n(\nSELECT distinct DATA_PROCESSO AS DATA_MOVIMENTO from stg.movimento_estoque_tasy  with(nolock) \nUNION\nSELECT distinct DATA_MOVIMENTO AS DATA_MOVIMENTO from stg.movimento_estoque_smart with(nolock)\n) ",
+													"value": "DELETE A FROM DM.TBL_MOVIMENTO_ESTOQUE A\nINNER JOIN STG.movimento_estoque_tasy B ON A.ESTABELECIMENTO = B.ID_SYS AND REPLACE(SUBSTRING(CAST(A.DATA_MOVIMENTO AS VARCHAR(50)),1,7),'-','') = REPLACE(SUBSTRING(CAST(B.DATA_PROCESSO AS VARCHAR(50)),1,7),'-','')",
 													"type": "Expression"
 												}
 											}
@@ -12386,8 +12384,6 @@
 									"name": "INSERT",
 									"description": "Insere o movimento com base na faixa de data definida no início do processo",
 									"type": "Script",
-									"state": "Inactive",
-									"onInactiveMarkAs": "Succeeded",
 									"dependsOn": [
 										{
 											"activity": "DELETE MOVIMENTO",
@@ -12413,60 +12409,12 @@
 											{
 												"type": "NonQuery",
 												"text": {
-													"value": "WITH TMP AS(\n    -- -- TASY\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_PROCESSO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(10)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_ESTABELECIMENTO AS VARCHAR(20)) AS FK_CD_ESTABELECIMENTO \n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_MATERIAL AS VARCHAR(30)) FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CLASSE_MATERIAL AS VARCHAR(30)) FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_GRUPO_MATERIAL AS VARCHAR(30)) FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_OPERACAO_ESTOQUE AS VARCHAR(30)) FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_PESSOA_FISICA AS VARCHAR(30)) FK_CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(NR_ATENDIMENTO AS VARCHAR(50)) FK_NR_ATENDIMENTO\n    ,CAST(DT_ENTRADA AS DATE) AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CONVENIO AS VARCHAR(30)) FK_CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(NR_MOVIMENTO_ESTOQUE AS VARCHAR(50)) FK_NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM STG.MOVIMENTO_ESTOQUE_TASY A\n\n    UNION ALL\n\n    -- -- SMART\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_MOVIMENTO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_ESTABELECIMENTO AS VARCHAR(50)) AS FK_CD_ESTABELECIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_MATERIAL AS VARCHAR(50)) AS FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_CLASSE_MATERIAL AS VARCHAR(50)) AS FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) AS FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_TIPO_OPERACAO AS VARCHAR(50)) AS FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_ATENDIMENTO\n    ,NULL AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM stg.movimento_estoque_smart\n)\n\n\nINSERT INTO DM.TBL_MOVIMENTO_ESTOQUE\nSELECT * FROM TMP\n",
+													"value": "WITH TMP AS(\n    -- -- TASY\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_PROCESSO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(10)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_ESTABELECIMENTO AS VARCHAR(20)) AS FK_CD_ESTABELECIMENTO \n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_MATERIAL AS VARCHAR(30)) FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CLASSE_MATERIAL AS VARCHAR(30)) FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_GRUPO_MATERIAL AS VARCHAR(30)) FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_OPERACAO_ESTOQUE AS VARCHAR(30)) FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_PESSOA_FISICA AS VARCHAR(30)) FK_CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(NR_ATENDIMENTO AS VARCHAR(50)) FK_NR_ATENDIMENTO\n    ,CAST(DT_ENTRADA AS DATE) AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CONVENIO AS VARCHAR(30)) FK_CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(NR_MOVIMENTO_ESTOQUE AS VARCHAR(50)) FK_NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM STG.MOVIMENTO_ESTOQUE_TASY A\n\n)\n\n\nINSERT INTO DM.TBL_MOVIMENTO_ESTOQUE\nSELECT * FROM TMP\n",
 													"type": "Expression"
 												}
 											}
 										],
 										"scriptBlockExecutionTimeout": "02:00:00"
-									}
-								},
-								{
-									"name": "DT_INICIO_TASY",
-									"type": "SetVariable",
-									"dependsOn": [
-										{
-											"activity": "LIMPA STAGE TASY",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"variableName": "DT_INICIO",
-										"value": {
-											"value": "@activity('Return_Date').output.firstRow.MES_INICIO_ORACLE",
-											"type": "Expression"
-										}
-									}
-								},
-								{
-									"name": "DT_FIM_TASY",
-									"type": "SetVariable",
-									"dependsOn": [
-										{
-											"activity": "LIMPA STAGE TASY",
-											"dependencyConditions": [
-												"Succeeded"
-											]
-										}
-									],
-									"policy": {
-										"secureOutput": false,
-										"secureInput": false
-									},
-									"userProperties": [],
-									"typeProperties": {
-										"variableName": "DT_FIM",
-										"value": {
-											"value": "@activity('Return_Date').output.firstRow.MES_FIM_ORACLE",
-											"type": "Expression"
-										}
 									}
 								},
 								{
@@ -13878,6 +13826,76 @@
 										],
 										"scriptBlockExecutionTimeout": "02:00:00"
 									}
+								},
+								{
+									"name": "DELETE DATAMART SMART",
+									"type": "Script",
+									"dependsOn": [
+										{
+											"activity": "Mov Estoque HOSL",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": "DELETE A FROM DM.TBL_MOVIMENTO_ESTOQUE A\nINNER JOIN STG.movimento_estoque_smart B ON A.ESTABELECIMENTO = B.ID_SYS AND REPLACE(SUBSTRING(CAST(A.DATA_MOVIMENTO AS VARCHAR(50)),1,7),'-','') = REPLACE(SUBSTRING(CAST(B.DATA_MOVIMENTO AS VARCHAR(50)),1,7),'-','')\n"
+											}
+										],
+										"scriptBlockExecutionTimeout": "02:00:00"
+									}
+								},
+								{
+									"name": "INSERT DATAMART",
+									"description": "Insere o movimento com base na faixa de data definida no início do processo",
+									"type": "Script",
+									"dependsOn": [
+										{
+											"activity": "DELETE DATAMART SMART",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.1:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": {
+													"value": "WITH TMP AS(\n    -- -- SMART\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_MOVIMENTO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_ESTABELECIMENTO AS VARCHAR(50)) AS FK_CD_ESTABELECIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_MATERIAL AS VARCHAR(50)) AS FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_CLASSE_MATERIAL AS VARCHAR(50)) AS FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) AS FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_TIPO_OPERACAO AS VARCHAR(50)) AS FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_ATENDIMENTO\n    ,NULL AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM stg.movimento_estoque_smart\n)\n\n\nINSERT INTO DM.TBL_MOVIMENTO_ESTOQUE\nSELECT * FROM TMP\n",
+													"type": "Expression"
+												}
+											}
+										],
+										"scriptBlockExecutionTimeout": "02:00:00"
+									}
 								}
 							]
 						}
@@ -13901,7 +13919,13 @@
 						"type": "Lookup",
 						"dependsOn": [
 							{
-								"activity": "PERIODO",
+								"activity": "PERIODO INICIAL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "PERIODO_FINAL",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -13933,7 +13957,8 @@
 						}
 					},
 					{
-						"name": "PERIODO",
+						"name": "PERIODO INICIAL",
+						"description": "Campo obrigatório Tasy + Smart",
 						"type": "SetVariable",
 						"dependsOn": [],
 						"policy": {
@@ -13943,7 +13968,22 @@
 						"userProperties": [],
 						"typeProperties": {
 							"variableName": "PERIODO_INICIAL",
-							"value": "2023-09-01"
+							"value": "2023-01-01"
+						}
+					},
+					{
+						"name": "PERIODO_FINAL",
+						"description": "Funciona somente para Tasy",
+						"type": "SetVariable",
+						"dependsOn": [],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "PERIODO_FINAL",
+							"value": "2023-12-01"
 						}
 					}
 				],
@@ -13961,6 +14001,9 @@
 						"type": "String"
 					},
 					"PERIODO_INICIAL": {
+						"type": "String"
+					},
+					"PERIODO_FINAL": {
 						"type": "String"
 					}
 				},
