@@ -145,8 +145,6 @@
 							"name": "DELETE MOVIMENTO",
 							"description": "Apaga o movimento com base na faixa de data definida no início do processo",
 							"type": "Script",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "Movimento Estoque Tasy HTML",
@@ -172,7 +170,7 @@
 									{
 										"type": "NonQuery",
 										"text": {
-											"value": "DELETE\nFROM DM.TBL_MOVIMENTO_ESTOQUE\nWHERE DM.TBL_MOVIMENTO_ESTOQUE.DATA_MOVIMENTO IN \n(\nSELECT distinct DATA_PROCESSO AS DATA_MOVIMENTO from stg.movimento_estoque_tasy  with(nolock) \nUNION\nSELECT distinct DATA_MOVIMENTO AS DATA_MOVIMENTO from stg.movimento_estoque_smart with(nolock)\n) ",
+											"value": "DELETE A FROM DM.TBL_MOVIMENTO_ESTOQUE A\nINNER JOIN STG.movimento_estoque_tasy B ON A.ESTABELECIMENTO = B.ID_SYS AND REPLACE(SUBSTRING(CAST(A.DATA_MOVIMENTO AS VARCHAR(50)),1,7),'-','') = REPLACE(SUBSTRING(CAST(B.DATA_PROCESSO AS VARCHAR(50)),1,7),'-','')",
 											"type": "Expression"
 										}
 									}
@@ -184,8 +182,6 @@
 							"name": "INSERT",
 							"description": "Insere o movimento com base na faixa de data definida no início do processo",
 							"type": "Script",
-							"state": "Inactive",
-							"onInactiveMarkAs": "Succeeded",
 							"dependsOn": [
 								{
 									"activity": "DELETE MOVIMENTO",
@@ -211,7 +207,7 @@
 									{
 										"type": "NonQuery",
 										"text": {
-											"value": "WITH TMP AS(\n    -- -- TASY\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_PROCESSO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(10)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_ESTABELECIMENTO AS VARCHAR(20)) AS FK_CD_ESTABELECIMENTO \n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_MATERIAL AS VARCHAR(30)) FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CLASSE_MATERIAL AS VARCHAR(30)) FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_GRUPO_MATERIAL AS VARCHAR(30)) FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_OPERACAO_ESTOQUE AS VARCHAR(30)) FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_PESSOA_FISICA AS VARCHAR(30)) FK_CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(NR_ATENDIMENTO AS VARCHAR(50)) FK_NR_ATENDIMENTO\n    ,CAST(DT_ENTRADA AS DATE) AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CONVENIO AS VARCHAR(30)) FK_CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(NR_MOVIMENTO_ESTOQUE AS VARCHAR(50)) FK_NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM STG.MOVIMENTO_ESTOQUE_TASY A\n\n    UNION ALL\n\n    -- -- SMART\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_MOVIMENTO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_ESTABELECIMENTO AS VARCHAR(50)) AS FK_CD_ESTABELECIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_MATERIAL AS VARCHAR(50)) AS FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_CLASSE_MATERIAL AS VARCHAR(50)) AS FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) AS FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_TIPO_OPERACAO AS VARCHAR(50)) AS FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_ATENDIMENTO\n    ,NULL AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM stg.movimento_estoque_smart\n)\n\n\nINSERT INTO DM.TBL_MOVIMENTO_ESTOQUE\nSELECT * FROM TMP\n",
+											"value": "WITH TMP AS(\n    -- -- TASY\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_PROCESSO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(10)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_ESTABELECIMENTO AS VARCHAR(20)) AS FK_CD_ESTABELECIMENTO \n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_MATERIAL AS VARCHAR(30)) FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CLASSE_MATERIAL AS VARCHAR(30)) FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_GRUPO_MATERIAL AS VARCHAR(30)) FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_OPERACAO_ESTOQUE AS VARCHAR(30)) FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_PESSOA_FISICA AS VARCHAR(30)) FK_CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(NR_ATENDIMENTO AS VARCHAR(50)) FK_NR_ATENDIMENTO\n    ,CAST(DT_ENTRADA AS DATE) AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_CONVENIO AS VARCHAR(30)) FK_CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(NR_MOVIMENTO_ESTOQUE AS VARCHAR(50)) FK_NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM STG.MOVIMENTO_ESTOQUE_TASY A\n\n)\n\n\nINSERT INTO DM.TBL_MOVIMENTO_ESTOQUE\nSELECT * FROM TMP\n",
 											"type": "Expression"
 										}
 									}
@@ -1665,6 +1661,76 @@
 										"type": "NonQuery",
 										"text": {
 											"value": "truncate table stg.movimento_estoque_smart",
+											"type": "Expression"
+										}
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						},
+						{
+							"name": "DELETE DATAMART SMART",
+							"type": "Script",
+							"dependsOn": [
+								{
+									"activity": "Mov Estoque HOSL",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSQL_DB_Procedimentos",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "NonQuery",
+										"text": "DELETE A FROM DM.TBL_MOVIMENTO_ESTOQUE A\nINNER JOIN STG.movimento_estoque_smart B ON A.ESTABELECIMENTO = B.ID_SYS AND REPLACE(SUBSTRING(CAST(A.DATA_MOVIMENTO AS VARCHAR(50)),1,7),'-','') = REPLACE(SUBSTRING(CAST(B.DATA_MOVIMENTO AS VARCHAR(50)),1,7),'-','')\n"
+									}
+								],
+								"scriptBlockExecutionTimeout": "02:00:00"
+							}
+						},
+						{
+							"name": "INSERT DATAMART",
+							"description": "Insere o movimento com base na faixa de data definida no início do processo",
+							"type": "Script",
+							"dependsOn": [
+								{
+									"activity": "DELETE DATAMART SMART",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.1:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"linkedServiceName": {
+								"referenceName": "AzureSQL_DB_Procedimentos",
+								"type": "LinkedServiceReference"
+							},
+							"typeProperties": {
+								"scripts": [
+									{
+										"type": "NonQuery",
+										"text": {
+											"value": "WITH TMP AS(\n    -- -- SMART\n\n    SELECT \n    CAST(ID_SYS AS VARCHAR(5)) AS ESTABELECIMENTO\n    ,CAST(DATA_MOVIMENTO AS DATE) AS DATA_MOVIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_LOCAL_ESTOQUE AS VARCHAR(50)) AS FK_CD_LOCAL_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_ESTABELECIMENTO AS VARCHAR(50)) AS FK_CD_ESTABELECIMENTO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_MATERIAL AS VARCHAR(50)) AS FK_CD_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_CLASSE_MATERIAL AS VARCHAR(50)) AS FK_CD_CLASSE_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ CAST(CD_GRUPO_MATERIAL AS VARCHAR(50)) AS FK_CD_GRUPO_MATERIAL\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+CAST(CD_TIPO_OPERACAO AS VARCHAR(50)) AS FK_CD_OPERACAO_ESTOQUE\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_PESSOA_FISICA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_ATENDIMENTO\n    ,NULL AS DT_ENTRADA\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS CD_CONVENIO\n    ,CAST(ID_SYS AS VARCHAR(5))+'|'+ '' AS NR_MOVIMENTO_ESTOQUE\n    ,CAST(QT_MOVIMENTO AS DECIMAL) AS QT_MOVIMENTO\n    ,CAST(VL_MOVIMENTO AS MONEY) AS VL_MOVIMENTO\n    FROM stg.movimento_estoque_smart\n)\n\n\nINSERT INTO DM.TBL_MOVIMENTO_ESTOQUE\nSELECT * FROM TMP\n",
 											"type": "Expression"
 										}
 									}
