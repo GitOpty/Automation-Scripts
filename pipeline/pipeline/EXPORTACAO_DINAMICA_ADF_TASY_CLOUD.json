@@ -1,0 +1,155 @@
+{
+	"name": "EXPORTACAO_DINAMICA_ADF_TASY_CLOUD",
+	"properties": {
+		"activities": [
+			{
+				"name": "LISTA ORIGEM DESTINO",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.05:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[adf].[sp_origem_destino_tasy]",
+						"storedProcedureParameters": {
+							"COD_TABELA": {
+								"type": "String",
+								"value": null
+							},
+							"Dt_inicio_manual": {
+								"type": "DateTime",
+								"value": null
+							},
+							"manual": {
+								"type": "String",
+								"value": "N"
+							},
+							"nome_keyvault_secret": {
+								"type": "String",
+								"value": "CloudTasy"
+							},
+							"plataforma": {
+								"type": "String",
+								"value": "Tasy"
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "LISTA_TABELAS_ADF",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "PROCESSA ETL",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "LISTA ORIGEM DESTINO",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('LISTA ORIGEM DESTINO').output.value",
+						"type": "Expression"
+					},
+					"isSequential": false,
+					"batchCount": 50,
+					"activities": [
+						{
+							"name": "EXPORTACAO",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.10:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "OracleSource",
+									"oracleReaderQuery": {
+										"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM, ' where rownum <= 100; ')",
+										"type": "Expression"
+									},
+									"partitionOption": "None",
+									"convertDecimalToInteger": false,
+									"queryTimeout": "02:00:00"
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ORACLE_DINAMICO",
+									"type": "DatasetReference",
+									"parameters": {
+										"NOME_KEYVAULT_SECRET": "@item().NOME_KEYVAULT_SECRET",
+										"schema_name": "@item().NOME_SCHEMA_ORIGEM",
+										"table_name": "@item().NOME_TABELA_ORIGEM"
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "EXPORT_CSV_DIVERSOS",
+									"type": "DatasetReference",
+									"parameters": {
+										"Nome_arquivo": {
+											"value": "@item().NOME_TABELA_ORIGEM",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"variables": {
+			"StartTime": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "Data Warehouse/2_Pipeline_Cargas_DW"
+		},
+		"annotations": []
+	}
+}
