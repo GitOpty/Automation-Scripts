@@ -13,6 +13,2482 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/ORTOCITY_STORAGE_ACCOUNT')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Lista arquivos",
+						"type": "GetMetadata",
+						"dependsOn": [
+							{
+								"activity": "GERA ARQUIVO QUERY ORTOCITY",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.02:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "DS_HMAISDATADRIVEN_BINARY",
+								"type": "DatasetReference",
+								"parameters": {
+									"FileSystem": "ortocity"
+								}
+							},
+							"fieldList": [
+								"childItems",
+								"itemType",
+								"itemName",
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "BinaryReadSettings"
+							}
+						}
+					},
+					{
+						"name": "Filtro",
+						"type": "Filter",
+						"dependsOn": [
+							{
+								"activity": "Lista arquivos",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista arquivos').output.childItems",
+								"type": "Expression"
+							},
+							"condition": {
+								"value": "@endsWith(item().name, 'csv')",
+								"type": "Expression"
+							}
+						}
+					},
+					{
+						"name": "ForEach1",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Filtro",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Filtro').output.value",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "Copia dados para a STG",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "AzureSqlSink",
+											"preCopyScript": {
+												"value": "@{concat('Drop table stg.',activity('Lista arquivos').output.itemName)}",
+												"type": "Expression"
+											},
+											"writeBehavior": "insert",
+											"sqlWriterUseTableLock": false,
+											"tableOption": "autoCreate",
+											"disableMetricsCollection": false
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "AZ_SQL_STG",
+											"type": "DatasetReference",
+											"parameters": {
+												"SCHEMA": "stg",
+												"TABELA": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Move arquivo para PROCESSADOS",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "Palativo Stg DW",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@concat(activity('Lista arquivos').output.itemName,'\\Processados')",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@concat(item().name,'-',utcnow())",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "Apaga arquivo",
+									"type": "Delete",
+									"dependsOn": [
+										{
+											"activity": "Move arquivo para PROCESSADOS",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataset": {
+											"referenceName": "DS_HMAISDATADRIVEN",
+											"type": "DatasetReference",
+											"parameters": {
+												"Filesystem": {
+													"value": "@activity('Lista arquivos').output.itemName",
+													"type": "Expression"
+												},
+												"File": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										},
+										"logStorageSettings": {
+											"linkedServiceName": {
+												"referenceName": "sv_hmaisbrasildatadriven",
+												"type": "LinkedServiceReference"
+											},
+											"path": "ceop/logs"
+										},
+										"enableLogging": true,
+										"storeSettings": {
+											"type": "AzureBlobFSReadSettings",
+											"recursive": true,
+											"enablePartitionDiscovery": false
+										}
+									}
+								},
+								{
+									"name": "STG DW",
+									"type": "Script",
+									"dependsOn": [
+										{
+											"activity": "Copia dados para a STG",
+											"dependencyConditions": [
+												"Skipped"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "7.00:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "SQL_DESTINO",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": "WITH REF AS(\n\nSELECT \nPK_ARQUIVO\n\t\t\t,CD_ESTABELECIMENTO\n\t\t\t,DS_ESTABELECIMENTO\n\t\t\t,NR_ATENDIMENTO\n\t\t\t,NR_INTERNO_CONTA\n\t\t\t,CD_PESSOA_FISICA\n\t\t\t,NM_PESSOA_FISICA\n\t\t\t,DT_NASCIMENTO\n\t\t\t,CNPJ_CONVENIO\n\t\t\t,CD_CONVENIO\n\t\t\t,DS_CONVENIO\n\t\t\t,CRM\n\t\t\t,CD_MEDICO_EXECUTANTE\n\t\t\t,NM_MEDICO_EXECUTANTE\n\t\t\t,CD_SETOR_EXECUTANTE\n\t\t\t,DS_SETOR_EXECUTANTE\n\t\t\t,DT_ENTRADA\n\t\t\t,[COD TUSS ou AMB]\n\t\t\t,CD_ITEM\n\t\t\t,DS_ITEM\n\t\t\t,DT_LANC_ITEM\n\t\t\t,QT\n\t\t\t,VALOR\n\n FROM \n\t\t( SELECT \n\t\t\tPK_ARQUIVO\n\t\t\t,CD_ESTABELECIMENTO\n\t\t\t,DS_ESTABELECIMENTO\n\t\t\t,NR_ATENDIMENTO\n\t\t\t,NR_INTERNO_CONTA\n\t\t\t,CD_PESSOA_FISICA\n\t\t\t,NM_PESSOA_FISICA\n\t\t\t,DT_NASCIMENTO\n\t\t\t,CNPJ_CONVENIO\n\t\t\t,CD_CONVENIO\n\t\t\t,DS_CONVENIO\n\t\t\t,CRM\n\t\t\t,CD_MEDICO_EXECUTANTE\n\t\t\t,NM_MEDICO_EXECUTANTE\n\t\t\t,CD_SETOR_EXECUTANTE\n\t\t\t,DS_SETOR_EXECUTANTE\n\t\t\t,DT_ENTRADA\n\t\t\t,[COD TUSS ou AMB]\n\t\t\t,CD_ITEM\n\t\t\t,DS_ITEM\n\t\t\t,DT_LANC_ITEM\n\t\t\t,SUM(CAST(QT AS MONEY)) AS QT\n\t\t\t,SUM(cast(replace(VALOR,',','.') as decimal(19,2))) as VALOR\n\t\t\t\n\n\t\tFROM STG.ortocity\n\t\tGROUP BY\n\t\t\tPK_ARQUIVO\n\t\t\t,CD_ESTABELECIMENTO\n\t\t\t,DS_ESTABELECIMENTO\n\t\t\t,NR_ATENDIMENTO\n\t\t\t,NR_INTERNO_CONTA\n\t\t\t,CD_PESSOA_FISICA\n\t\t\t,NM_PESSOA_FISICA\n\t\t\t,DT_NASCIMENTO\n\t\t\t,CNPJ_CONVENIO\n\t\t\t,CD_CONVENIO\n\t\t\t,DS_CONVENIO\n\t\t\t,CRM\n\t\t\t,CD_MEDICO_EXECUTANTE\n\t\t\t,NM_MEDICO_EXECUTANTE\n\t\t\t,CD_SETOR_EXECUTANTE\n\t\t\t,DS_SETOR_EXECUTANTE\n\t\t\t,DT_ENTRADA\n\t\t\t,[COD TUSS ou AMB]\n\t\t\t,CD_ITEM\n\t\t\t,DS_ITEM\n\t\t\t,DT_LANC_ITEM\n\n\t\t\t) AS A\n\n)\n\n\nMERGE               \n    dw.ortocity AS destino           \nUSING            \n    REF AS ORIGEM           \n           \n    ON(    \n    destino.PK_ARQUIVO    = ORIGEM.PK_ARQUIVO    AND\n    destino.CD_ITEM        = ORIGEM.CD_ITEM     AND\n    destino.NR_ATENDIMENTO = ORIGEM.NR_ATENDIMENTO AND\n    destino.CD_SETOR_EXECUTANTE = ORIGEM.CD_SETOR_EXECUTANTE\n\n)        \n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET         \n\n\n\ndestino.PK_ARQUIVO                = ORIGEM.PK_ARQUIVO                ,\ndestino.CD_ESTABELECIMENTO        = ORIGEM.CD_ESTABELECIMENTO        ,\ndestino.DS_ESTABELECIMENTO        = ORIGEM.DS_ESTABELECIMENTO        ,\ndestino.NR_ATENDIMENTO            = ORIGEM.NR_ATENDIMENTO            ,\ndestino.NR_INTERNO_CONTA        = ORIGEM.NR_INTERNO_CONTA        ,\ndestino.CD_PESSOA_FISICA        = ORIGEM.CD_PESSOA_FISICA        ,\ndestino.NM_PESSOA_FISICA        = ORIGEM.NM_PESSOA_FISICA        ,\ndestino.DT_NASCIMENTO            = ORIGEM.DT_NASCIMENTO            ,\ndestino.CNPJ_CONVENIO            = ORIGEM.CNPJ_CONVENIO            ,\ndestino.CD_CONVENIO                = ORIGEM.CD_CONVENIO            ,\ndestino.DS_CONVENIO                = ORIGEM.DS_CONVENIO            ,\ndestino.CRM                        = ORIGEM.CRM                    ,\ndestino.CD_MEDICO_EXECUTANTE    = ORIGEM.CD_MEDICO_EXECUTANTE    ,\ndestino.NM_MEDICO_EXECUTANTE    = ORIGEM.NM_MEDICO_EXECUTANTE    ,\ndestino.CD_SETOR_EXECUTANTE        = ORIGEM.CD_SETOR_EXECUTANTE    ,\ndestino.DS_SETOR_EXECUTANTE        = ORIGEM.DS_SETOR_EXECUTANTE    ,\ndestino.DT_ENTRADA                = ORIGEM.DT_ENTRADA                ,\ndestino.[COD TUSS ou AMB]        = ORIGEM.[COD TUSS ou AMB]        ,        \ndestino.CD_ITEM                    = ORIGEM.CD_ITEM                ,\ndestino.DS_ITEM                    = ORIGEM.DS_ITEM                ,\ndestino.DT_LANC_ITEM            = ORIGEM.DT_LANC_ITEM            ,\ndestino.QT                        = ORIGEM.QT                        ,\ndestino.VALOR                    = ORIGEM.VALOR\n\n\n\n \n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n    VALUES (\n\nORIGEM.PK_ARQUIVO                ,\nORIGEM.CD_ESTABELECIMENTO        ,\nORIGEM.DS_ESTABELECIMENTO        ,\nORIGEM.NR_ATENDIMENTO            ,\nORIGEM.NR_INTERNO_CONTA            ,\nORIGEM.CD_PESSOA_FISICA            ,\nORIGEM.NM_PESSOA_FISICA            ,\nORIGEM.DT_NASCIMENTO            ,\nORIGEM.CNPJ_CONVENIO            ,\nORIGEM.CD_CONVENIO                ,\nORIGEM.DS_CONVENIO                ,\nORIGEM.CRM                        ,\nORIGEM.CD_MEDICO_EXECUTANTE        ,\nORIGEM.NM_MEDICO_EXECUTANTE        ,\nORIGEM.CD_SETOR_EXECUTANTE        ,\nORIGEM.DS_SETOR_EXECUTANTE        ,\nORIGEM.DT_ENTRADA                ,\nORIGEM.[COD TUSS ou AMB]        ,    \nORIGEM.CD_ITEM                    ,\nORIGEM.DS_ITEM                    ,\nORIGEM.DT_LANC_ITEM                ,\nORIGEM.QT                        ,\nORIGEM.VALOR\n);\n"
+											}
+										]
+									}
+								},
+								{
+									"name": "Palativo Stg DW",
+									"type": "Script",
+									"dependsOn": [
+										{
+											"activity": "Copia dados para a STG",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": "BEGIN\n  TRUNCATE TABLE DW.ORTOCITY\nEND;\n\nBEGIN\n  INSERT INTO DW.ortocity\n  SELECT \n  PK_ARQUIVO\n  \t\t\t,CD_ESTABELECIMENTO\n  \t\t\t,DS_ESTABELECIMENTO\n  \t\t\t,NR_ATENDIMENTO\n  \t\t\t,NR_INTERNO_CONTA\n  \t\t\t,CD_PESSOA_FISICA\n  \t\t\t,NM_PESSOA_FISICA\n  \t\t\t,DT_NASCIMENTO\n  \t\t\t,CNPJ_CONVENIO\n  \t\t\t,CD_CONVENIO\n  \t\t\t,DS_CONVENIO\n  \t\t\t,CRM\n  \t\t\t,CD_MEDICO_EXECUTANTE\n  \t\t\t,NM_MEDICO_EXECUTANTE\n  \t\t\t,CD_SETOR_EXECUTANTE\n  \t\t\t,DS_SETOR_EXECUTANTE\n  \t\t\t,DT_ENTRADA\n  \t\t\t,[COD TUSS ou AMB]\n  \t\t\t,CD_ITEM\n  \t\t\t,DS_ITEM\n  \t\t\t,DT_LANC_ITEM\n  \t\t\t,QT\n  \t\t\t,VALOR\n\n   FROM \n  \t\t( SELECT \n  \t\t\tPK_ARQUIVO\n  \t\t\t,CD_ESTABELECIMENTO\n  \t\t\t,DS_ESTABELECIMENTO\n  \t\t\t,NR_ATENDIMENTO\n  \t\t\t,NR_INTERNO_CONTA\n  \t\t\t,CD_PESSOA_FISICA\n  \t\t\t,NM_PESSOA_FISICA\n  \t\t\t,DT_NASCIMENTO\n  \t\t\t,CNPJ_CONVENIO\n  \t\t\t,CD_CONVENIO\n  \t\t\t,DS_CONVENIO\n  \t\t\t,CRM\n  \t\t\t,CD_MEDICO_EXECUTANTE\n  \t\t\t,NM_MEDICO_EXECUTANTE\n  \t\t\t,CD_SETOR_EXECUTANTE\n  \t\t\t,DS_SETOR_EXECUTANTE\n  \t\t\t,DT_ENTRADA\n  \t\t\t,[COD TUSS ou AMB]\n  \t\t\t,CD_ITEM\n  \t\t\t,DS_ITEM\n  \t\t\t,DT_LANC_ITEM\n  \t\t\t,SUM(CAST(QT AS MONEY)) AS QT\n  \t\t\t,SUM(cast(replace(VALOR,',','.') as decimal(19,2))) as VALOR\n  \n\n  \t\tFROM STG.ortocity\n  \t\tGROUP BY\n  \t\t\tPK_ARQUIVO\n  \t\t\t,CD_ESTABELECIMENTO\n  \t\t\t,DS_ESTABELECIMENTO\n  \t\t\t,NR_ATENDIMENTO\n  \t\t\t,NR_INTERNO_CONTA\n  \t\t\t,CD_PESSOA_FISICA\n  \t\t\t,NM_PESSOA_FISICA\n  \t\t\t,DT_NASCIMENTO\n  \t\t\t,CNPJ_CONVENIO\n  \t\t\t,CD_CONVENIO\n  \t\t\t,DS_CONVENIO\n  \t\t\t,CRM\n  \t\t\t,CD_MEDICO_EXECUTANTE\n  \t\t\t,NM_MEDICO_EXECUTANTE\n  \t\t\t,CD_SETOR_EXECUTANTE\n  \t\t\t,DS_SETOR_EXECUTANTE\n  \t\t\t,DT_ENTRADA\n  \t\t\t,[COD TUSS ou AMB]\n  \t\t\t,CD_ITEM\n  \t\t\t,DS_ITEM\n  \t\t\t,DT_LANC_ITEM\n\n  \t\t\t) AS A\nEND;        \n\n\n"
+											}
+										],
+										"scriptBlockExecutionTimeout": "02:00:00"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "GERA ARQUIVO QUERY ORTOCITY",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "PROCESSA ETL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.05:00:00",
+							"retry": 2,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "OracleSource",
+								"oracleReaderQuery": {
+									"value": "SELECT \nPK_ARQUIVO,\nCD_ESTABELECIMENTO,\nDS_ESTABELECIMENTO,\nNR_ATENDIMENTO,\nNR_INTERNO_CONTA,\nCD_PESSOA_FISICA,\nNM_PESSOA_FISICA,\nDT_NASCIMENTO,\nCNPJ_CONVENIO,\nCD_CONVENIO,\nDS_CONVENIO,\nCRM,\nCD_MEDICO_EXECUTANTE,\nNM_MEDICO_EXECUTANTE,\nCD_SETOR_EXECUTANTE,\nDS_SETOR_EXECUTANTE,\nDT_ENTRADA,\nCOD_TUSS_CO as \"COD TUSS ou AMB\",\nCD_ITEM_CO as  CD_ITEM,\nDS_ITEM_CO as  DS_ITEM,\nTP_ITEM_CO as  TP_ITEM,\nDT_LANC_ITEM_CO as  DT_LANC_ITEM,\nSUM(NVL(QT_CO,0))+SUM(NVL(QT_PR,0))+SUM(NVL(QT_RX1,0))+SUM(NVL(QT_RX2,0))+SUM(NVL(QT_KIT1,0))+SUM(NVL(QT_KIT2,0))+SUM(NVL(QT_KIT3,0))+SUM(NVL(QT_KIT4,0))+SUM(NVL(QT_TX1,0))+SUM(NVL(QT_TX2,0)) as  QT\n,SUM(NVL(VALOR_CO,0))+SUM(NVL(VALOR_PR,0))+SUM(NVL(VALOR_RX1,0))+SUM(NVL(VALOR_RX2,0))+SUM(NVL(VALOR_KIT1,0))+SUM(NVL(VALOR_KIT2,0))+SUM(NVL(VALOR_KIT3,0))+SUM(NVL(VALOR_KIT4,0))+SUM(NVL(VALOR_TX1,0))+SUM(NVL(VALOR_TX2,0)) as  VALOR\nFROM \n(\n\nselect f.codfat as pk_arquivo\n,a.unidade as cd_estabelecimento\n,a.unidade as ds_estabelecimento\n,f.numficha as nr_atendimento\n,f.numficha as nr_interno_conta\n,f.numreg as cd_pessoa_fisica\n,(select nome from cadpac where cadpac.numreg=f.numreg) as nm_pessoa_fisica\n,(select datanasc from cadpac where cadpac.numreg=f.numreg) as dt_nascimento\n,(select cnpj from cadnome where cadnome.codigo=a.codconv) as cnpj_convenio\n,a.codconv as cd_convenio\n,(select nome from cadconv where cadconv.codconv=a.codconv) as ds_convenio\n,(select crm from cadnome where cadnome.codigo=a.resp1) as crm\n,a.resp1 as cd_medico_executante\n,(select nome from cadmedresp where cadmedresp.codmed=a.resp1) as nm_medico_executante\n,a.tipo as cd_setor_executante\n,a.tipo as ds_setor_executante\n,a.DATAFICHA AS dt_entrada\n--,a.data as dt_entrada\n/* consulta */\n,case when f.tipo='CO' and f.consulta='S' and f.valor_cons>0 then '10101012' else '' end as cod_tuss_co\n,case when f.tipo='CO' and f.consulta='S' and f.valor_cons>0 then 'CO14' else '' end as cd_item_co\n,case when f.tipo='CO' and f.consulta='S' and f.valor_cons>0 then 'CONSULTA' else '' end as ds_item_co\n,case when f.tipo='CO' and f.consulta='S' and f.valor_cons>0 then 'PROCEDIMENTO' else '' end as tp_item_co\n,case when f.tipo='CO' and f.consulta='S' and f.valor_cons>0 then a.datafatura else '' end as dt_lanc_item_co\n,case when f.tipo='CO' and f.consulta='S' and f.valor_cons>0 then '1' else '' end as qt_co\n,case when f.tipo='CO' and f.consulta='S' and f.valor_cons>0 then TO_CHAR(f.valor_cons) else '' end as valor_co\n/* honorario (procedimento) */\n,f.codigo_tuss as cod_tuss_pr\n,f.codigo_m as cd_item_pr\n,f.exame as ds_item_pr\n,case when f.valor_honor>0 then 'PRPOCEDIMENTO' else '' end as tp_item_pr\n,case when f.valor_honor>0 then a.datafatura else '' end as dt_lanc_item_pr\n,case when f.valor_honor>0 then TO_CHAR(f.quant) else '' end as qt_pr\n,case when f.valor_honor>0 then TO_CHAR(f.valor_honor) else '' end as valor_pr\n/* rx1 */\n,f.rx as cod_tuss_rx1\n,f.mrx as cd_item_rx1\n,case when NVL(f.mrx,'x')<>'x' and f.valor_rx>0 then (select exame from tabexame where tabexame.codigo_m=f.mrx and rownum<=1) else '' end as ds_item_rx1\n,case when NVL(f.mrx,'x')<>'x' and f.valor_rx>0 then 'RAIO-X' else '' end as tp_item_rx1\n,case when NVL(f.mrx,'x')<>'x' and f.valor_rx>0 then a.datafatura else '' end as dt_lanc_item_rx1\n,case when NVL(f.mrx,'x')<>'x' and f.valor_rx>0 then TO_CHAR(f.quant) else '' end as qt_rx1\n,case when NVL(f.mrx,'x')<>'x' and f.valor_rx>0 then TO_CHAR(f.valor_rx) else '' end as valor_rx1\n/* rx2 */\n,f.rx2 as cod_tuss_rx2\n,f.mrx2 as cd_item_rx2\n,case when NVL(f.mrx2,'x')<>'x' and f.valor_rx2>0 then (select exame from tabexame where tabexame.codigo_m=f.mrx2 and rownum<=1) else '' end as ds_item_rx2\n,case when NVL(f.mrx2,'x')<>'x' and f.valor_rx2>0 then 'RAIO-X' else '' end as tp_item_rx2\n,case when NVL(f.mrx2,'x')<>'x' and f.valor_rx2>0 then a.datafatura else '' end as dt_lanc_item_rx2\n,case when NVL(f.mrx2,'x')<>'x' and f.valor_rx2>0 then TO_CHAR(f.quant) else '' end as qt_rx2\n,case when NVL(f.mrx2,'x')<>'x' and f.valor_rx2>0 then TO_CHAR(f.valor_rx2) else '' end as valor_rx2\n/* kit1 */\n,case when NVL(f.codnome,'x')<>'x' and f.valor_mat1>0 then (select nome from tabkit1 where tabkit1.codkit=f.codnome and rownum<=1) else '' end as ds_item_kit1\n,case when NVL(f.codnome,'x')<>'x' and f.valor_mat1>0 then 'MAT/MED' else '' end as tp_item_kit1\n,case when NVL(f.codnome,'x')<>'x' and f.valor_mat1>0 then a.datafatura else '' end as dt_lanc_item_kit1\n,case when NVL(f.codnome,'x')<>'x' and f.valor_mat1>0 then TO_CHAR(f.quant) else '' end as qt_kit1\n,case when NVL(f.codnome,'x')<>'x' and f.valor_mat1>0 then TO_CHAR(f.valor_mat1) else '' end as valor_kit1\n/* kit2 */\n,case when NVL(f.codnome2,'x')<>'x' and f.valor_mat2>0 then (select nome from tabkit1 where tabkit1.codkit=f.codnome2 and rownum<=1) else '' end as ds_item_kit2\n,case when NVL(f.codnome2,'x')<>'x' and f.valor_mat2>0 then 'MAT/MED' else '' end as tp_item_kit2\n,case when NVL(f.codnome2,'x')<>'x' and f.valor_mat2>0 then a.datafatura else '' end as dt_lanc_item_kit2\n,case when NVL(f.codnome2,'x')<>'x' and f.valor_mat2>0 then TO_CHAR(f.quant) else '' end as qt_kit2\n,case when NVL(f.codnome2,'x')<>'x' and f.valor_mat2>0 then TO_CHAR(f.valor_mat2) else '' end as valor_kit2\n/* kit3 */\n,case when NVL(f.codnome3,'x')<>'x' and f.valor_mat3>0 then (select nome from tabkit1 where tabkit1.codkit=f.codnome3 and rownum<=1) else '' end as ds_item_kit3\n,case when NVL(f.codnome3,'x')<>'x' and f.valor_mat3>0 then 'MAT/MED' else '' end as tp_item_kit3\n,case when NVL(f.codnome3,'x')<>'x' and f.valor_mat3>0 then a.datafatura else '' end as dt_lanc_item_kit3\n,case when NVL(f.codnome3,'x')<>'x' and f.valor_mat3>0 then TO_CHAR(f.quant) else '' end as qt_kit3\n,case when NVL(f.codnome3,'x')<>'x' and f.valor_mat3>0 then TO_CHAR(f.valor_mat3) else '' end as valor_kit3\n/* kit4 */\n,case when NVL(f.codnome4,'x')<>'x' and f.valor_mat4>0 then (select nome from tabkit1 where tabkit1.codkit=f.codnome4 and rownum<=1) else '' end as ds_item_kit4\n,case when NVL(f.codnome4,'x')<>'x' and f.valor_mat4>0 then 'MAT/MED' else '' end as tp_item_kit4\n,case when NVL(f.codnome4,'x')<>'x' and f.valor_mat4>0 then a.datafatura else '' end as dt_lanc_item_kit4\n,case when NVL(f.codnome4,'x')<>'x' and f.valor_mat4>0 then TO_CHAR(f.quant) else '' end as qt_kit4\n,case when NVL(f.codnome4,'x')<>'x' and f.valor_mat4>0 then TO_CHAR(f.valor_mat4) else '' end as valor_kit4\n/* taxa1 */\n,case when NVL(f.tx,'x')<>'x' and f.valor_tx>0 then (select nome from cadtaxa1 where cadtaxa1.codigo_m=f.tx and rownum<=1) else '' end as ds_item_tx1\n,case when NVL(f.tx,'x')<>'x' and f.valor_tx>0 then 'TAXA' else '' end as tp_item_tx1\n,case when NVL(f.tx,'x')<>'x' and f.valor_tx>0 then a.datafatura else '' end as dt_lanc_item_tx1\n,case when NVL(f.tx,'x')<>'x' and f.valor_tx>0 then TO_CHAR(f.quant) else '' end as qt_tx1\n,case when NVL(f.tx,'x')<>'x' and f.valor_tx>0 then TO_CHAR(f.valor_tx) else '' end as valor_tx1\n/* taxa1 */\n,case when NVL(f.tx2,'x')<>'x' and f.valor_tx2>0 then (select nome from cadtaxa1 where cadtaxa1.codigo_m=f.tx2 and rownum<=1) else '' end as ds_item_tx2\n,case when NVL(f.tx2,'x')<>'x' and f.valor_tx2>0 then 'TAXA' else '' end as tp_item_tx2\n,case when NVL(f.tx2,'x')<>'x' and f.valor_tx2>0 then a.datafatura else '' end as dt_lanc_item_tx2\n,case when NVL(f.tx2,'x')<>'x' and f.valor_tx2>0 then TO_CHAR(f.quant) else '' end as qt_tx2\n,case when NVL(f.tx2,'x')<>'x' and f.valor_tx2>0 then TO_CHAR(f.valor_tx2) else '' end as valor_tx2\n/*  */\nfrom FERNANDO.ARQFAT f\ninner join FERNANDO.CADATEND a on f.numficha=a.numficha\nWHERE a.DATAFICHA  >='2022-01-01'\n--where a.data >= '2022-01-01'\n) \nGROUP BY \nPK_ARQUIVO,\nCD_ESTABELECIMENTO,\nDS_ESTABELECIMENTO,\nNR_ATENDIMENTO,\nNR_INTERNO_CONTA,\nCD_PESSOA_FISICA,\nNM_PESSOA_FISICA,\nDT_NASCIMENTO,\nCNPJ_CONVENIO,\nCD_CONVENIO,\nDS_CONVENIO,\nCRM,\nCD_MEDICO_EXECUTANTE,\nNM_MEDICO_EXECUTANTE,\nCD_SETOR_EXECUTANTE,\nDS_SETOR_EXECUTANTE,\nDT_ENTRADA,\nCOD_TUSS_CO,\nCD_ITEM_CO,\nDS_ITEM_CO,\nTP_ITEM_CO,\nDT_LANC_ITEM_CO",
+									"type": "Expression"
+								},
+								"partitionOption": "None",
+								"convertDecimalToInteger": false,
+								"queryTimeout": "02:00:00"
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_ORTOCITY",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_HMAISDATADRIVEN",
+								"type": "DatasetReference",
+								"parameters": {
+									"Filesystem": "ortocity",
+									"File": "QUERY_ORTOCITY.csv"
+								}
+							}
+						]
+					},
+					{
+						"name": "Lista Tabelas",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderStoredProcedureName": "[[adf].[sp_origem_destino]",
+								"storedProcedureParameters": {
+									"COD_TABELA": {
+										"type": "String",
+										"value": null
+									},
+									"Dt_inicio_manual": {
+										"type": "DateTime",
+										"value": null
+									},
+									"manual": {
+										"type": "String",
+										"value": "N"
+									},
+									"plataforma": {
+										"type": "String",
+										"value": "SLFW"
+									}
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "LISTA_TABELAS_ADF",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "LIMPAR TABELA DESTINO",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Lista Tabelas",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista Tabelas').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Limpa Tabela",
+									"type": "Script",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSqlDatabase",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "Query",
+												"text": {
+													"value": "@concat('TRUNCATE TABLE ',item().NOME_SCHEMA_DESTINO,'.',item().NOME_TABELA_DESTINO)",
+													"type": "Expression"
+												}
+											}
+										],
+										"scriptBlockExecutionTimeout": "02:00:00"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "PROCESSA ETL",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LIMPAR TABELA DESTINO",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista Tabelas').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "SE CARGA COMPLETA",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@equals(item().TIPO_CARGA,'COMPLETA')",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "CARGA PARCIAL",
+												"type": "Copy",
+												"dependsOn": [
+													{
+														"activity": "DATA_INICIO_CARGA_PARCIAL",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "OracleSource",
+														"oracleReaderQuery": {
+															"value": "@concat(\n'select 50 AS ESTABELECIMENTO, A.* from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' A where (', item().nome_coluna_referencia,'INCL >=', \n'''',substring(item().Data_Inicio,0,10),'''',' and ', item().nome_coluna_referencia,'INCL',' <= ', '''',substring(item().Data_Fim,0,10),'''', ') OR (', item().nome_coluna_referencia,'ALTERA',' >= ',\n'''',substring(item().Data_Inicio,0,10),'''', ' and ', item().nome_coluna_referencia,'ALTERA',' <= ', '''',substring(item().Data_Fim,0,10),'''', ')'\n)\n",
+															"type": "Expression"
+														},
+														"partitionOption": "None",
+														"convertDecimalToInteger": false,
+														"queryTimeout": "02:00:00"
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"writeBehavior": "insert",
+														"sqlWriterUseTableLock": false,
+														"tableOption": "autoCreate",
+														"disableMetricsCollection": false
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "SLFW_Dinamico",
+														"type": "DatasetReference",
+														"parameters": {
+															"schema_name": "@item().NOME_SCHEMA_ORIGEM",
+															"table_name": "@item().NOME_TABELA_ORIGEM",
+															"NOME_KEYVAULT_SECRET": "@item().NOME_KEYVAULT_SECRET"
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DESTINO_TABELAS_ADF",
+														"type": "DatasetReference",
+														"parameters": {
+															"Schema_Destino": {
+																"value": "@item().NOME_SCHEMA_DESTINO",
+																"type": "Expression"
+															},
+															"Tabela_Destino": {
+																"value": "@item().NOME_TABELA_DESTINO",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "DATA_INICIO_CARGA_PARCIAL",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"policy": {
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "Starttime",
+													"value": {
+														"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "LOG PROCESSAMENTO COMPLETA SUCESSO_copy1",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA PARCIAL",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('Starttime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": "CARGA PARCIAL",
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA PARCIAL').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": "SUCESSO",
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											},
+											{
+												"name": "LOG PROCESSAMENTO COMPLETA ERRO_copy1",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA PARCIAL",
+														"dependencyConditions": [
+															"Failed"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('Starttime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": "CARGA PARCIAL",
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA PARCIAL').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": "ERRO",
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "CARGA COMPLETA",
+												"type": "Copy",
+												"dependsOn": [
+													{
+														"activity": "DATA_INICIO_CARGA",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "OracleSource",
+														"oracleReaderQuery": {
+															"value": "@concat(' select 50 AS ESTABELECIMENTO, A.* from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' A')",
+															"type": "Expression"
+														},
+														"partitionOption": "None",
+														"convertDecimalToInteger": false,
+														"queryTimeout": "02:00:00"
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"writeBehavior": "insert",
+														"sqlWriterUseTableLock": false,
+														"tableOption": "autoCreate",
+														"disableMetricsCollection": false
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "SLFW_Dinamico",
+														"type": "DatasetReference",
+														"parameters": {
+															"schema_name": "@item().NOME_SCHEMA_ORIGEM",
+															"table_name": "@item().NOME_TABELA_ORIGEM",
+															"NOME_KEYVAULT_SECRET": "@item().NOME_KEYVAULT_SECRET"
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DESTINO_TABELAS_ADF",
+														"type": "DatasetReference",
+														"parameters": {
+															"Schema_Destino": {
+																"value": "@item().NOME_SCHEMA_DESTINO",
+																"type": "Expression"
+															},
+															"Tabela_Destino": {
+																"value": "@item().NOME_TABELA_DESTINO",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "DATA_INICIO_CARGA",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"policy": {
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "Starttime",
+													"value": {
+														"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "LOG PROCESSAMENTO COMPLETA SUCESSO",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA COMPLETA",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('Starttime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": "CARGA COMPLETA",
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA COMPLETA').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": "SUCESSO",
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											},
+											{
+												"name": "LOG PROCESSAMENTO COMPLETA ERRO",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA COMPLETA",
+														"dependencyConditions": [
+															"Failed"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('Starttime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": "CARGA COMPLETA",
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA COMPLETA').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": "ERRO",
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "CARGA DW",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "PROCESSA ETL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_SLFW_CARGA_DW"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"Starttime": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "Data Warehouse/Ajuste DW Tasy/Antigo"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/OTORRINOCENTER')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Copia dados para a STG",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "EXEC SP_PROD_DIARIA_GRUPOHMAIS_DATAMART",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "SqlServerSource",
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"preCopyScript": "IF EXISTS (SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = 'otorrinocenter')\n\n    DROP table stg.otorrinocenter",
+								"writeBehavior": "insert",
+								"sqlWriterUseTableLock": false,
+								"tableOption": "autoCreate",
+								"disableMetricsCollection": false
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_Otorrinocenter",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AZ_SQL_STG",
+								"type": "DatasetReference",
+								"parameters": {
+									"SCHEMA": "stg",
+									"TABELA": "otorrinocenter"
+								}
+							}
+						]
+					},
+					{
+						"name": "EXEC SP_PROD_DIARIA_GRUPOHMAIS_DATAMART",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "CARGA DW",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[dbo].SP_PROD_DIARIA_GRUPOHMAIS_DATAMART",
+							"storedProcedureParameters": {
+								"CLASSE": {
+									"value": null,
+									"type": "Int32"
+								},
+								"CONVENIO": {
+									"value": null,
+									"type": "Int32"
+								},
+								"DATA_FINAL": {
+									"value": {
+										"value": "@formatDateTime(utcnow(),'yyyy-MM-dd HH:mm:ss')",
+										"type": "Expression"
+									},
+									"type": "DateTime"
+								},
+								"DATA_INICIAL": {
+									"value": {
+										"value": "@adddays(utcnow(),-45,'yyyy-MM-dd HH:mm:ss')",
+										"type": "Expression"
+									},
+									"type": "DateTime"
+								},
+								"EMPRESA": {
+									"value": null,
+									"type": "Int32"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_Otorrinocenter",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "MERGE",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "Copia dados para a STG",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "SQL_DESTINO",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "-- select * from stg.otorrinocenter with (nolock)\n-- select * from dw.otorrinocenter with (nolock)\n\n\nMERGE\t           \n\tdw.otorrinocenter AS destino           \nUSING            \n\tstg.otorrinocenter AS origem           \n           \n    ON\t(        \n\torigem.pk_otorrinocenter\t\t\t=\tdestino.pk_otorrinocenter\t\t\n\t\t)        \n\n--Quando os registros são correspondidos, atualize os registros se houver alguma alteração           \nWHEN MATCHED            \nTHEN UPDATE SET           \n\ndestino.PK_OTORRINOCENTER=origem.PK_OTORRINOCENTER,\ndestino.EMPRESA_ID=origem.EMPRESA_ID,\ndestino.CONVENIO_ID=origem.CONVENIO_ID,\ndestino.EMPRESA=origem.EMPRESA,\ndestino.SETOR=origem.SETOR,\ndestino.CONVENIO=origem.CONVENIO,\ndestino.NOME=origem.NOME,\ndestino.GUIA=origem.GUIA,\ndestino.GUIA_ID=origem.GUIA_ID,\ndestino.STATUS_GUIA=origem.STATUS_GUIA,\ndestino.ESPECIALIDADE=origem.ESPECIALIDADE,\ndestino.DATA_ABERTURA=origem.DATA_ABERTURA,\ndestino.DATA_ENTRADA=origem.DATA_ENTRADA,\ndestino.DATA_SAIDA=origem.DATA_SAIDA,\ndestino.DATA_FECHAMENTO=origem.DATA_FECHAMENTO,\ndestino.DATA_FATURAMENTO=origem.DATA_FATURAMENTO,\ndestino.DATA_ITEM=origem.DATA_ITEM,\ndestino.PROF_RESPONSAVEL=origem.PROF_RESPONSAVEL,\ndestino.PROF_EXECUTANTE=origem.PROF_EXECUTANTE,\ndestino.PROF_SOLICITANTE=origem.PROF_SOLICITANTE,\ndestino.CODIGO_PRODUTO_PRINCIPAL=origem.CODIGO_PRODUTO_PRINCIPAL,\ndestino.PRODUTO_PRINCIPAL=origem.PRODUTO_PRINCIPAL,\ndestino.CODIGO_ITEM=origem.CODIGO_ITEM,\ndestino.ITEM=origem.ITEM,\ndestino.QTD_ITEM=origem.QTD_ITEM,\ndestino.ID_PRODUTOS=origem.ID_PRODUTOS,\ndestino.GRUPO_PRODUTOS=origem.GRUPO_PRODUTOS,\ndestino.VALOR_ATENDIDO=origem.VALOR_ATENDIDO,\ndestino.VALOR_FATURADO=origem.VALOR_FATURADO,\ndestino.VALOR_NAO_FATURADO=origem.VALOR_NAO_FATURADO,\ndestino.VALOR_RECEBIDO=origem.VALOR_RECEBIDO,\ndestino.VALOR_ANALISE=origem.VALOR_ANALISE,\ndestino.VALOR_ACATADO=origem.VALOR_ACATADO,\ndestino.VALOR_REAPRESENTADO=origem.VALOR_REAPRESENTADO,\ndestino.VALOR_RECEBIDO_REAP=origem.VALOR_RECEBIDO_REAP,\ndestino.VALOR_ACATADO_REAP=origem.VALOR_ACATADO_REAP,\ndestino.VALOR_REAPRESENTADO_REAP=origem.VALOR_REAPRESENTADO_REAP,\ndestino.VALOR_ANALISE_REAP=origem.VALOR_ANALISE_REAP,\ndestino.VALOR_FECHAMENTO=origem.VALOR_FECHAMENTO\n\n\n--Quando nenhum registro é correspondido, insira os registros de entrada da tabela de origem para a tabela de destino           \nWHEN NOT MATCHED BY TARGET            \nTHEN INSERT            \n\tVALUES (\norigem.PK_OTORRINOCENTER,\norigem.EMPRESA_ID,\norigem.CONVENIO_ID,\norigem.EMPRESA,\norigem.SETOR,\norigem.CONVENIO,\norigem.NOME,\norigem.GUIA,\norigem.GUIA_ID,\norigem.STATUS_GUIA,\norigem.ESPECIALIDADE,\norigem.DATA_ABERTURA,\norigem.DATA_ENTRADA,\norigem.DATA_SAIDA,\norigem.DATA_FECHAMENTO,\norigem.DATA_FATURAMENTO,\norigem.DATA_ITEM,\norigem.PROF_RESPONSAVEL,\norigem.PROF_EXECUTANTE,\norigem.PROF_SOLICITANTE,\norigem.CODIGO_PRODUTO_PRINCIPAL,\norigem.PRODUTO_PRINCIPAL,\norigem.CODIGO_ITEM,\norigem.ITEM,\norigem.QTD_ITEM,\norigem.ID_PRODUTOS,\norigem.GRUPO_PRODUTOS,\norigem.VALOR_ATENDIDO,\norigem.VALOR_FATURADO,\norigem.VALOR_NAO_FATURADO,\norigem.VALOR_RECEBIDO,\norigem.VALOR_ANALISE,\norigem.VALOR_ACATADO,\norigem.VALOR_REAPRESENTADO,\norigem.VALOR_RECEBIDO_REAP,\norigem.VALOR_ACATADO_REAP,\norigem.VALOR_REAPRESENTADO_REAP,\norigem.VALOR_ANALISE_REAP,\norigem.VALOR_FECHAMENTO\n\n); \n\n\n"
+								}
+							]
+						}
+					},
+					{
+						"name": "Lista Tabela",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderStoredProcedureName": "[[adf].[sp_origem_destino]",
+								"storedProcedureParameters": {
+									"COD_TABELA": {
+										"type": "String",
+										"value": null
+									},
+									"Dt_inicio_manual": {
+										"type": "DateTime",
+										"value": null
+									},
+									"manual": {
+										"type": "String",
+										"value": "N"
+									},
+									"plataforma": {
+										"type": "String",
+										"value": "TECHSALLUS"
+									}
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "LISTA_TABELAS_ADF",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "PROCESSA ETL",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "LIMPAR TABELAS",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista Tabela').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "SE CARGA COMPLETA",
+									"type": "IfCondition",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"expression": {
+											"value": "@equals(item().TIPO_CARGA,'COMPLETA')",
+											"type": "Expression"
+										},
+										"ifFalseActivities": [
+											{
+												"name": "CARGA PARCIAL",
+												"type": "Copy",
+												"dependsOn": [
+													{
+														"activity": "DATA_HORA_INICIO_PARCIAL",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "SqlServerSource",
+														"sqlReaderQuery": {
+															"value": "@concat(\n'select 20 AS ESTABELECIMENTO ,A.* from ', item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' A where ', item().nome_coluna_referencia,' >= ''',\nitem().Data_Inicio, ''' and  ', item().nome_coluna_referencia,' <= ''', item().Data_Fim, ''''\n)",
+															"type": "Expression"
+														},
+														"queryTimeout": "02:00:00",
+														"partitionOption": "None"
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"writeBehavior": "insert",
+														"sqlWriterUseTableLock": false,
+														"tableOption": "autoCreate",
+														"disableMetricsCollection": false
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "TECHSALLUS_DINAMICO",
+														"type": "DatasetReference",
+														"parameters": {
+															"NOME_KEYVAULT_SECRET": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"SCHEMA_NAME": {
+																"value": "@item().NOME_SCHEMA_ORIGEM",
+																"type": "Expression"
+															},
+															"TABLE_NAME": {
+																"value": "@item().NOME_TABELA_ORIGEM",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DESTINO_TABELAS_ADF",
+														"type": "DatasetReference",
+														"parameters": {
+															"Schema_Destino": {
+																"value": "@item().NOME_SCHEMA_DESTINO",
+																"type": "Expression"
+															},
+															"Tabela_Destino": {
+																"value": "@item().NOME_TABELA_DESTINO",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "DATA_HORA_INICIO_PARCIAL",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"policy": {
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "Starttime",
+													"value": {
+														"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+														"type": "Expression"
+													}
+												}
+											},
+											{
+												"name": "LOG PROCESSAMENTO PARCIAL ERRO",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA PARCIAL",
+														"dependencyConditions": [
+															"Failed"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.05:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('startTime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": {
+																"value": "@activity('CARGA PARCIAL').error.message",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": {
+																"value": "CARGA_PARCIAL",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA PARCIAL').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": {
+																"value": "ERRO",
+																"type": "Expression"
+															},
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											},
+											{
+												"name": "LOG PROCESSAMENTO PARCIAL SUCESSO",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA PARCIAL",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.05:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('Starttime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": {
+																"value": "CARGA_PARCIAL",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA PARCIAL').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": {
+																"value": "SUCESSO",
+																"type": "Expression"
+															},
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											}
+										],
+										"ifTrueActivities": [
+											{
+												"name": "CARGA COMPLETA",
+												"type": "Copy",
+												"dependsOn": [
+													{
+														"activity": "DATA_HORA_INICIO_COMPLETA",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "SqlServerSource",
+														"sqlReaderQuery": {
+															"value": "@concat(' select 20 AS ESTABELECIMENTO, A.* from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM,' A')",
+															"type": "Expression"
+														},
+														"queryTimeout": "02:00:00",
+														"partitionOption": "None"
+													},
+													"sink": {
+														"type": "AzureSqlSink",
+														"writeBehavior": "insert",
+														"sqlWriterUseTableLock": false,
+														"tableOption": "autoCreate",
+														"disableMetricsCollection": false
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "TECHSALLUS_DINAMICO",
+														"type": "DatasetReference",
+														"parameters": {
+															"NOME_KEYVAULT_SECRET": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"SCHEMA_NAME": {
+																"value": "@item().NOME_SCHEMA_ORIGEM",
+																"type": "Expression"
+															},
+															"TABLE_NAME": {
+																"value": "@item().NOME_TABELA_ORIGEM",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "DESTINO_TABELAS_ADF",
+														"type": "DatasetReference",
+														"parameters": {
+															"Schema_Destino": {
+																"value": "@item().NOME_SCHEMA_DESTINO",
+																"type": "Expression"
+															},
+															"Tabela_Destino": {
+																"value": "@item().NOME_TABELA_DESTINO",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "LOG PROCESSAMENTO COMPLETA SUCESSO",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA COMPLETA",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.05:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('Starttime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": {
+																"value": "CARGA_COMPLETA",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA COMPLETA').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": {
+																"value": "SUCESSO",
+																"type": "Expression"
+															},
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											},
+											{
+												"name": "LOG PROCESSAMENTO COMPLETA ERRO",
+												"type": "SqlServerStoredProcedure",
+												"dependsOn": [
+													{
+														"activity": "CARGA COMPLETA",
+														"dependencyConditions": [
+															"Failed"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.05:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"storedProcedureName": "[[adf].[SP_LOG_PROCESSAMENTO]",
+													"storedProcedureParameters": {
+														"CODIGO_TABELA": {
+															"value": {
+																"value": "@item().codigo_tabela",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"COMANDO_SQL": {
+															"value": {
+																"value": "@concat(' select * from  ',item().NOME_SCHEMA_ORIGEM,'.',item().NOME_TABELA_ORIGEM)",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_FIM": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_HORA_EXECUCAO": {
+															"value": {
+																"value": "@replace(string(convertTimeZone(pipeline().TriggerTime,'UTC','E. South America Standard Time') ),'T',' ')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"DATA_INICIO": {
+															"value": {
+																"value": "@variables('Starttime')",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_EXECUCAO": {
+															"value": {
+																"value": "@pipeline().RunId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"ID_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerId",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"MENSAGEM_ERRO": {
+															"value": {
+																"value": "@activity('CARGA COMPLETA').error.message",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ADF": {
+															"value": {
+																"value": "@pipeline().DataFactory",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_CONTAINER": {
+															"value": {
+																"value": "CARGA_COMPLETA",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_ORIGEM": {
+															"value": {
+																"value": "@item().NOME_KEYVAULT_SECRET",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PIPELINE": {
+															"value": {
+																"value": "@pipeline().Pipeline",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_PROCESSO": {
+															"value": null,
+															"type": "String"
+														},
+														"NOME_TABELA_ORIGEM": {
+															"value": {
+																"value": "@item().nome_tabela_origem",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"NOME_TRIGGER": {
+															"value": {
+																"value": "@pipeline().TriggerName",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"QUANTIDADE_REGISTROS": {
+															"value": {
+																"value": "@activity('CARGA COMPLETA').output.rowsCopied",
+																"type": "Expression"
+															},
+															"type": "String"
+														},
+														"TIPO_FINALIZACAO": {
+															"value": {
+																"value": "ERRO",
+																"type": "Expression"
+															},
+															"type": "String"
+														}
+													}
+												},
+												"linkedServiceName": {
+													"referenceName": "AzureSQL_DB_Procedimentos",
+													"type": "LinkedServiceReference"
+												}
+											},
+											{
+												"name": "DATA_HORA_INICIO_COMPLETA",
+												"type": "SetVariable",
+												"dependsOn": [],
+												"policy": {
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"variableName": "Starttime",
+													"value": {
+														"value": "@replace(string(convertTimeZone(utcnow(),'UTC','E. South America Standard Time') ),'T',' ')",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "CARGA DW",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "PROCESSA ETL",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_TECHSALLUS_CARGA_DW]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "LIMPAR TABELAS",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Lista Tabela",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lista Tabela').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "Apagar Stg",
+									"type": "Script",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"linkedServiceName": {
+										"referenceName": "AzureSQL_DB_Procedimentos",
+										"type": "LinkedServiceReference"
+									},
+									"typeProperties": {
+										"scripts": [
+											{
+												"type": "NonQuery",
+												"text": {
+													"value": "@concat('TRUNCATE TABLE ',item().NOME_SCHEMA_DESTINO,'.',item().NOME_TABELA_DESTINO)",
+													"type": "Expression"
+												}
+											}
+										],
+										"scriptBlockExecutionTimeout": "02:00:00"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Apaga Pk NULL",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "MERGE",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "DELETE FROM DW.OTORRINOCENTER WHERE PK_OTORRINOCENTER IS NULL"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"variables": {
+					"Starttime": {
+						"type": "String"
+					}
+				},
+				"folder": {
+					"name": "Data Warehouse/2_Pipeline_Cargas_DW"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Orientacao e Conversao Cirurgicas')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -15522,851 +17998,6 @@
 				},
 				"annotations": [],
 				"lastPublishTime": "2020-02-10T20:56:26Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Tasy - Sadalla')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Pipelines desenvolvidos em conjunto com a empresa Class para a extração das informações de produção. Atualmente desativado.",
-				"activities": [
-					{
-						"name": "Copy procedures",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select \n\n'Tasy Sadalla' as BASE,\n7 as cd_marca,\n'Hospital de Olhos Sadalla Amin Ghanem' as marca,\n17 as cd_estabelecimento,\np.nr_atendimento,\n'7'||'17'||p.nr_atendimento as nr_registro_unico,\np.dt_atualizacao,\nat.dt_entrada,\np.nr_interno_conta,\nobter_nome_estab(c.cd_estabelecimento) as ds_estabelecimento,\npf.cd_pessoa_fisica,\npf.dt_nascimento,\npf.nr_cpf,\npf.ie_sexo,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CEP') as nr_cep,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CI') as ds_cidade,\nobter_nome_pf(at.cd_pessoa_fisica) as ds_pessoa_fisica,\np.cd_convenio as cd_convenio,\nobter_nome_convenio(c.cd_convenio_parametro) as ds_convenio,\np.cd_medico_executor,\nobter_nome_pf(p.cd_medico_executor) as ds_medico_executor,\np.cd_medico_req as cd_medico_requisitante,\nobter_nome_pf(p.cd_medico_req) as ds_medico_requisitante,\np.ie_origem_proced,\np.cd_procedimento,\nobter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced) as ds_procedimento, \nobter_valor_dominio(19,pr.ie_classificacao) as ds_classificacao,\n'' as ds_classif_procedimento,\n0 as cd_proced_principal,\n'' ds_proced_principal,\np.qt_procedimento,\nc.vl_conta,\np.vl_procedimento,\nc.ie_status_acerto,\ndecode(c.ie_status_acerto, 1,'Provisorio' , 2 ,'Definitivo') as status_conta,\n'' as cd_tuss,\n'' as ds_classif_lio\nfrom procedimento_paciente p,\natendimento_paciente at,\npessoa_fisica pf,\nprocedimento pr,\nconta_paciente c\nwhere p.nr_atendimento = at.nr_atendimento\nand at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand p.cd_procedimento = pr.cd_procedimento\nand p.ie_origem_proced = pr.ie_origem_proced\nand p.nr_interno_conta = c.nr_interno_conta\nand p.cd_motivo_exc_conta is null\nand c.ie_cancelamento is null\nand at.dt_entrada between sysdate - 1 and sysdate",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBatchSize": 10000,
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SadallaTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AzureSqlTEMPTable",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Processa Itens",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [
-							{
-								"activity": "Copy procedures",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							},
-							{
-								"activity": "Copy materials",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "[[dbo].[ProcessTempItems]"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSqlDatabase",
-							"type": "LinkedServiceReference"
-						}
-					},
-					{
-						"name": "Tabela Final",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Processa Itens",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "AzureSqlSource",
-								"sqlReaderQuery": "select * from TEMPTASY\nWhere Processed = 'Sim'",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBatchSize": 10000,
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false,
-							"translator": {
-								"type": "TabularTranslator",
-								"mappings": [
-									{
-										"source": {
-											"name": "NR_REGISTRO_UNICO",
-											"type": "String"
-										},
-										"sink": {
-											"name": "NR_REGISTRO_UNICO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_MARCA",
-											"type": "Int32"
-										},
-										"sink": {
-											"name": "CD_MARCA",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "MARCA",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_MARCA",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DT_ATUALIZACAO",
-											"type": "DateTime"
-										},
-										"sink": {
-											"name": "DT_ATUALIZACAO",
-											"type": "DateTime"
-										}
-									},
-									{
-										"source": {
-											"name": "DT_ENTRADA",
-											"type": "DateTime"
-										},
-										"sink": {
-											"name": "DT_ENTRADA",
-											"type": "DateTime"
-										}
-									},
-									{
-										"source": {
-											"name": "NR_ATENDIMENTO",
-											"type": "String"
-										},
-										"sink": {
-											"name": "NR_ATENDIMENTO",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "Int32"
-										},
-										"sink": {
-											"name": "CD_ESTABELECIMENTO",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_ESTABELECIMENTO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_PESSOA_FISICA",
-											"type": "Int32"
-										},
-										"sink": {
-											"name": "CD_PESSOA_FISICA",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "DT_NASCIMENTO",
-											"type": "DateTime"
-										},
-										"sink": {
-											"name": "DT_NASCIMENTO",
-											"type": "DateTime"
-										}
-									},
-									{
-										"source": {
-											"name": "NR_CPF",
-											"type": "String"
-										},
-										"sink": {
-											"name": "NR_CPF",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "IE_SEXO",
-											"type": "String"
-										},
-										"sink": {
-											"name": "IE_SEXO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "NR_CEP",
-											"type": "String"
-										},
-										"sink": {
-											"name": "NR_CEP",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CIDADE",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_CIDADE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_PESSOA_FISICA",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_PESSOA_FISICA",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CONVENIO",
-											"type": "String"
-										},
-										"sink": {
-											"name": "CD_CONVENIO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CONVENIO",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_CONVENIO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_MEDICO_EXECUTOR",
-											"type": "String"
-										},
-										"sink": {
-											"name": "CD_MEDICO_EXECUTOR",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_MEDICO_EXECUTOR",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_MEDICO_EXECUTOR",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_MEDICO_REQUISITANTE",
-											"type": "String"
-										},
-										"sink": {
-											"name": "CD_MEDICO_REQUISITANTE",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_MEDICO_REQUISITANTE",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_MEDICO_REQUISITANTE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "IE_ORIGEM_PROCED",
-											"type": "Int32"
-										},
-										"sink": {
-											"name": "IE_ORIGEM_PROCED",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_PROCEDIMENTO",
-											"type": "String"
-										},
-										"sink": {
-											"name": "CD_PROCEDIMENTO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_PROCEDIMENTO",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_PROCEDIMENTO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_PROCED_PRINCIPAL",
-											"type": "String"
-										},
-										"sink": {
-											"name": "CD_PROCEDIMENTO_PRINCIPAL",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_PROCED_PRINCIPAL",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_PROCEDIMENTO_PRINCIPAL",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_PROCEDIMENTO_PRINCIPAL_FINAL",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_PROCEDIMENTO_PRINCIPAL_FINAL",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CATEGORIA_AUXILIAR",
-											"type": "Int32"
-										},
-										"sink": {
-											"name": "CD_CATEGORIA_AUXILIAR",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CATEGORIA_AUXILIAR",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_CATEGORIA_AUXILIAR",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CATEGORIA",
-											"type": "Int32"
-										},
-										"sink": {
-											"name": "CD_CATEGORIA",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CATEGORIA",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_CATEGORIA",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CLASSE",
-											"type": "Int32"
-										},
-										"sink": {
-											"name": "CD_CLASSE",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CLASSE",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_CLASSE",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_CLASSIF_LIO",
-											"type": "Int32"
-										},
-										"sink": {
-											"name": "CD_CLASSIF_LIO",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_CLASSIF_LIO",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_CLASSIF_LIO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "QT_PROCEDIMENTO",
-											"type": "Double"
-										},
-										"sink": {
-											"name": "QT_PROCEDIMENTO",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "QT_AJUSTADA",
-											"type": "Int32"
-										},
-										"sink": {
-											"name": "QT_AJUSTADA",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "VL_CONTA",
-											"type": "Double"
-										},
-										"sink": {
-											"name": "VL_CONTA",
-											"type": "Single"
-										}
-									},
-									{
-										"source": {
-											"name": "VL_PROCEDIMENTO",
-											"type": "Double"
-										},
-										"sink": {
-											"name": "VL_PROCEDIMENTO",
-											"type": "Single"
-										}
-									},
-									{
-										"source": {
-											"name": "IE_STATUS_ACERTO",
-											"type": "Int32"
-										},
-										"sink": {
-											"name": "IE_STATUS_ACERTO",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "DS_STATUS_CONTA",
-											"type": "String"
-										},
-										"sink": {
-											"name": "DS_STATUS_CONTA",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CD_TUSS",
-											"type": "Int32"
-										},
-										"sink": {
-											"name": "CD_TUSS",
-											"type": "Int32"
-										}
-									},
-									{
-										"source": {
-											"name": "TIPO_CONVENIO",
-											"type": "String"
-										},
-										"sink": {
-											"name": "TIPO_CONVENIO",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "CRM",
-											"type": "String"
-										},
-										"sink": {
-											"name": "CRM_EXECUTOR",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "MPE",
-											"type": "String"
-										},
-										"sink": {
-											"name": "MPE_EXECUTOR",
-											"type": "String"
-										}
-									},
-									{
-										"source": {
-											"name": "INTERCOMPANY",
-											"type": "String"
-										},
-										"sink": {
-											"name": "INTERCOMPANY_EXECUTOR",
-											"type": "String"
-										}
-									}
-								]
-							}
-						},
-						"inputs": [
-							{
-								"referenceName": "AzureSqlTEMPTable",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AzureSqlProcedimentosTable",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Truncate Temp Table",
-						"type": "SqlServerStoredProcedure",
-						"dependsOn": [
-							{
-								"activity": "Tabela Final",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"storedProcedureName": "[[dbo].[TRUNCATETEMPTABLE]"
-						},
-						"linkedServiceName": {
-							"referenceName": "AzureSqlDatabase",
-							"type": "LinkedServiceReference"
-						}
-					},
-					{
-						"name": "Copy materials",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select \n\n'Tasy Sadalla' as BASE,\n7 as cd_marca,\n'Hospital de Olhos Sadalla Amin Ghanem' as marca,\n17 as cd_estabelecimento,\np.nr_atendimento,\n'7'||'17'||p.nr_atendimento as nr_registro_unico,\np.dt_atualizacao,\nat.dt_entrada,\np.nr_interno_conta,\nobter_nome_estab(c.cd_estabelecimento) as ds_estabelecimento,\npf.cd_pessoa_fisica,\npf.dt_nascimento,\npf.nr_cpf,\npf.ie_sexo,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CEP') as nr_cep,\nobter_compl_pf(pf.cd_pessoa_fisica,1,'CI') as ds_cidade,\nobter_nome_pf(at.cd_pessoa_fisica) as ds_pessoa_fisica,\np.cd_convenio as cd_convenio,\nobter_nome_convenio(c.cd_convenio_parametro) as ds_convenio,\nci.cd_medico_cirurgiao as cd_medico_executor,\nobter_nome_pf(ci.cd_medico_cirurgiao) as ds_medico_executor,\nci.cd_medico_cirurgiao as cd_medico_requisitante,\nobter_nome_pf(ci.cd_medico_cirurgiao) as ds_medico_requisitante,\n'' as ie_origem_proced,\np.cd_material as cd_procedimento,\npr.ds_material as ds_procedimento, \n'Material' as ds_classificacao,\n'' as ds_classif_procedimento,\n0 as cd_proced_principal,\n'' ds_proced_principal,\np.qt_material as qt_procedimento,\nc.vl_conta,\np.vl_material as vl_procedimento,\nc.ie_status_acerto,\ndecode(c.ie_status_acerto, 1,'Provisorio' , 2 ,'Definitivo') as status_conta,\n0 as cd_tuss,\n'' as ds_classif_lio\nfrom material_atend_paciente p,\natendimento_paciente at,\npessoa_fisica pf,\nmaterial pr,\nconta_paciente c,\ncirurgia ci\nwhere p.nr_atendimento = at.nr_atendimento\nand at.cd_pessoa_fisica = pf.cd_pessoa_fisica\nand p.cd_material = pr.cd_material\nand p.nr_interno_conta = c.nr_interno_conta\nand p.nr_cirurgia = ci.nr_cirurgia\nand p.nr_atendimento = ci.nr_atendimento\nand p.cd_motivo_exc_conta is null\nand c.ie_cancelamento is null\nand at.dt_entrada between sysdate - 1 and sysdate",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBatchSize": 10000,
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SadallaTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AzureSqlTEMPTable",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"folder": {
-					"name": "Producao Medica/Desenvolvimento"
-				},
-				"annotations": [],
-				"lastPublishTime": "2020-02-10T20:56:26Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Titulos')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Titulos HTML5",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "SELECT  \n        A.CD_CGC CNPJ,\n        B.DS_RAZAO_SOCIAL NM_RAZAOSOCIAL,\n        B.NM_FANTASIA,\n        A.NR_TITULO,\n        A.NR_NOTA_FISCAL,\n        A.DT_EMISSAO,\n        A.DT_VENCIMENTO DT_VENCIMENTO_ORIGINAL,\n        A.DT_PAGAMENTO_PREVISTO DT_VENCIMENTO_PRORROGADO,\n        A.VL_TITULO VL_BRUTO,\n        A.VL_SALDO_JUROS,\n        A.VL_SALDO_MULTA,\n        OBTER_DADOS_TITULO_RECEBER(A.NR_TITULO, 'VLL') VL_LIQUIDO,\n        A.VL_SALDO_TITULO,\n        OBTER_VL_AMENOR_TIT(A.NR_TITULO,'A',A.DT_ATUALIZACAO) as VL_AMENOR,\n        Obter_valor_dominio(710, a.ie_situacao) as situacao,\n        E.NM_FANTASIA_ESTAB AS SIGLA_UNIDADE,\n        EM.NM_RAZAO_SOCIAL as MARCA,\n        E.CD_CGC\nFROM    TITULO_RECEBER A, \n        PESSOA_JURIDICA B,\n        ESTABELECIMENTO E,\n        EMPRESA EM \nwhere   b.cd_cgc = a.cd_cgc\nAND     a.CD_ESTABELECIMENTO = E.CD_ESTABELECIMENTO\nAND     E.CD_EMPRESA = EM.CD_EMPRESA",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Titulos_Receber",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Titulos Sadalla",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "SELECT  \n        A.CD_CGC CNPJ,\n        B.DS_RAZAO_SOCIAL NM_RAZAOSOCIAL,\n        B.NM_FANTASIA,\n        A.NR_TITULO,\n        A.NR_NOTA_FISCAL,\n        A.DT_EMISSAO,\n        A.DT_VENCIMENTO DT_VENCIMENTO_ORIGINAL,\n        A.DT_PAGAMENTO_PREVISTO DT_VENCIMENTO_PRORROGADO,\n        A.VL_TITULO VL_BRUTO,\n        A.VL_SALDO_JUROS,\n        A.VL_SALDO_MULTA,\n        OBTER_DADOS_TITULO_RECEBER(A.NR_TITULO, 'VLL') VL_LIQUIDO,\n        A.VL_SALDO_TITULO,\n        OBTER_VL_AMENOR_TIT(A.NR_TITULO,'A',A.DT_ATUALIZACAO) as VL_AMENOR,\n        Obter_valor_dominio(710, a.ie_situacao) as situacao,\n        E.NM_FANTASIA_ESTAB AS SIGLA_UNIDADE,\n        EM.NM_RAZAO_SOCIAL as MARCA,\n        E.CD_CGC\nFROM    TITULO_RECEBER A, \n        PESSOA_JURIDICA B,\n        ESTABELECIMENTO E,\n        EMPRESA EM \nwhere   b.cd_cgc = a.cd_cgc\nAND     a.CD_ESTABELECIMENTO = E.CD_ESTABELECIMENTO\nAND     E.CD_EMPRESA = EM.CD_EMPRESA",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SadallaTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Titulos_Receber",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Titulos DH",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "SELECT\n    (SELECT X.emp_cgc FROM EMP X WHERE X.emp_cod = NFS_EMP_COD) AS CNPJ,\n    (SELECT X.emp_raz_soc FROM EMP X WHERE X.emp_cod = NFS_EMP_COD) AS NM_RAZAOSOCIAL,\n    (SELECT X.emp_nome_fantasia FROM EMP X WHERE X.emp_cod = NFS_EMP_COD) AS NM_FANTASIA,\n    nfs_numero as NR_TITULO,\n\n    nfs_dt_emis as DT_EMISSAO,\n    nfs_dt_vcto as DT_VENCIMENTO_ORIGINAL,\n    nfs_dt_vcto as DT_VENCIMENTO_PRORROGADO,\n    nfs_valor as VL_BRUTO,\n    nfs_vlr_multa as VL_SALDO_MULTA,\n    nfs_valor - v_nfs_saldo.v_a_maior as VL_LIQUIDO,\n    CASE WHEN nfs_status = 'A' THEN nfs_valor\n    ELSE 0\n    END AS VL_SALDO_TITULO,\n    v_nfs_saldo.v_perda as VL_AMENOR,\n    nfs_status as SITUACAO,\n    emp.emp_raz_soc AS SIGLA_UNIDADE ,\n    emp.emp_nome_fantasia AS MARCA,\n    EMP.emp_cgc AS CD_CGC\nFROM NFS,\n     STR,\n     EMP,\n     v_nfs_saldo\nWHERE NFS.nfs_str_cod = str.str_str_cod\nand str_emp_cod = EMP_COD\nand nfs_numero = v_nfs_saldo.v_numero\nand nfs_serie = v_nfs_saldo.v_serie",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_ITAIGARA_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Titulos_Receber",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Titulos HOSL",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "SqlServerSource",
-								"sqlReaderQuery": "    SELECT nfs.nfs_tipo,   \n        nfs.nfs_serie,   \n        nfs.nfs_numero,   \n        nfs.nfs_dt_emis,   \n        nfs.nfs_dt_vcto,   \n        nfs.nfs_valor,   \n        nfs.nfs_vlr_multa,   \n        cnv.cnv_nome,   \n        emp.emp_nome_fantasia,   \n        nfs.nfs_emp_codigo,   \n        nfs.nfs_emp_cod,   \n        nfs.nfs_vlr_iss,   \n        cfg.cfg_emp, \n        cfg.cfg_cgc,  \n        cnv.cnv_ccr_banco,   \n        nfs.nfs_vlr_ir,   \n        cfg.cfg_vlrfilme,   \n        nfs.nfs_perc_iss,   \n        nfs.nfs_perc_ir,   \n        nfs.nfs_perc_multa,   \n        nfs.nfs_remessa,   \n        cfg.cfg_tol_ent_diaria,   \n        nfs.nfs_perc_juro,   \n        nfs.nfs_vlr_outros_imp,   \n        MNS.MNS_DT,   \n        SUM ( coalesce ( MNS.mns_vlr, 0 ) ) as mns_mns_vlr,  \n        MNS.MNS_TIPO, \n\t\tMNS.MNS_NFS_TIPO, \n\t\tmns.mns_mns_serie, \n\t\tmns.mns_mns_num, \n\t\tmns.mns_serie, \n\t\tmns.mns_num, \n\t\t--cfg.cfg_vlrfilme, \n\t\tnfs.nfs_nde_tipo, \n\t\t--nfs.nfs_vlr_ir, \n\t\tmns.mns_obs,\n\t\t'?',\n\t\tnfs.nfs_ind_tipo_fatura,\n\t\tnfs.nfs_nfl_serie, \n\t\tnfs.nfs_nfl_num,\n\t\tmns.mns_nfl_serie,\n\t\tmns.mns_nfl_num,\n\t\t'-' as rdi_cre_cod,\n\t\t1 as tot_parc,\n\t\t1 as parc,\n\t\tsum ( coalesce ( mns.mns_vlr_complemento, 0 ) ) as mns_mns_vlr_complemento, \n\t\tnfs.nfs_dt_receb,\n\t\tcfg.cfg_vlrfilme as saldo_ini,\n\t\tcfg.cfg_vlrfilme as gni_v,\n\t\tnfs.nfs_dt_envio,   \n\t\tsum ( coalesce ( mns.mns_vlr_glosa, 0 ) ) as mns_mns_vlr_glosa_receb,\n\t\tnfs.nfs_ns_serie, \n\t\tnfs.nfs_ns_numero, \t\n\t\tcnv.cnv_caixa_fatura,\n\t\tsum(m.imposto) as imposto  \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS \nLEFT JOIN (SELECT  \n       mns.mns_serie as serie, \n       mns.mns_num as numero, \n       mns.mns_nfs_serie as nfs_serie,\n       mns.mns_nfs_numero as nfs_numero,\n       mns.mns_nfs_tipo as nfs_tipo,    \n       (SELECT sum ( m2.mns_vlr ) \n        \tFROM mns m2, nfs \n\t\t\tWHERE  ( m2.mns_mns_serie = mns.mns_serie ) AND \n\t\t\t\t\t( m2.mns_mns_num = mns.mns_num ) AND \n               ( m2.mns_nfs_serie = nfs.nfs_serie ) AND\n               ( m2.mns_nfs_numero = nfs.nfs_numero ) AND\n               ( m2.mns_nfs_tipo = nfs.nfs_tipo )) AS imposto\n\t\t\tFROM   cnv, \n\t\t\t\t\t emp, \n\t\t\t\t\t nfs, \n\t\t\t\t\t cfg, \n\t\t\t\t\t mns \n\t\t\t WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n\t\t\t\t( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n\t\t\t\t( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100) AND  \n\t\t\t\t( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t\t( 8=8 ) AND \n\t\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\n\t\t\tGROUP  BY   mns.mns_serie , \n\t\t\t\t\t mns.mns_num , \n\t\t\t\t\t mns.mns_nfs_serie ,\n\t\t\t\t\t mns.mns_nfs_numero ,\n\t\t\t\t\t mns.mns_nfs_tipo  \n\n) m ON m.serie = mns.mns_serie and m.numero = mns.mns_num and m.nfs_serie = mns.mns_nfs_serie and m.nfs_numero = mns.mns_nfs_numero and m.nfs_tipo = mns.mns_nfs_tipo\n\n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) \nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,   \n         --nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         MNS.MNS_DT,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t cfg.cfg_vlrfilme, \n\t\t nfs.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs,\n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num,\n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t cfg.cfg_vlrfilme,\n\t\t --cfg.cfg_vlrfilme,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc      \n\nUNION ALL   \n\n  SELECT nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,\n         cfg.cfg_cgc,   \n         cnv.cnv_ccr_banco,   \n         nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         CASE WHEN mns.mns_tipo = 'NR' THEN b.nfs_dt_vcto ELSE MNS.MNS_DT END,   \n         SUM ( coalesce ( MNS.mns_vlr, 0 ) ),   \n         MNS.MNS_TIPO, \n\t\t\tMNS.MNS_NFS_TIPO, \n\t\t\tmns.mns_mns_serie, \n\t\t\tmns.mns_mns_num, \n\t\t\tmns.mns_serie, \n\t\t\tmns.mns_num, \n\t\t\t--0 as, \n\t\t\tb.nfs_nde_tipo, \n\t\t\t--nfs.nfs_vlr_ir, \n\t\t\tmns.mns_obs, \n\t\t\t'?' as nula1,\n\t\t\tnfs.nfs_ind_tipo_fatura,\n\t\t\tnfs.nfs_nfl_serie, \n\t\t\tnfs.nfs_nfl_num, \n\t\t\tmns.mns_nfl_serie,\n\t\t\tmns.mns_nfl_num,\n\t\t\t'-' as nula2,\n\t\t\t1 as nula3,\n\t\t    1 as nula4,\n\t\t\tSUM ( coalesce ( mns.mns_vlr_complemento, 0 ) ), \n\t\t\tnfs.nfs_dt_receb,\n\t\t\t0,\n\t\t\t0,\n\t\t\tnfs.nfs_dt_envio,   \n\t\t\tsum ( coalesce ( mns.mns_vlr_glosa, 0 ) ),\n\t\t\tnfs.nfs_ns_serie, \n\t\t\tnfs.nfs_ns_numero, \t\n\t\t\tcnv.cnv_caixa_fatura,\n         0                        \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS, \n\t\t\tnfs b  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n\t\t\t( MNS.MNS_NFS_SERIE = b.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = b.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = b.nfs_tipo) and  \n         ( nfs.NFS_SERIE = b.nfs_ns_serie ) and  \n         ( nfs.NFS_NUMERO = b.nfs_ns_numero ) and  \n         ( nfs.NFS_TIPO = b.nfs_ns_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo <> 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t\t( nfs.nfs_dt_vcto >= GETDATE() - 100 ) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND\n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( 8=8 ) AND \t\n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) )\nGROUP BY nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,   \n         cnv.cnv_ccr_banco,   \n         nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         CASE WHEN mns.mns_tipo = 'NR' THEN b.nfs_dt_vcto ELSE MNS.MNS_DT END,   \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t b.nfs_nde_tipo, \n\t\t nfs.nfs_vlr_ir, \n\t\t mns.mns_obs, \n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num, \n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t nfs.nfs_dt_receb,\n\t\t nfs.nfs_dt_envio,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         cfg.cfg_cgc \n\n         --------------------------OK 1   \n\nUNION ALL \n\n  SELECT nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         nfs.nfs_dt_vcto,   \n         nfs.nfs_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp, \n         cfg.cfg_cgc,   \n         cnv.cnv_ccr_banco,   \n         nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   ---------------\n         NFS.NFS_DT_EMIS,   \n         0 as mns_mns_vlr,   \n         'A' as MNS_TIPO, \n\t\t\tNFS.NFS_TIPO, -------\n\t\t\t0 as mns_mns_serie,\n\t\t\t0 as mns_mns_num,\n\t\t\t1 as mns_serie,\n\t\t\t1 as mns_num,\n\t\t\t--0 as , \n\t\t\tnfs.nfs_nde_tipo, \n\t\t\t--nfs.nfs_vlr_ir, \n\t\t\tcfg.cfg_comp,\n\t\t\t'?' as nula1,\n\t\t\tnfs.nfs_ind_tipo_fatura,\n\t\t\tnfs.nfs_nfl_serie, \n\t\t\tnfs.nfs_nfl_num, \n\t\t\t'?' as mns_nfl_serie,\n\t\t\t0 as mns_nfl_num,\n\t\t\t'-' as nula2,\n\t\t\t1 as nula3,\n\t\t\t1 as nula4,\n\t\t\t0 as mns_mns_vlr_complemento, \n\t\t\tnfs.nfs_dt_receb,\n\t\t\t0 as saldo_ini,\n\t\t\t0 as gni_v,\n\t\t\tnfs.nfs_dt_envio,   \n\t\t\t0 as mns_mns_vlr_glosa_receb,\n\t\t\tnfs.nfs_ns_serie, \n\t\t\tnfs.nfs_ns_numero, \t\n\t\t\tcnv.cnv_caixa_fatura,\n         0  as  imposto              \n    FROM cnv,   \n         emp,   \n         nfs,   \n         cfg  \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_dt_vcto >= GETDATE()  - 100) AND  \n         ( nfs.nfs_dt_vcto < GETDATE() ) AND  \n         ( nfs.nfs_tipo <> 'NC' ) AND\n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND \n\t\t\tNOT EXISTS ( SELECT mte.mte_serie FROM mte\n\t\t\t\t\t\t\t\tWHERE ( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t\t\t\t\t\t\t\t( mte.mte_tipo in ( 'C', 'E', 'O', 'D' ) ) ) AND\n\t\t\tNOT EXISTS ( SELECT MNS.MNS_NUM FROM MNS \n\t\t\t\t\t\t\t\tWHERE ( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t\t\t\t\t\t\t\t( 8=8 ) AND \n\t\t\t\t\t\t\t\t\t\t( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n\t\t\t\t\t\t\t         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) ) \n -------------- OK  2\nUNION ALL \n\n  SELECT nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         rdi.rdi_vcto,   \n         rdi.rdi_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,  \n         cfg.cfg_cgc,  \n         cnv.cnv_ccr_banco,   \n         nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         MNS.MNS_DT,   \n         MNS.mns_vlr,  \n         MNS.MNS_TIPO, \n\t\t MNS.MNS_NFS_TIPO, \n\t\t mns.mns_mns_serie, \n\t\t mns.mns_mns_num, \n\t\t mns.mns_serie, \n\t\t mns.mns_num, \n\t\t --cfg.cfg_vlrfilme, \n\t\t nfs.nfs_nde_tipo, \n\t\t --nfs.nfs_vlr_ir, \n\t\t pac.pac_nome,\n\t\t rdi.rdi_forma_pag,\n\t\t nfs.nfs_ind_tipo_fatura,\n\t\t nfs.nfs_nfl_serie, \n\t\t nfs.nfs_nfl_num, \n\t\t mns.mns_nfl_serie,\n\t\t mns.mns_nfl_num,\n\t\t rdi.rdi_cre_cod,\n\t\t ( SELECT COUNT (*) FROM rdi b\n\t\t \tWHERE ( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t\t\t\t\t( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND          \n\t\t\t\t\t\t( b.rdi_forma_pag = rdi.rdi_forma_pag ) AND\n\t\t\t\t\t\t( b.rdi_recepcao <> 'S' ) ) as tot_parc,\n\t\t\t( SELECT COUNT (*) FROM rdi b\n\t\t\t\tWHERE ( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t\t\t\t\t( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND          \n\t\t\t\t\t\t( b.rdi_forma_pag = rdi.rdi_forma_pag ) AND\n\t\t\t\t\t\t( b.rdi_recepcao <> 'S' ) AND\n\t\t\t\t\t\t( b.rdi_seq <= rdi.rdi_seq ) ) as parc,\n\t\t mns.mns_vlr_complemento, \n\t\t nfs.nfs_dt_receb,\n\t\t 0 as saldo_ini,\n\t\t 0 as gni_v,\n\t\t nfs.nfs_dt_envio,   \n\t\t 0 as mns_mns_vlr_glosa_receb,\n\t\t nfs.nfs_ns_serie, \n\t\t nfs.nfs_ns_numero, \t\n\t\t cnv.cnv_caixa_fatura,\n         0 as imposto         \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t\t( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n            ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t\t( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t\t( rdi.rdi_recepcao <> 'S' ) AND \n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t\t( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t( mte.mte_status = 'D' ) AND \n\t\t\t( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t\t( 8=8 ) AND \n\t\t    ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t\t( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t\t( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t\t( rdi.rdi_mns_num = mns.mns_num ) AND \n\t\t\t( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t\t( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) \n\n---- OK 3\n\nUNION ALL \n\n  SELECT nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         rdi.rdi_vcto,   \n         rdi.rdi_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,  \n         cfg.cfg_cgc,  \n         cnv.cnv_ccr_banco,   \n         nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         MTE.MTE_DTHR as MNS_DT,   \n         0 as mns_mns_vlr,   \n         'A' as MNS_TIPO, \n\t\t\tNFS.NFS_TIPO, \n\t\t\t0 as mns_mns_serie,\n\t\t\t0 as mns_mns_num,\n\t\t\t1 as mns_serie,\n\t\t\t1 as mns_num,\n\t\t\t--0, \n\t\t\tnfs.nfs_nde_tipo, \n\t\t\t--nfs.nfs_vlr_ir, \n\t\t\tpac.pac_nome,\n\t\t\trdi.rdi_forma_pag,\n\t\t\tnfs.nfs_ind_tipo_fatura,\n\t\t\tnfs.nfs_nfl_serie, \n\t\t\tnfs.nfs_nfl_num, \n\t\t\t'?' as mns_nfl_serie,\n\t\t\t0 as mns_nfl_num,\n\t\t\trdi.rdi_cre_cod,\n\t\t\t( SELECT COUNT (*) FROM rdi b\n\t\t\t\tWHERE ( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t\t\t\t\t( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND          \n\t\t\t\t\t\t( b.rdi_forma_pag = rdi.rdi_forma_pag ) AND\n\t\t\t\t\t\t( b.rdi_recepcao <> 'S' ) ) as tot_parc,\n\t\t\t( SELECT COUNT (*) FROM rdi b\n\t\t\t\tWHERE ( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t\t\t\t\t( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND          \n\t\t\t\t\t\t( b.rdi_forma_pag = rdi.rdi_forma_pag ) AND\n\t\t\t\t\t\t( b.rdi_recepcao <> 'S' ) AND\n\t\t\t\t\t\t( b.rdi_seq <= rdi.rdi_seq ) ) as parc,\n\t\t\t0 as mns_mns_vlr_complemento, \n\t\t\tnfs.nfs_dt_receb,\n\t\t\t0 as saldo_ini,\n\t\t\t0 as gni_v,\n\t\t\tnfs.nfs_dt_envio,   \n\t\t\t0 as mns_mns_vlr_glosa_receb,\n\t\t\tnfs.nfs_ns_serie, \n\t\t\tnfs.nfs_ns_numero, \t\n\t\t\tcnv.cnv_caixa_fatura,\n         0 as imposto     \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t\t( rdi.rdi_vcto >= GETDATE() - 100 ) AND  \n            ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t\t( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t\t( rdi.rdi_recepcao <> 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t\t( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t( mte.mte_status = 'D' ) AND \n\t\t\t( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t    ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t\t( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t\t( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) ) AND \n\t\t\t( ( rdi.rdi_mcc_serie_dep is null ) OR \n\t\t\t  ( rdi.rdi_forma_pag = 'X' ) OR \n\t\t\t  ( rdi.rdi_seq_subst is null AND \n\t\t\t\t NOT EXISTS ( SELECT mns.mns_serie FROM mns\n\t\t\t\t\t\t\t\t\tWHERE ( rdi.rdi_mns_serie = mns.mns_serie ) AND\n\t\t\t\t\t\t\t\t\t\t\t( rdi.rdi_mns_num = mns.mns_num ) AND\n\t\t\t\t\t\t\t\t\t\t\t( mns.mns_ind_liberado = 'S' ) ) ) ) \n ------- OK 4\nUNION ALL \n\n  SELECT nfs.nfs_tipo,   \n         nfs.nfs_serie,   \n         nfs.nfs_numero,   \n         nfs.nfs_dt_emis,   \n         rdi.rdi_vcto,   \n         rdi.rdi_valor,   \n         nfs.nfs_vlr_multa,   \n         cnv.cnv_nome,   \n         emp.emp_nome_fantasia,   \n         nfs.nfs_emp_codigo,   \n         nfs.nfs_emp_cod,   \n         nfs.nfs_vlr_iss,   \n         cfg.cfg_emp,\n         cfg.cfg_cgc,    \n         cnv.cnv_ccr_banco,   \n         nfs.nfs_vlr_ir,   \n         cfg.cfg_vlrfilme,   \n         nfs.nfs_perc_iss,   \n         nfs.nfs_perc_ir,   \n         nfs.nfs_perc_multa,   \n         nfs.nfs_remessa,   \n         cfg.cfg_tol_ent_diaria,   \n         nfs.nfs_perc_juro,   \n         nfs.nfs_vlr_outros_imp,   \n         ( SELECT MIN ( mcc.mcc_dt ) FROM mcc\n\t\t\t\tWHERE ( mcc.mcc_serie = rdi.rdi_mcc_serie_dep ) AND\n\t\t\t\t\t\t( mcc.mcc_lote = rdi.rdi_mcc_lote_dep ) ) as mns_dt,   \n         rdi.rdi_valor,  \n         MNS.MNS_TIPO, \n\t\t\tMNS.MNS_NFS_TIPO, \n\t\t\tmns.mns_mns_serie, \n\t\t\tmns.mns_mns_num, \n\t\t\tmns.mns_serie, \n\t\t\tmns.mns_num, \n\t\t\t--cfg.cfg_vlrfilme, \n\t\t\tnfs.nfs_nde_tipo, \n\t\t\t--nfs.nfs_vlr_ir, \n\t\t\tpac.pac_nome,\n\t\t\trdi.rdi_forma_pag,\n\t\t\tnfs.nfs_ind_tipo_fatura,\n\t\t\tnfs.nfs_nfl_serie, \n\t\t\tnfs.nfs_nfl_num, \n\t\t\tmns.mns_nfl_serie,\n\t\t\tmns.mns_nfl_num,\n\t\t\trdi.rdi_cre_cod,\n\t\t\t( SELECT COUNT (*) FROM rdi b\n\t\t\t\tWHERE ( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t\t\t\t\t( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND          \n\t\t\t\t\t\t( b.rdi_forma_pag = rdi.rdi_forma_pag ) AND\n\t\t\t\t\t\t( b.rdi_recepcao <> 'S' ) ) as tot_parc,\n\t\t\t( SELECT COUNT (*) FROM rdi b\n\t\t\t\tWHERE ( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t\t\t\t\t( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND          \n\t\t\t\t\t\t( b.rdi_forma_pag = rdi.rdi_forma_pag ) AND\n\t\t\t\t\t\t( b.rdi_recepcao <> 'S' ) AND\n\t\t\t\t\t\t( b.rdi_seq <= rdi.rdi_seq ) ) as parc,\n\t\t\tmns.mns_vlr_complemento, \n\t\t\tnfs.nfs_dt_receb,\n\t\t\t0 as saldo_ini,\n\t\t\t0 as gni_v,\n\t\t\tnfs.nfs_dt_envio,   \n\t\t\t0 as mns_mns_vlr_glosa_receb,\n\t\t\tnfs.nfs_ns_serie, \n\t\t\tnfs.nfs_ns_numero, \t\n\t\t\tcnv.cnv_caixa_fatura,\n         0  as imposto        \n     FROM cnv,   \n         emp,   \n         nfs,   \n         cfg,   \n         MNS,\n\t\t\tmte, \n\t\t\trdi,\n\t\t\tpac, \n\t\t\trdi b   \n   WHERE ( emp.emp_cod = nfs.nfs_emp_cod ) and  \n         ( MNS.MNS_NFS_SERIE = nfs.nfs_serie) and  \n         ( MNS.MNS_NFS_NUMERO = nfs.nfs_numero) and  \n         ( MNS.MNS_NFS_TIPO = nfs.nfs_tipo) and  \n         ( cnv.cnv_cod = nfs.nfs_emp_codigo ) and  \n         ( nfs.nfs_tipo = 'NC' ) AND \n\t\t\t--( nfs.nfs_tipo in ( :a_sNfsTipos ) ) AND\n\t\t\t( rdi.rdi_vcto >= GETDATE()-100 ) AND  \n         ( rdi.rdi_vcto < GETDATE() ) AND\n\t\t\t( rdi.rdi_forma_pag <> 'U' ) AND \n\t\t\t( rdi.rdi_recepcao <> 'S' ) AND \n\t\t\t( mns.mns_mns_serie is null ) AND\n\t\t\t( mns.mns_ind_liberado = 'S' ) AND \n\t\t\t( nfs.nfs_status = 'P' ) AND \n\t\t\t( mte.mte_pac_reg = pac.pac_reg ) AND \n\t\t\t( mte.mte_nfs_tipo = nfs.nfs_tipo ) AND\n\t\t\t( mte.mte_nfs_serie = nfs.nfs_serie ) AND\n\t\t\t( mte.mte_nfs_numero = nfs.nfs_numero ) AND\n\t\t\t( mte.mte_status = 'D' ) AND \n\t\t\t( mte.mte_tipo not in ( 'E', 'D' ) ) AND\n\t\t\t( 8=8 ) AND \n\t\t   ( mte.mte_serie = rdi.rdi_mte_serie ) AND\n\t\t\t( mte.mte_seq = rdi.rdi_mte_seq ) AND\n\t\t\t( b.rdi_mte_serie = rdi.rdi_mte_serie ) AND\n\t\t\t( b.rdi_mte_seq = rdi.rdi_mte_seq ) AND\n\t\t\t( b.rdi_seq = rdi.rdi_seq_subst ) AND \n\t\t\t( b.rdi_mns_serie = mns.mns_serie ) AND\n\t\t\t( b.rdi_mns_num = mns.mns_num ) AND \n\t\t\t( rdi.rdi_mcc_serie_dep is not null ) AND \n\t\t\t( ( mte.mte_tipo <> 'C' ) OR\n\t\t\t  ( EXISTS ( SELECT tca_cod FROM tca\n\t\t\t\t\t\t\t\tWHERE ( tca.tca_cod = mte.mte_tca_cod ) AND\n\t\t\t\t\t\t\t\t\t\t( tca.tca_ind_cr = 'S' ) ) ) OR \n\t\t\t  ( EXISTS ( SELECT udp_valor FROM udp \n\t\t\t\t\t\t\t\tWHERE ( udp.udp_mte_serie_dep = mte.mte_serie ) AND\n\t\t\t\t\t\t\t\t\t\t( udp.udp_mte_seq_dep = mte.mte_seq ) ) ) )  \n",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SMART_HOSL_PrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Titulos_Receber",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"folder": {
-					"name": "Contas a receber"
-				},
-				"annotations": [],
-				"lastPublishTime": "2019-12-05T20:44:35Z"
 			},
 			"dependsOn": []
 		}
