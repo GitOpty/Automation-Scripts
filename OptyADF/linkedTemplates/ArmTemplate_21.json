@@ -13,6 +13,221 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/SadallaTasyPrdDataSet')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "SadallaTasyProd",
+					"type": "LinkedServiceReference"
+				},
+				"folder": {
+					"name": "Power BI"
+				},
+				"annotations": [],
+				"type": "OracleTable",
+				"structure": [
+					{
+						"name": "ESTABELECIMENTO",
+						"type": "String"
+					},
+					{
+						"name": "DT_RECEBIMENTO",
+						"type": "DateTime"
+					},
+					{
+						"name": "VL_RECEBIMENTO",
+						"type": "Decimal"
+					},
+					{
+						"name": "VL_DESPESA_BANCARIA",
+						"type": "Decimal"
+					},
+					{
+						"name": "VL_DEPOSITO",
+						"type": "Decimal"
+					},
+					{
+						"name": "VL_ESTORNO",
+						"type": "Decimal"
+					},
+					{
+						"name": "IE_STATUS",
+						"type": "String"
+					},
+					{
+						"name": "NR_SEQ_CONTA_BANCO",
+						"type": "Decimal"
+					},
+					{
+						"name": "NR_SEQ_TRANS_FIN",
+						"type": "Decimal"
+					},
+					{
+						"name": "NR_LOTE_CONTABIL",
+						"type": "Decimal"
+					},
+					{
+						"name": "DT_FLUXO_CAIXA",
+						"type": "DateTime"
+					},
+					{
+						"name": "DT_LIBERACAO",
+						"type": "DateTime"
+					},
+					{
+						"name": "NR_SEQ_COBRANCA",
+						"type": "Decimal"
+					},
+					{
+						"name": "IE_INTEGRAR_CB_FLUXO",
+						"type": "String"
+					},
+					{
+						"name": "DS_OBSERVACAO",
+						"type": "String"
+					},
+					{
+						"name": "NR_SEQUENCIA",
+						"type": "Decimal"
+					},
+					{
+						"name": "IE_TIPO_GLOSA",
+						"type": "String"
+					},
+					{
+						"name": "NM_USUARIO",
+						"type": "String"
+					},
+					{
+						"name": "NR_ADIANTAMENTO",
+						"type": "Decimal"
+					},
+					{
+						"name": "TX_CAMBIAL",
+						"type": "Decimal"
+					},
+					{
+						"name": "VL_MOEDA_ORIGINAL",
+						"type": "Decimal"
+					},
+					{
+						"name": "CD_ESTABELECIMENTO",
+						"type": "Decimal"
+					},
+					{
+						"name": "CD_CONVENIO",
+						"type": "Decimal"
+					},
+					{
+						"name": "DT_ATUALIZACAO",
+						"type": "DateTime"
+					},
+					{
+						"name": "IE_DEDUZIR_ADIC",
+						"type": "String"
+					},
+					{
+						"name": "CD_MOEDA",
+						"type": "Decimal"
+					},
+					{
+						"name": "VL_SALDO",
+						"type": "Double"
+					},
+					{
+						"name": "DS_ADIANTAMENTO",
+						"type": "String"
+					},
+					{
+						"name": "DS_MOEDA_ESTRANGEIRA",
+						"type": "String"
+					}
+				],
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TECHSALLUS_DINAMICO')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "TECHSALLUS_DINAMICO",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"NOME_KEYVAULT_SECRET": {
+							"value": "@dataset().NOME_KEYVAULT_SECRET",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"NOME_KEYVAULT_SECRET": {
+						"type": "string"
+					},
+					"SCHEMA_NAME": {
+						"type": "string"
+					},
+					"TABLE_NAME": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "SqlServerTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": {
+						"value": "@dataset().SCHEMA_NAME",
+						"type": "Expression"
+					},
+					"table": {
+						"value": "@dataset().TABLE_NAME",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Daily 0700 AM')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Execução de pipeline para atualização das informações dos indicadores de Call Center",
+				"annotations": [],
+				"runtimeState": "Started",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "Carga Datamart TASY",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2020-08-25T20:22:00",
+						"timeZone": "E. South America Standard Time",
+						"schedule": {
+							"minutes": [
+								0
+							],
+							"hours": [
+								7
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/Daily 23 55')]",
 			"type": "Microsoft.DataFactory/factories/triggers",
 			"apiVersion": "2018-06-01",
@@ -2164,7 +2379,9 @@
 				"annotations": [],
 				"lastPublishTime": "2021-07-20T18:04:45Z"
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Agenda Plug in Play')]",
@@ -2429,7 +2646,9 @@
 				"annotations": [],
 				"lastPublishTime": "2020-02-10T13:01:24Z"
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Agendas Projesi - Geral')]",
@@ -2671,7 +2890,9 @@
 				"annotations": [],
 				"lastPublishTime": "2021-02-18T14:59:30Z"
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Agendas Projesi - Original')]",
@@ -2913,7 +3134,9 @@
 				"annotations": [],
 				"lastPublishTime": "2021-02-18T14:35:40Z"
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Agendas Projesi - Tasy HTML')]",
@@ -3345,7 +3568,9 @@
 				"annotations": [],
 				"lastPublishTime": "2021-02-18T15:00:37Z"
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Agendas Projesi Tasy HTML')]",
@@ -3958,7 +4183,9 @@
 				"annotations": [],
 				"lastPublishTime": "2020-11-16T20:56:52Z"
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/SadallaTasyPrdDataSet')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/Agendas Projesi V3')]",
@@ -8823,376 +9050,6 @@
 				},
 				"annotations": [],
 				"lastPublishTime": "2019-11-19T19:11:00Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Atendimentos Exames e Cirurgias 90 Dias')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Pipeline em testes para alimentar informações de exames e cirurgias das unidades Smart e Tasy.",
-				"activities": [
-					{
-						"name": "Wait1",
-						"type": "Wait",
-						"dependsOn": [],
-						"userProperties": [],
-						"typeProperties": {
-							"waitTimeInSeconds": 1
-						}
-					},
-					{
-						"name": "Exames  HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select\na.cd_pessoa_fisica, \na.cd_convenio, \nobter_cnpj_estabelecimento(ag.cd_estabelecimento) as cnpj,\nto_char((a.hr_inicio) , 'dd/mm/yyyy') as data_agenda,\nto_char((a.hr_inicio) , 'hh24:mi:ss') as hora_agenda,\n'Consulta' as tipo_agenda,\npf.nm_pessoa_fisica as nm_paciente,\nsubstr(obter_desc_procedimento(a.cd_procedimento, a.ie_origem_proced),1,1000) as ds_procedimento_princ,\nsubstr((select Listagg(Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced), ' ;') within GROUP (ORDER BY Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced))  from AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia),1,1000) as ds_procedimento_adic,\n1 + (select count(1)from AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia) as ie_quantidade,\nobter_nome_usuario(a.nm_usuario_orig) as nm_usuario,\nobter_nome_pf(a.cd_medico_exec) as nm_medico,\ne.nm_fantasia_estab SIGLA_UNIDADE,\nem.nm_razao_social MARCA,\nobter_valor_dominio(83,a.ie_status_agenda) as status_agenda,\na.nr_atendimento,\na.nr_sequencia,\n'NAO ENCONTRADO' as ID,\na.cd_procedencia,\np.ds_procedencia,\na.dt_agendamento,\n\nto_char(a.dt_agenda,'dd') dia,\nto_char(a.dt_agenda,'mm') mes,\nto_char(a.dt_agenda,'yyyy') ano,\nac.ds_classificacao,\naa.ds_agrupamento ds_agrupamento,\na.cd_motivo_cancelamento,\nsubstr(obter_ds_motivo_status(a.nr_sequencia, a.cd_agenda),1,200) as ds_motivo_cancelamento,\na.cd_agenda\n\nfrom agenda_paciente a,\n     agenda ag,\n     pessoa_fisica pf,\n     procedencia p,\n     agenda_paciente_classif ac,\n     agrupamento_agenda aa,\n     empresa em,\n     estabelecimento e\nwhere a.cd_agenda = ag.cd_agenda\nand a.cd_pessoa_fisica = pf.cd_pessoa_fisica (+)\nand a.cd_procedencia = p.cd_procedencia (+)\nand a.nr_seq_classif_agenda = ac.nr_sequencia (+)\nand ag.nr_seq_agrupamento = aa.nr_sequencia (+)\nand ag.cd_estabelecimento = e.cd_estabelecimento\nand e.cd_empresa = em.cd_empresa\nand ag.cd_pessoa_fisica is null\nand ag.cd_tipo_agenda = 2\nand a.dt_agenda between sysdate - 90 and sysdate",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Agendamento_Exames",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Cirurgias HOB",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Exames  HOB",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select\na.cd_pessoa_fisica, \na.cd_convenio, \nobter_cnpj_estabelecimento(ag.cd_estabelecimento) as cnpj,\nto_char((a.hr_inicio) , 'dd/mm/yyyy') as data_agenda,\nto_char((a.hr_inicio) , 'hh24:mi:ss') as hora_agenda,\n'Cirurgia' as tipo_agenda,\npf.nm_pessoa_fisica as nm_paciente,\nsubstr(obter_desc_procedimento(a.cd_procedimento, a.ie_origem_proced),1,1000) as ds_procedimento_princ,\nsubstr((select Listagg(Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced), ' ;') within GROUP (ORDER BY Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced))  from AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia),1,1000) as ds_procedimento_adic,\n1 + (select count(1)from AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia) as ie_quantidade,\nobter_nome_usuario(a.nm_usuario_orig) as nm_usuario,\nobter_nome_pf(a.cd_medico_exec) as nm_medico,\ne.nm_fantasia_estab SIGLA_UNIDADE,\nem.nm_razao_social MARCA,\nobter_valor_dominio(83,a.ie_status_agenda) as status_agenda,\na.nr_atendimento,\na.nr_sequencia,\n'NAO ENCONTRADO' as ID,\na.cd_procedencia,\np.ds_procedencia,\na.dt_agendamento,\n\nto_char(a.dt_agenda,'dd') dia,\nto_char(a.dt_agenda,'mm') mes,\nto_char(a.dt_agenda,'yyyy') ano,\nac.ds_classificacao,\n'' ds_agrupamento,\na.cd_motivo_cancelamento,\nsubstr(obter_ds_motivo_status(a.nr_sequencia, a.cd_agenda),1,200) as ds_motivo_cancelamento,\na.cd_agenda\n\nfrom agenda_paciente a,\n     agenda ag,\n     pessoa_fisica pf,\n     procedencia p,\n     agenda_paciente_classif ac,\n     agrupamento_agenda aa,\n     empresa em,\n     estabelecimento e\nwhere a.cd_agenda = ag.cd_agenda\nand a.cd_pessoa_fisica = pf.cd_pessoa_fisica (+)\nand a.cd_procedencia = p.cd_procedencia (+)\nand a.nr_seq_classif_agenda = ac.nr_sequencia (+)\nand ag.nr_seq_agrupamento = aa.nr_sequencia (+)\nand ag.cd_estabelecimento = e.cd_estabelecimento\nand e.cd_empresa = em.cd_empresa\nand ag.cd_tipo_agenda = 1\nand a.dt_agenda between sysdate - 90 and sysdate",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Agendamento_Cirurgias",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Exames  Sadalla",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Wait1",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select\na.cd_pessoa_fisica, \na.cd_convenio, \nobter_cnpj_estabelecimento(ag.cd_estabelecimento) as cnpj,\nto_char((a.hr_inicio) , 'dd/mm/yyyy') as data_agenda,\nto_char((a.hr_inicio) , 'hh24:mi:ss') as hora_agenda,\n'Consulta' as tipo_agenda,\npf.nm_pessoa_fisica as nm_paciente,\nsubstr(obter_desc_procedimento(a.cd_procedimento, a.ie_origem_proced),1,1000) as ds_procedimento_princ,\nsubstr((select Listagg(Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced), ' ;') within GROUP (ORDER BY Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced))  from AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia),1,1000) as ds_procedimento_adic,\n1 + (select count(1)from AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia) as ie_quantidade,\nobter_nome_usuario(a.nm_usuario_orig) as nm_usuario,\nobter_nome_pf(a.cd_medico_exec) as nm_medico,\ne.nm_fantasia_estab SIGLA_UNIDADE,\nem.nm_razao_social MARCA,\nobter_valor_dominio(83,a.ie_status_agenda) as status_agenda,\na.nr_atendimento,\na.nr_sequencia,\n'NAO ENCONTRADO' as ID,\na.cd_procedencia,\np.ds_procedencia,\na.dt_agendamento,\n\nto_char(a.dt_agenda,'dd') dia,\nto_char(a.dt_agenda,'mm') mes,\nto_char(a.dt_agenda,'yyyy') ano,\nac.ds_classificacao,\naa.ds_agrupamento ds_agrupamento,\na.cd_motivo_cancelamento,\nsubstr(obter_ds_motivo_status(a.nr_sequencia, a.cd_agenda),1,200) as ds_motivo_cancelamento,\na.cd_agenda\n\nfrom agenda_paciente a,\n     agenda ag,\n     pessoa_fisica pf,\n     procedencia p,\n     agenda_paciente_classif ac,\n     agrupamento_agenda aa,\n     empresa em,\n     estabelecimento e\nwhere a.cd_agenda = ag.cd_agenda\nand a.cd_pessoa_fisica = pf.cd_pessoa_fisica (+)\nand a.cd_procedencia = p.cd_procedencia (+)\nand a.nr_seq_classif_agenda = ac.nr_sequencia (+)\nand ag.nr_seq_agrupamento = aa.nr_sequencia (+)\nand ag.cd_estabelecimento = e.cd_estabelecimento\nand e.cd_empresa = em.cd_empresa\nand ag.cd_pessoa_fisica is null\nand ag.cd_tipo_agenda = 2\nand a.dt_agenda between sysdate - 90 and sysdate",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SadallaTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Agendamento_Exames",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Cirurgias Sadalla",
-						"type": "Copy",
-						"dependsOn": [
-							{
-								"activity": "Exames  Sadalla",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select\na.cd_pessoa_fisica, \na.cd_convenio, \nobter_cnpj_estabelecimento(ag.cd_estabelecimento) as cnpj,\nto_char((a.hr_inicio) , 'dd/mm/yyyy') as data_agenda,\nto_char((a.hr_inicio) , 'hh24:mi:ss') as hora_agenda,\n'Cirurgia' as tipo_agenda,\npf.nm_pessoa_fisica as nm_paciente,\nsubstr(obter_desc_procedimento(a.cd_procedimento, a.ie_origem_proced),1,1000) as ds_procedimento_princ,\nsubstr((select Listagg(Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced), ' ;') within GROUP (ORDER BY Obter_desc_procedimento(p.cd_procedimento, p.ie_origem_proced))  from AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia),1,1000) as ds_procedimento_adic,\n1 + (select count(1)from AGENDA_PACIENTE_PROC p where p.nr_sequencia = a.nr_sequencia) as ie_quantidade,\nobter_nome_usuario(a.nm_usuario_orig) as nm_usuario,\nobter_nome_pf(a.cd_medico_exec) as nm_medico,\ne.nm_fantasia_estab SIGLA_UNIDADE,\nem.nm_razao_social MARCA,\nobter_valor_dominio(83,a.ie_status_agenda) as status_agenda,\na.nr_atendimento,\na.nr_sequencia,\n'NAO ENCONTRADO' as ID,\na.cd_procedencia,\np.ds_procedencia,\na.dt_agendamento,\n\nto_char(a.dt_agenda,'dd') dia,\nto_char(a.dt_agenda,'mm') mes,\nto_char(a.dt_agenda,'yyyy') ano,\nac.ds_classificacao,\n'' ds_agrupamento,\na.cd_motivo_cancelamento,\nsubstr(obter_ds_motivo_status(a.nr_sequencia, a.cd_agenda),1,200) as ds_motivo_cancelamento,\na.cd_agenda\n\nfrom agenda_paciente a,\n     agenda ag,\n     pessoa_fisica pf,\n     procedencia p,\n     agenda_paciente_classif ac,\n     agrupamento_agenda aa,\n     empresa em,\n     estabelecimento e\nwhere a.cd_agenda = ag.cd_agenda\nand a.cd_pessoa_fisica = pf.cd_pessoa_fisica (+)\nand a.cd_procedencia = p.cd_procedencia (+)\nand a.nr_seq_classif_agenda = ac.nr_sequencia (+)\nand ag.nr_seq_agrupamento = aa.nr_sequencia (+)\nand ag.cd_estabelecimento = e.cd_estabelecimento\nand e.cd_empresa = em.cd_empresa\nand ag.cd_tipo_agenda = 1\nand a.dt_agenda between sysdate - 90 and sysdate",
-								"partitionOption": "None",
-								"queryTimeout": "02:00:00"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SadallaTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Agendamento_Cirurgias",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"folder": {
-					"name": "Atendimento"
-				},
-				"annotations": [],
-				"lastPublishTime": "2020-09-04T14:47:07Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Baixa_Titulos_Pagar')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"description": "Pipeline em desenvolvimento com informações de baixa de titulos a pagar.",
-				"activities": [
-					{
-						"name": "Baixa_Titulos_Pagar",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select a.nr_titulo, \na.nr_sequencia, \na.dt_baixa, \na.vl_pago,\na.vl_descontos,\na.vl_juros,\na.vl_multa,\na.dt_atualizacao,\n(select c.ds_tipo_baixa from TIPO_BAIXA_CPA c where c.cd_tipo_baixa = a.cd_tipo_baixa) as ds_tipo_baixa,\nobter_ds_transacao(a.nr_seq_movto_trans_fin) as ds_transacao\nfrom titulo_pagar_baixa a",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Pagar",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"folder": {
-					"name": "Contas a Pagar"
-				},
-				"annotations": [],
-				"lastPublishTime": "2020-02-10T20:56:25Z"
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Baixas titulos')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "Baixa titulos HTML5",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select obter_cgc_estabelecimento(R.CD_ESTABELECIMENTO) AS CD_CGC_ESTAB, \nl.nr_titulo, \nl.dt_recebimento, \nl.vl_recebido, \nl.vl_descontos, \nl.vl_juros, \nl.vl_multa, \nl.dt_atualizacao, \nt.ds_tipo_recebimento,\nX.DS_TRANSACAO,\n'' as MARCA,\n'' as SIGLA_UNIDADE\nfrom titulo_receber r,\n     TITULO_RECEBER_LIQ L,\n     tipo_recebimento t,\n     TRANSACAO_FINANCEIRA X\nwhere r.nr_titulo = l.nr_titulo \nand l.cd_tipo_recebimento = t.cd_tipo_recebimento\nAND l.nr_seq_trans_fin = X.NR_SEQUENCIA\nand r.cd_estabelecimento not in (11)\nand rownum < 50",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "CloudTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					},
-					{
-						"name": "Baixa Titulo Sadalla",
-						"type": "Copy",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "7.00:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"source": {
-								"type": "OracleSource",
-								"oracleReaderQuery": "select obter_cgc_estabelecimento(R.CD_ESTABELECIMENTO) AS CD_CGC_ESTAB, \nl.nr_titulo, \nl.dt_recebimento, \nl.vl_recebido, \nl.vl_descontos, \nl.vl_juros, \nl.vl_multa, \nl.dt_atualizacao, \nt.ds_tipo_recebimento,\nX.DS_TRANSACAO,\n'' as MARCA,\n'' as SIGLA_UNIDADE\nfrom titulo_receber r,\n     TITULO_RECEBER_LIQ L,\n     tipo_recebimento t,\n     TRANSACAO_FINANCEIRA X\nwhere r.nr_titulo = l.nr_titulo \nand l.cd_tipo_recebimento = t.cd_tipo_recebimento\nAND l.nr_seq_trans_fin = X.NR_SEQUENCIA\nand r.cd_estabelecimento not in (11)\nand rownum < 50",
-								"partitionOption": "None"
-							},
-							"sink": {
-								"type": "AzureSqlSink",
-								"writeBehavior": "insert"
-							},
-							"enableStaging": false
-						},
-						"inputs": [
-							{
-								"referenceName": "SadallaTasyPrdDataSet",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						],
-						"outputs": [
-							{
-								"referenceName": "AZ_SQL_TB_Baixa_Titulos_Receber",
-								"type": "DatasetReference",
-								"parameters": {}
-							}
-						]
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"folder": {
-					"name": "Contas a receber"
-				},
-				"annotations": [],
-				"lastPublishTime": "2019-09-10T17:22:52Z"
 			},
 			"dependsOn": []
 		}

@@ -19,10 +19,6 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'accountKey' of 'sv_hmaisbrasildatadriven'"
 		},
-		"SadallaTasyProd_connectionString": {
-			"type": "secureString",
-			"metadata": "Secure string for 'connectionString' of 'SadallaTasyProd'"
-		},
 		"UROBRASIL_Teleorientacao_Diaria_properties_typeProperties_url": {
 			"type": "string",
 			"defaultValue": "https://urobrasil.tdsasistemas.com.br/Urobrasil/api/IntegracaoBi/ConsultaTeleorientacao?token=536948100cf9fa52cf678e2ea20e02ed&leituraDiaria=S"
@@ -38,10 +34,6 @@
 		"sv_hmaisbrasildatadriven_properties_typeProperties_url": {
 			"type": "string",
 			"defaultValue": "https://hmaisbrasildatadriven.dfs.core.windows.net/"
-		},
-		"AzureDatabricks_properties_typeProperties_existingClusterId": {
-			"type": "string",
-			"defaultValue": "0914-173138-dl7s1vxp"
 		}
 	},
 	"variables": {
@@ -221,6 +213,34 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/Daily 0800 AM')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Stopped",
+				"pipelines": [],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2021-10-01T17:06:00",
+						"timeZone": "E. South America Standard Time",
+						"schedule": {
+							"minutes": [
+								0
+							],
+							"hours": [
+								8
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/IRISNEW')]",
 			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
 			"apiVersion": "2018-06-01",
@@ -261,6 +281,16 @@
 			"dependsOn": []
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/ServidorArquivosBI')]",
+			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "SelfHosted",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/integrationRuntime')]",
 			"type": "Microsoft.DataFactory/factories/integrationRuntimes",
 			"apiVersion": "2018-06-01",
@@ -271,341 +301,372 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/AZ_SQL_TB_Unidade_Producao_Medica')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
+			"name": "[concat(parameters('factoryName'), '/Carga Datamart TASY')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Produção Médica Unidades"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
+				"activities": [
 					{
-						"name": "BASE",
-						"type": "varchar"
+						"name": "Datamart Recebimento",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_DATAMART_RECEBIMENTO_TASY]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
 					},
 					{
-						"name": "CNPJ",
-						"type": "varchar"
-					},
-					{
-						"name": "MARCA",
-						"type": "varchar"
-					},
-					{
-						"name": "DT_ATUALIZACAO",
-						"type": "date"
-					},
-					{
-						"name": "NR_ATENDIMENTO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "DT_ENTRADA",
-						"type": "date"
-					},
-					{
-						"name": "NR_INTERNO_CONTA",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CD_PESSOA_FISICA",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "DT_NASCIMENTO",
-						"type": "date"
-					},
-					{
-						"name": "NR_CPF",
-						"type": "varchar"
-					},
-					{
-						"name": "IE_SEXO",
-						"type": "char"
-					},
-					{
-						"name": "NR_CEP",
-						"type": "varchar"
-					},
-					{
-						"name": "DS_CIDADE",
-						"type": "varchar"
-					},
-					{
-						"name": "DS_PESSOA_FISICA",
-						"type": "varchar"
-					},
-					{
-						"name": "CD_CONVENIO",
-						"type": "varchar"
-					},
-					{
-						"name": "DS_CONVENIO",
-						"type": "varchar"
-					},
-					{
-						"name": "CD_MEDICO_EXECUTOR",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "DS_MEDICO_EXECUTOR",
-						"type": "varchar"
-					},
-					{
-						"name": "CD_MEDICO_REQUISITANTE",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "DS_MEDICO_REQUISITANTE",
-						"type": "varchar"
-					},
-					{
-						"name": "IE_ORIGEM_PROCED",
-						"type": "varchar"
-					},
-					{
-						"name": "CD_PROCEDIMENTO",
-						"type": "varchar"
-					},
-					{
-						"name": "DS_PROCEDIMENTO",
-						"type": "varchar"
-					},
-					{
-						"name": "DS_CLASSIFICACAO",
-						"type": "varchar"
-					},
-					{
-						"name": "QT_PROCEDIMENTO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "VL_PROCEDIMENTO",
-						"type": "float",
-						"precision": 15
-					},
-					{
-						"name": "IE_STATUS_ACERTO",
-						"type": "varchar"
-					},
-					{
-						"name": "STATUS_CONTA",
-						"type": "varchar"
-					},
-					{
-						"name": "CD_TUSS",
-						"type": "varchar"
+						"name": "SP_AUX_CONVENIO_BI_COBRANCA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Datamart Recebimento",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.4:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_AUX_CONVENIO_BI_COBRANCA]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
 					}
 				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "Unidade_Producao_Medica"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AZ_SQL_TB_Convenio')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
+				"policy": {
+					"elapsedTimeMetric": {}
 				},
 				"folder": {
-					"name": "Atendimentos"
+					"name": "Data Warehouse/3_Pipeline_Datamart"
 				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
-					{
-						"name": "CD_CONVENIO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "DS_CONVENIO",
-						"type": "varchar"
-					},
-					{
-						"name": "CD_ESTABELECIMENTO",
-						"type": "int",
-						"precision": 10
-					},
-					{
-						"name": "CNPJ",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "Convenio_Unidade"
-				}
+				"annotations": []
 			},
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/AZ_SQL_TB_Setor')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiariaSMARTV2')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureSQL_DB_Procedimentos",
-					"type": "LinkedServiceReference"
-				},
-				"folder": {
-					"name": "Atendimentos"
-				},
-				"annotations": [],
-				"type": "AzureSqlTable",
-				"schema": [
+				"activities": [
 					{
-						"name": "CD_SETOR_ATENDIMENTO",
-						"type": "varchar"
+						"name": "SP_SMART_RAW_PRODUCAO_DIARIA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_SMART_RAW_PRODUCAO_DIARIA"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
 					},
 					{
-						"name": "DS_SETOR_ATENDIMENTO",
-						"type": "varchar"
+						"name": "SP_PROCESSA_PROD_DIARIA_SMART",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "SP_SMART_RAW_PRODUCAO_DIARIA",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_PROCESSA_PROD_DIARIA_SMART"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
 					},
 					{
-						"name": "CNPJ",
-						"type": "varchar"
-					}
-				],
-				"typeProperties": {
-					"schema": "dbo",
-					"table": "Setor_Unidade"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/SadallaTasyProd')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "Oracle",
-				"typeProperties": {
-					"connectionString": "[parameters('SadallaTasyProd_connectionString')]"
-				},
-				"connectVia": {
-					"referenceName": "ServidorArquivosBI",
-					"type": "IntegrationRuntimeReference"
-				}
-			},
-			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/AzureDatabricks')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "AzureDatabricks",
-				"typeProperties": {
-					"domain": "https://adb-4986612633596064.4.azuredatabricks.net",
-					"accessToken": {
-						"type": "AzureKeyVaultSecret",
-						"store": {
-							"referenceName": "SV_OptyKeyVault",
+						"name": "Delete Cancelamento DM Producao",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "SP_PROCESSA_PROD_DIARIA_SMART",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
 							"type": "LinkedServiceReference"
 						},
-						"secretName": "DatabricksTokenHmaisBrasil"
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "NonQuery",
+									"text": "WITH BUSCA AS(\nSELECT \nCAST(A.ESTABELECIMENTO AS VARCHAR(5))+'|'+ CAST(a.osm_serie as varchar(10))+ cast(a.osm_num as varchar(50))+'|'+ CAST(itm.smm_num AS VARCHAR(50))+'|'+ CAST(A.OSM_PAC AS VARCHAR(50)) as FK_NR_SEQUENCIA\nFROM DW.TBL_SMM ITM WITH(NOLOCK)\nINNER JOIN DW.TBL_OSM A WITH(NOLOCK) ON ITM.estabelecimento = A.estabelecimento AND ITM.smm_osm_serie = A.osm_serie AND ITM.smm_osm = A.osm_num\nWHERE  \n    -- (itm.smm_pacote IS NOT NULL OR ( itm.smm_pacote <> 'C' ))                \n--    (itm.smm_canc_mot_cod is not null or itm.smm_canc_mot_cod is null)             \n   itm.smm_sfat = 'C'                \n  and itm.smm_exec = 'C'               \n--   and itm.smm_str not like '%'\n)\n\nDELETE A FROM DM.tbl_fprodiaria A\nINNER JOIN BUSCA B ON A.FK_NR_SEQUENCIA = B.FK_NR_SEQUENCIA"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
 					},
-					"existingClusterId": "[parameters('AzureDatabricks_properties_typeProperties_existingClusterId')]"
-				}
+					{
+						"name": "SP_CONTAS_FATURADAS_SYS_LEG",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Delete Cancelamento DM Producao",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_CONTAS_FATURADAS_SYS_LEG"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+				},
+				"annotations": []
 			},
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/Parquet_AuxAtend')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_NAJA')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"linkedServiceName": {
-					"referenceName": "AzureBlobStorage_RepasseMedico",
-					"type": "LinkedServiceReference"
-				},
-				"annotations": [],
-				"type": "Parquet",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobStorageLocation",
-						"folderPath": "base/aux_atendimento",
-						"container": "repassemedico"
-					},
-					"compressionCodec": "snappy"
-				},
-				"schema": [
+				"activities": [
 					{
-						"name": "FK_NR_SEQ_ITEM",
-						"type": "UTF8"
-					},
-					{
-						"name": "DS_TIPO_REPASSE",
-						"type": "UTF8"
+						"name": "RAW DATA NAJA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.SP_NAJA_RAW_DATA_PROD_DIARIA"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
 					},
 					{
-						"name": "FK_CD_ESTABELECIMENTO",
-						"type": "UTF8"
-					},
-					{
-						"name": "FK_NR_REPASSE_TERCEIRO",
-						"type": "UTF8"
-					},
-					{
-						"name": "FK_NR_SEQ_TERCEIRO",
-						"type": "UTF8"
-					},
-					{
-						"name": "FK_NR_ATENDIMENTO",
-						"type": "UTF8"
-					},
-					{
-						"name": "FK_CD_MEDICO",
-						"type": "UTF8"
-					},
-					{
-						"name": "DS_OBSERVACAO",
-						"type": "UTF8"
-					},
-					{
-						"name": "DT_MESANO_REFERENCIA_REPASSE",
-						"type": "UTF8"
-					},
-					{
-						"name": "DT_MESANO_REFERENCIA_REPASSE_TERCEIRO",
-						"type": "UTF8"
-					},
-					{
-						"name": "DT_LIBERACAO",
-						"type": "UTF8"
-					},
-					{
-						"name": "DT_ATUALIZACAO",
-						"type": "UTF8"
-					},
-					{
-						"name": "VL_LIBERADO",
-						"type": "DECIMAL",
-						"precision": 15,
-						"scale": 2
+						"name": "ODS NAJA",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "RAW DATA NAJA",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.SP_NAJA_ODS_PROD_DIARIA"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
 					}
-				]
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/3_Pipeline_Datamart/datamart_ProducaoDiaria"
+				},
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DM_ProdDiaria_SMART')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "Producao Diaria         RAW Data",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.07:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_SMART_PRODUCAO_DIARIA]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Producao Diaria         ODS",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Producao Diaria         RAW Data",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.07:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[dbo].[SP_SMART_ODS_PRODUCAO_DIARIA]"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "Producao Diaria DW",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Producao Diaria         ODS",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "dbo.sp_dw_prod_diaria"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "REPROCESSA_PROD_DIARIA_SMART",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "Producao Diaria DW",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "SP_REPROCESSA_PROD_DIARIA_SMART"
+						},
+						"linkedServiceName": {
+							"referenceName": "AzureSQL_DB_Procedimentos",
+							"type": "LinkedServiceReference"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"folder": {
+					"name": "Data Warehouse/Ajuste DW Tasy/Antigo"
+				},
+				"annotations": []
 			},
 			"dependsOn": []
 		}
